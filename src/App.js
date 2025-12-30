@@ -603,35 +603,39 @@ const CWLStatsTracker = () => {
             </select>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => {
-                if (!currentSeason) return;
-                const encoded = btoa(
-                  unescape(
-                    encodeURIComponent(
-                      JSON.stringify({ season: currentSeason })
-                    )
-                  )
-                );
-                const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-                navigator.clipboard
-                  .writeText(shareUrl)
-                  .then(() => {
-                    setSaveStatus(
-                      "✓ Link copied! Share it with your teammates"
-                    );
-                    setTimeout(() => setSaveStatus(""), 3000);
-                  })
-                  .catch(() => {
-                    setSaveStatus("✗ Failed to copy link");
-                    setTimeout(() => setSaveStatus(""), 3000);
-                  });
-              }}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-              Share
-            </button>
+            <button onClick={async () => { 
+  if (!currentSeason) return; 
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ season: currentSeason })))); 
+  const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+  const shareData = {
+    title: `CWL Stats - ${currentSeason.name}`,
+    text: `Check out my CWL statistics for ${currentSeason.name}`,
+    url: shareUrl
+  };
+  
+  try {
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      await navigator.share(shareData);
+      setSaveStatus('✓ Shared successfully!');
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      setSaveStatus('✓ Link copied to clipboard!');
+    }
+    setTimeout(() => setSaveStatus(''), 3000);
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Share error:', err);
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setSaveStatus('✓ Link copied to clipboard!');
+        setTimeout(() => setSaveStatus(''), 3000);
+      } catch (clipErr) {
+        setSaveStatus('✗ Could not share or copy link');
+        setTimeout(() => setSaveStatus(''), 3000);
+      }
+    }
+  }
+}} className="px-4 py-2 bg-green-600 rounded-lg flex items-center gap-2"><Share2 className="w-4 h-4" />Share</button>
             <button
               onClick={() => setShowImport(true)}
               className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
