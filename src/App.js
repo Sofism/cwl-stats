@@ -68,29 +68,36 @@ const CWLStatsTracker = () => {
   };
 
   useEffect(() => {
-    setLoading(true);
+  setLoading(true);
 
-    const params = new URLSearchParams(window.location.search);
-    const sharedData = params.get("data");
+  const params = new URLSearchParams(window.location.search);
+  const sharedData = params.get("data");
 
-    if (sharedData) {
-      try {
-        const decoded = JSON.parse(
-          decodeURIComponent(escape(atob(sharedData)))
-        );
-        if (decoded.season) {
-          setCurrentSeason(decoded.season);
-          if (decoded.season.leagueInfo) {
-            setLeagueInfo(decoded.season.leagueInfo);
-          }
-          setShowImport(false);
-          setLoading(false);
-          return;
+  console.log("Has shared data?", !!sharedData); // DEBUG
+
+  if (sharedData) {
+    try {
+      console.log("Decoding shared data..."); // DEBUG
+      const decoded = JSON.parse(
+        decodeURIComponent(escape(atob(sharedData)))
+      );
+      console.log("Decoded data:", decoded); // DEBUG
+      
+      if (decoded.season) {
+        console.log("Setting season:", decoded.season); // DEBUG
+        setCurrentSeason(decoded.season);
+        if (decoded.season.leagueInfo) {
+          setLeagueInfo(decoded.season.leagueInfo);
         }
-      } catch (err) {
-        console.log("Error loading shared data:", err);
+        setShowImport(false);
+        setLoading(false);
+        window.history.replaceState({}, '', window.location.pathname); // Limpia URL
+        return;
       }
+    } catch (err) {
+      console.error("Error loading shared data:", err); // Cambiado a console.error
     }
+  }
 
     try {
       const saved = localStorage.getItem("cwl-seasons");
