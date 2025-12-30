@@ -603,39 +603,47 @@ const CWLStatsTracker = () => {
             </select>
           </div>
           <div className="flex gap-2">
-            <button onClick={async () => { 
-  if (!currentSeason) return; 
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ season: currentSeason })))); 
-  const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-  const shareData = {
-    title: `CWL Stats - ${currentSeason.name}`,
-    text: `Check out my CWL statistics for ${currentSeason.name}`,
-    url: shareUrl
-  };
-  
-  try {
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-      await navigator.share(shareData);
-      setSaveStatus('✓ Shared successfully!');
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-      setSaveStatus('✓ Link copied to clipboard!');
-    }
-    setTimeout(() => setSaveStatus(''), 3000);
-  } catch (err) {
-    if (err.name !== 'AbortError') {
-      console.error('Share error:', err);
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setSaveStatus('✓ Link copied to clipboard!');
-        setTimeout(() => setSaveStatus(''), 3000);
-      } catch (clipErr) {
-        setSaveStatus('✗ Could not share or copy link');
-        setTimeout(() => setSaveStatus(''), 3000);
-      }
-    }
-  }
-}} className="px-4 py-2 bg-green-600 rounded-lg flex items-center gap-2"><Share2 className="w-4 h-4" />Share</button>
+            <button 
+              onClick={async () => { 
+                if (!currentSeason) return;
+                
+                const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ season: currentSeason }))));
+                const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+                
+                // Intentar Web Share API (móviles principalmente)
+                if (navigator.share) {
+                  try {
+                    await navigator.share({
+                      title: `CWL Stats - ${currentSeason.name}`,
+                      text: `Mis estadísticas de CWL para ${currentSeason.name}`,
+                      url: shareUrl
+                    });
+                    setSaveStatus('✓ Compartido exitosamente!');
+                    setTimeout(() => setSaveStatus(''), 3000);
+                    return;
+                  } catch (err) {
+                    // Si el usuario cancela, no hacer nada
+                    if (err.name === 'AbortError') return;
+                    // Si Web Share falla, intentar copiar al portapapeles
+                  }
+                }
+                
+                // Fallback: copiar al portapapeles
+                try {
+                  await navigator.clipboard.writeText(shareUrl);
+                  setSaveStatus('✓ Link copiado al portapapeles!');
+                  setTimeout(() => setSaveStatus(''), 3000);
+                } catch (clipErr) {
+                  console.error('Error:', clipErr);
+                  setSaveStatus('✗ No se pudo compartir');
+                  setTimeout(() => setSaveStatus(''), 3000);
+                }
+              }} 
+              className="px-4 py-2 bg-green-600 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+              Share
+            </button>
             <button
               onClick={() => setShowImport(true)}
               className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
