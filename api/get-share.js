@@ -19,10 +19,9 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Not found' });
     }
     
-    const parsed = JSON.parse(data);
     console.log('Returning parsed data');
     
-    return res.status(200).json(parsed);
+    return res.status(200).json(data);
   } catch (error) {
     console.error('Error getting share:', error);
     return res.status(500).json({ error: 'Failed to load', details: error.message });
