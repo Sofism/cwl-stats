@@ -69,55 +69,80 @@ const CWLStatsTracker = () => {
 
   useEffect(() => {
   setLoading(true);
-
   const params = new URLSearchParams(window.location.search);
+  
+  // Verificar si es un enlace compartido nuevo (con ID corto)
+  const shareId = params.get("share");
+  
+  if (shareId) {
+    // Cargar datos desde la API
+    fetch(`/api/get-share?id=${shareId}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Share not found');
+        return res.json();
+      })
+      .then(data => {
+        if (data.season) {
+          setCurrentSeason(data.season);
+          if (data.season.leagueInfo) {
+            setLeagueInfo(data.season.leagueInfo);
+          }
+          setShowImport(false);
+          setLoading(false);
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      })
+      .catch(err => {
+        console.error('Error loading shared data:', err);
+        setLoading(false);
+      });
+    return;
+  }
+  
+  // Soporte para enlaces viejos con ?data=
   const sharedData = params.get("data");
-
   if (sharedData) {
     try {
       const decoded = JSON.parse(
         decodeURIComponent(escape(atob(sharedData)))
       );
-      console.log("Decoded data:", decoded); // DEBUG
-      
       if (decoded.season) {
-        console.log("Setting season:", decoded.season); // DEBUG
         setCurrentSeason(decoded.season);
         if (decoded.season.leagueInfo) {
           setLeagueInfo(decoded.season.leagueInfo);
         }
         setShowImport(false);
         setLoading(false);
-        window.history.replaceState({}, '', window.location.pathname); // Limpia URL
         return;
       }
     } catch (err) {
-      console.error("Error loading shared data:", err); // Cambiado a console.error
+      console.error("Error loading shared data:", err);
     }
   }
 
-    try {
-      const saved = localStorage.getItem("cwl-seasons");
-      if (saved) {
-        const parsedSeasons = JSON.parse(saved);
-        setSeasons(parsedSeasons);
-        if (parsedSeasons.length > 0) {
-          const lastSeason = parsedSeasons[0];
-          setCurrentSeason(lastSeason);
-          if (lastSeason.leagueInfo) {
-            setLeagueInfo(lastSeason.leagueInfo);
-          }
-          const hasData =
-            (lastSeason.mainClan && lastSeason.mainClan.length > 0) ||
-            (lastSeason.secondaryClan && lastSeason.secondaryClan.length > 0);
-          setShowImport(!hasData);
+  // Cargar desde localStorage
+  try {
+    const saved = localStorage.getItem("cwl-seasons");
+    if (saved) {
+      const parsedSeasons = JSON.parse(saved);
+      setSeasons(parsedSeasons);
+      if (parsedSeasons.length > 0) {
+        const lastSeason = parsedSeasons[0];
+        setCurrentSeason(lastSeason);
+        if (lastSeason.leagueInfo) {
+          setLeagueInfo(lastSeason.leagueInfo);
         }
+        const hasData =
+          (lastSeason.mainClan && lastSeason.mainClan.length > 0) ||
+          (lastSeason.secondaryClan && lastSeason.secondaryClan.length > 0);
+        setShowImport(!hasData);
       }
-    } catch (err) {
-      console.log(err);
     }
-    setLoading(false);
-  }, []);
+  } catch (err) {
+    console.log(err);
+  }
+  setLoading(false);
+}, []);
 
   const save = (updated) => {
     try {
@@ -607,46 +632,59 @@ const CWLStatsTracker = () => {
             </select>
           </div>
           <div className="flex gap-2">
-           <button onClick={async () => { 
-  if (!currentSeason) return;
-  
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ season: currentSeason }))));
-  const shareUrl = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-                
-                // Intentar Web Share API (móviles principalmente)
-                if (navigator.share) {
-                  try {
-                    await navigator.share({
-                      title: `CWL Stats - ${currentSeason.name}`,
-                      text: `Mis estadísticas de CWL para ${currentSeason.name}`,
-                      url: shareUrl
-                    });
-                    setSaveStatus('✓ Compartido exitosamente!');
-                    setTimeout(() => setSaveStatus(''), 3000);
-                    return;
-                  } catch (err) {
-                    // Si el usuario cancela, no hacer nada
-                    if (err.name === 'AbortError') return;
-                    // Si Web Share falla, intentar copiar al portapapeles
-                  }
-                }
-                
-                // Fallback: copiar al portapapeles
-                try {
-                  await navigator.clipboard.writeText(shareUrl);
-                  setSaveStatus('✓ Link copiado al portapapeles!');
-                  setTimeout(() => setSaveStatus(''), 3000);
-                } catch (clipErr) {
-                  console.error('Error:', clipErr);
-                  setSaveStatus('✗ No se pudo compartir');
-                  setTimeout(() => setSaveStatus(''), 3000);
-                }
-              }} 
-              className="px-4 py-2 bg-green-600 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-              Share
-            </button>
+           <button 
+  onClick={async () => { 
+    if (!currentSeason) return;
+    
+    try {
+      setSaveStatus('⏳ Generando enlace...');
+      
+      // Llamar a la API para guardar los datos
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ season: currentSeason })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create share link');
+      }
+      
+      const { shareId } = await response.json();
+      const shareUrl = `${window.location.origin}?share=${shareId}`;
+      
+      // Intentar Web Share API
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `CWL Stats - ${currentSeason.name}`,
+            text: `Mis estadísticas de CWL para ${currentSeason.name}`,
+            url: shareUrl
+          });
+          setSaveStatus('✓ Compartido exitosamente!');
+          setTimeout(() => setSaveStatus(''), 3000);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+      
+      // Copiar al portapapeles
+      await navigator.clipboard.writeText(shareUrl);
+      setSaveStatus('✓ Link copiado al portapapeles!');
+      setTimeout(() => setSaveStatus(''), 5000);
+      
+    } catch (error) {
+      console.error('Share error:', error);
+      setSaveStatus('✗ Error al compartir');
+      setTimeout(() => setSaveStatus(''), 3000);
+    }
+  }} 
+  className="px-4 py-2 bg-green-600 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+>
+  <Share2 className="w-4 h-4" />
+  Share
+</button>
             <button
               onClick={() => setShowImport(true)}
               className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
