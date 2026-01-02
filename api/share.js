@@ -8,14 +8,14 @@ export default async function handler(req, res) {
   }
   
   try {
-    const { season } = req.body;
+    const { season, currentSeasonId } = req.body;
     console.log('Season received:', season ? 'Yes' : 'No');
     
     const shareId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     console.log('Generated shareId:', shareId);
     
     const key = `share:${shareId}`;
-    const value = JSON.stringify({ season });
+    const value = JSON.stringify({ seasons, currentSeasonId });
     console.log('Saving to key:', key);
     
     await kv.set(key, value, { ex: 2592000 });
