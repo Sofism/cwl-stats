@@ -412,7 +412,8 @@ const CWLStatsTracker = () => {
                               };
                               updateLeague(newLeagueInfo);
                             }}
-                            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+                            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white appearance-none cursor-pointer"
+                            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
                           >
                             {leagues.map((l) => (
                               <option key={l} value={l}>
@@ -628,7 +629,8 @@ const CWLStatsTracker = () => {
                 setCurrentSeason(s);
                 if (s && s.leagueInfo) setLeagueInfo(s.leagueInfo);
               }}
-              className="mt-2 bg-gray-800 border border-gray-700 rounded px-3 py-1 text-sm text-white"
+              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white appearance-none cursor-pointer"
+              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
             >
               {seasons.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -715,7 +717,8 @@ const CWLStatsTracker = () => {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="w-full mb-4 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+          className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white appearance-none cursor-pointer"
+          style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}
         >
           <option value="default">Default Sort</option>
           <option value="netStars">Net Stars</option>
