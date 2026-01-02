@@ -81,17 +81,23 @@ const CWLStatsTracker = () => {
         if (!res.ok) throw new Error('Share not found');
         return res.json();
       })
-      .then(data => {
-        if (data.season) {
-          setCurrentSeason(data.season);
-          if (data.season.leagueInfo) {
-            setLeagueInfo(data.season.leagueInfo);
-          }
-          setShowImport(false);
-          setLoading(false);
-          window.history.replaceState({}, '', window.location.pathname);
-        }
-      })
+     .then(data => {
+  if (data.seasons && data.seasons.length > 0) {
+    setSeasons(data.seasons);
+    
+    // Buscar la season actual por ID
+    const activeSeason = data.seasons.find(s => s.id === data.currentSeasonId) || data.seasons[0];
+    setCurrentSeason(activeSeason);
+    
+    if (activeSeason.leagueInfo) {
+      setLeagueInfo(activeSeason.leagueInfo);
+    }
+    
+    setShowImport(false);
+    setLoading(false);
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})
       .catch(err => {
         console.error('Error loading shared data:', err);
         setLoading(false);
