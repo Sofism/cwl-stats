@@ -643,7 +643,7 @@ const CWLStatsTracker = () => {
       const response = await fetch('/api/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ season: currentSeason })
+        body: JSON.stringify({ seasons: seasons, currentSeasonId: currentSeason.id })
       });
       
       if (!response.ok) {
