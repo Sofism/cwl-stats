@@ -5,7 +5,6 @@ import Dashboard from "./components/Dashboard";
 import { useSeasons } from "./hooks/useSeasons";
 import { loadSharedData } from "./utils/shareUtils";
 
-// Lazy load del modal de jugador (se carga solo cuando se necesita)
 const PlayerModal = lazy(() => import("./components/PlayerModal"));
 
 const CWLStatsTracker = () => {
@@ -33,11 +32,9 @@ const CWLStatsTracker = () => {
     if (shareId || sharedData) {
       loadSharedData(shareId, sharedData, (data) => {
         if (data.seasons) {
-          // Manejar datos compartidos nuevos
           const activeSeason = data.seasons.find(s => s.id === data.currentSeasonId) || data.seasons[0];
           setCurrentSeason(activeSeason);
         } else if (data.season) {
-          // Manejar datos compartidos viejos
           setCurrentSeason(data.season);
         }
         setShowImport(false);
@@ -46,7 +43,6 @@ const CWLStatsTracker = () => {
       return;
     }
 
-    // Verificar si hay datos en la temporada actual
     if (currentSeason) {
       const hasData =
         (currentSeason.mainClan && currentSeason.mainClan.length > 0) ||
