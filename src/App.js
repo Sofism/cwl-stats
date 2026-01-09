@@ -19,6 +19,7 @@ const CWLStatsTracker = () => {
     updateSeasonData,
     saveStatus,
     loading,
+    getSeasonsByYear,
   } = useSeasons();
 
   const [showImport, setShowImport] = useState(true);
@@ -74,6 +75,7 @@ const CWLStatsTracker = () => {
         updateSeasonData={updateSeasonData}
         saveStatus={saveStatus}
         onClose={() => setShowImport(false)}
+        getSeasonsByYear={getSeasonsByYear}
       />
     );
   }
