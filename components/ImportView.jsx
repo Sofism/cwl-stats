@@ -16,6 +16,7 @@ const ImportView = ({
   updateSeasonData,
   saveStatus,
   onClose,
+  getSeasonsByYear,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -166,8 +167,8 @@ const ImportView = ({
 
         {showModal && (
           <NewSeasonModal
-            onCreateSeason={(name) => {
-              addSeason(name);
+            onCreateSeason={(name, year) => {
+              addSeason(name, year);
               setShowModal(false);
             }}
             onCancel={() => setShowModal(false)}
