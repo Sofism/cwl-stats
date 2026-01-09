@@ -79,6 +79,7 @@ const ImportView = ({
             }}
             onDeleteSeason={(id) => setDeleteConfirm(id)}
             onNewSeason={() => setShowModal(true)}
+            getSeasonsByYear={getSeasonsByYear}
           />
         )}
 
