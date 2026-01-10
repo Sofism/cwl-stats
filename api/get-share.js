@@ -1,29 +1,49 @@
-import { kv } from '@vercel/kv';
+const { kv } = require('@vercel/kv');
 
-export default async function handler(req, res) {
-  const { id } = req.query;
-  console.log('Get-share API called with id:', id);
+module.exports = async (req, res) => {
+  // Configurar CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Manejar OPTIONS request
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  console.log('Get-Share API called');
   
-  if (!id) {
-    return res.status(400).json({ error: 'Missing ID' });
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
   
   try {
-    const key = `share:${id}`;
-    console.log('Looking for key:', key);
+    const { id } = req.query;
     
-    const data = await kv.get(key);
-    console.log('Data found:', data ? 'Yes' : 'No');
-    
-    if (!data) {
-      return res.status(404).json({ error: 'Not found' });
+    if (!id) {
+      return res.status(400).json({ error: 'Missing share ID' });
     }
     
-    console.log('Returning parsed data');
+    const key = `share:${id}`;
+    console.log('Loading from key:', key);
     
-    return res.status(200).json(data);
+    const data = await kv.get(key);
+    
+    if (!data) {
+      return res.status(404).json({ error: 'Share not found' });
+    }
+    
+    // Si data es string, parsearlo
+    const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+    
+    return res.status(200).json(parsedData);
   } catch (error) {
-    console.error('Error getting share:', error);
+    console.error('Error loading share:', error);
     return res.status(500).json({ error: 'Failed to load', details: error.message });
   }
-}
+};

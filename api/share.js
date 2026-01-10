@@ -1,6 +1,21 @@
-import { kv } from '@vercel/kv';
+const { kv } = require('@vercel/kv');
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // Configurar CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Manejar OPTIONS request
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   console.log('Share API called, method:', req.method);
   
   if (req.method !== 'POST') {
@@ -8,7 +23,7 @@ export default async function handler(req, res) {
   }
   
   try {
-    const { seasons, currentSeasonId } = req.body;  // ✅ Cambiado a 'seasons'
+    const { seasons, currentSeasonId } = req.body;
     console.log('Seasons received:', seasons ? 'Yes' : 'No');
     console.log('Number of seasons:', seasons?.length);
     
@@ -16,7 +31,7 @@ export default async function handler(req, res) {
     console.log('Generated shareId:', shareId);
     
     const key = `share:${shareId}`;
-    const value = JSON.stringify({ seasons, currentSeasonId });  // ✅ Ahora 'seasons' existe
+    const value = JSON.stringify({ seasons, currentSeasonId });
     console.log('Saving to key:', key);
     
     await kv.set(key, value, { ex: 2592000 });
@@ -27,4 +42,4 @@ export default async function handler(req, res) {
     console.error('Error saving share:', error);
     return res.status(500).json({ error: 'Failed to save', details: error.message });
   }
-}
+};
