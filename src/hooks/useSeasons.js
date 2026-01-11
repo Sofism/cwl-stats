@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 
 export const useSeasons = () => {
   const [seasons, setSeasons] = useState([]);
+  const [sharedSeasons, setSharedSeasons] = useState([]); // Temporadas compartidas (solo lectura)
   const [currentSeason, setCurrentSeason] = useState(null);
   const [saveStatus, setSaveStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isSharedMode, setIsSharedMode] = useState(false);
 
   // Obtener año de una temporada
   const getSeasonYear = (season) => {
     if (season.year) return season.year;
-    // Inferir del nombre o fecha de creación
     const date = season.createdAt ? new Date(season.createdAt) : new Date();
     return date.getFullYear();
   };
@@ -17,12 +18,21 @@ export const useSeasons = () => {
   // Agrupar temporadas por año
   const getSeasonsByYear = () => {
     const grouped = {};
-    seasons.forEach(season => {
+    const allSeasons = isSharedMode ? sharedSeasons : seasons;
+    
+    allSeasons.forEach(season => {
       const year = getSeasonYear(season);
       if (!grouped[year]) grouped[year] = [];
       grouped[year].push(season);
     });
     return grouped;
+  };
+
+  // Cargar temporadas compartidas (modo solo lectura)
+  const loadSharedSeasons = (sharedData) => {
+    setSharedSeasons(sharedData);
+    setIsSharedMode(true);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -42,6 +52,12 @@ export const useSeasons = () => {
   }, []);
 
   const save = (updatedSeasons) => {
+    if (isSharedMode) {
+      setSaveStatus("⚠ Viewing shared data - changes not saved");
+      setTimeout(() => setSaveStatus(""), 3000);
+      return false;
+    }
+    
     try {
       localStorage.setItem("cwl-seasons", JSON.stringify(updatedSeasons));
       setSaveStatus("✓ Saved");
@@ -55,10 +71,12 @@ export const useSeasons = () => {
   };
 
   const addSeason = (name, year) => {
+    if (isSharedMode) return null;
+    
     const newSeason = {
       id: Date.now().toString(),
       name: name.trim(),
-      year: year || new Date().getFullYear(), // Agregar año
+      year: year || new Date().getFullYear(),
       createdAt: new Date().toISOString(),
       mainClan: [],
       secondaryClan: [],
@@ -75,6 +93,8 @@ export const useSeasons = () => {
   };
 
   const deleteSeason = (seasonId) => {
+    if (isSharedMode) return;
+    
     const updated = seasons.filter((s) => s.id !== seasonId);
     setSeasons(updated);
     if (currentSeason && currentSeason.id === seasonId) {
@@ -84,12 +104,26 @@ export const useSeasons = () => {
   };
 
   const deleteAllSeasons = () => {
+    if (isSharedMode) return;
+    
     localStorage.removeItem("cwl-seasons");
     setSeasons([]);
     setCurrentSeason(null);
   };
 
   const updateSeasonData = (updatedSeason) => {
+    if (isSharedMode) {
+      // En modo compartido, actualizar solo localmente sin guardar
+      const updatedShared = sharedSeasons.map((s) =>
+        s.id === updatedSeason.id ? updatedSeason : s
+      );
+      setCurrentSeason(updatedSeason);
+      setSharedSeasons(updatedShared);
+      setSaveStatus("⚠ Viewing shared data - changes not saved");
+      setTimeout(() => setSaveStatus(""), 3000);
+      return;
+    }
+    
     const updatedSeasons = seasons.map((s) =>
       s.id === updatedSeason.id ? updatedSeason : s
     );
@@ -99,7 +133,7 @@ export const useSeasons = () => {
   };
 
   return {
-    seasons,
+    seasons: isSharedMode ? sharedSeasons : seasons,
     currentSeason,
     setCurrentSeason,
     addSeason,
@@ -108,6 +142,8 @@ export const useSeasons = () => {
     updateSeasonData,
     saveStatus,
     loading,
-    getSeasonsByYear, // Nueva función
+    getSeasonsByYear,
+    loadSharedSeasons,
+    isSharedMode,
   };
 };
