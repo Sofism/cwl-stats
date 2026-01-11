@@ -63,43 +63,51 @@ const Dashboard = ({
     }
   };
 
-  const getData = () => {
-    const sourceData =
-      activePage === "main"
-        ? currentSeason.mainClan
-        : currentSeason.secondaryClan;
-    let data = [...sourceData];
+  // En Dashboard.jsx, actualiza la función getData():
 
-    if (sortBy === "netStars") {
-      data.sort((a, b) => b.netStars - a.netStars);
-    } else if (sortBy === "netPercent") {
-      data.sort((a, b) => b.netDest - a.netDest);
-    } else if (sortBy === "threeRate") {
-      data.sort((a, b) => b.threeRate - a.threeRate);
-    } else if (sortBy === "missAtk") {
-      data.sort((a, b) => a.missAtk - b.missAtk);
-    } else {
-      data.sort((a, b) => {
-        if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-        if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-        if (a.avgDistance !== b.avgDistance) return a.avgDistance - b.avgDistance;
-        if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-        return b.netDest - a.netDest;
-      });
-    }
+const getData = () => {
+  const sourceData =
+    activePage === "main"
+      ? currentSeason.mainClan
+      : currentSeason.secondaryClan;
+  let data = [...sourceData];
 
-    const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
-    const pos = parseInt(info.position);
-    const bonusCount =
-      pos >= 1 && pos <= 8
-        ? (BONUSES[info.league] && BONUSES[info.league][pos - 1]) || 0
-        : 0;
+  if (sortBy === "netStars") {
+    data.sort((a, b) => b.netStars - a.netStars);
+  } else if (sortBy === "netPercent") {
+    data.sort((a, b) => b.netDest - a.netDest);
+  } else if (sortBy === "threeRate") {
+    data.sort((a, b) => b.threeRate - a.threeRate);
+  } else if (sortBy === "missAtk") {
+    data.sort((a, b) => a.missAtk - b.missAtk);
+  } else {
+    // Ordenamiento por defecto - DIFERENTE según el clan
+    data.sort((a, b) => {
+      if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
+      if (b.netStars !== a.netStars) return b.netStars - a.netStars;
+      
+      // SOLO ordenar por avgDistance si NO es el clan principal (True North)
+      if (activePage !== "main" && a.avgDistance !== b.avgDistance) {
+        return a.avgDistance - b.avgDistance;
+      }
+      
+      if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
+      return b.netDest - a.netDest;
+    });
+  }
 
-    return data.map((p, i) => ({
-      ...p,
-      getsBonus: i < bonusCount,
-    }));
-  };
+  const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
+  const pos = parseInt(info.position);
+  const bonusCount =
+    pos >= 1 && pos <= 8
+      ? (BONUSES[info.league] && BONUSES[info.league][pos - 1]) || 0
+      : 0;
+
+  return data.map((p, i) => ({
+    ...p,
+    getsBonus: i < bonusCount,
+  }));
+};
 
   const data = getData();
 
