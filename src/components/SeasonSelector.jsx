@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Trophy, Calendar, Plus, ChevronDown, ChevronRight, Play } from "lucide-react";
+import { Trophy, Calendar, Plus, ChevronDown, ChevronRight, Play, Share2 } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import { createShareLink } from "../utils/shareUtils";
 
 const SeasonSelector = ({ 
   seasons, 
@@ -13,6 +14,7 @@ const SeasonSelector = ({
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [expandedYears, setExpandedYears] = useState({});
+  const [shareStatus, setShareStatus] = useState("");
 
   const seasonsByYear = getSeasonsByYear();
   const years = Object.keys(seasonsByYear).sort((a, b) => b - a);
@@ -34,6 +36,40 @@ const SeasonSelector = ({
     setDeleteConfirm(null);
   };
 
+  const handleShareAll = async () => {
+    if (seasons.length === 0) return;
+    
+    try {
+      setShareStatus('⏳ Generando enlace...');
+      
+      // Compartir todas las temporadas, con la más reciente como actual
+      const shareUrl = await createShareLink(seasons, seasons[0].id);
+      
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'CWL Stats - All Seasons',
+            text: `Todas mis temporadas de CWL (${seasons.length} seasons)`,
+            url: shareUrl
+          });
+          setShareStatus('✓ Compartido exitosamente!');
+          setTimeout(() => setShareStatus(''), 3000);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+      
+      await navigator.clipboard.writeText(shareUrl);
+      setShareStatus('✓ Link copiado! Tus compañeros verán todas las temporadas.');
+      setTimeout(() => setShareStatus(''), 5000);
+    } catch (error) {
+      console.error('Share error:', error);
+      setShareStatus('✗ Error al compartir');
+      setTimeout(() => setShareStatus(''), 3000);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-6">
       <div className="max-w-4xl mx-auto">
@@ -47,15 +83,32 @@ const SeasonSelector = ({
         </div>
 
         {/* Create New Season Button */}
-        <div className="mb-6">
+        <div className="mb-6 flex gap-3">
           <button
             onClick={() => setShowModal(true)}
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+            className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
           >
             <Plus className="w-6 h-6" />
             <span className="text-lg">Create New Season</span>
           </button>
+          
+          {seasons.length > 0 && (
+            <button
+              onClick={handleShareAll}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+            >
+              <Share2 className="w-6 h-6" />
+              <span className="text-lg">Share All</span>
+            </button>
+          )}
         </div>
+
+        {/* Share Status Message */}
+        {shareStatus && (
+          <div className="mb-4 p-3 rounded-lg bg-green-500/20 border border-green-500 text-green-300">
+            {shareStatus}
+          </div>
+        )}
 
         {/* Seasons List */}
         {seasons.length === 0 ? (
