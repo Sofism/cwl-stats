@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Share2, Trash2 } from "lucide-react";
+import { Share2, Trash2, ArrowLeft } from "lucide-react";
 import StatsCards from "./StatsCards";
 import StatsTable from "./StatsTable";
 import ColumnSelector from "./ColumnSelector";
@@ -15,6 +15,7 @@ const Dashboard = ({
   updateSeasonData,
   saveStatus,
   onOpenImport,
+  onBackToSelector,
   onDeleteAll,
   onPlayerSelect,
 }) => {
@@ -63,57 +64,70 @@ const Dashboard = ({
     }
   };
 
-  // En Dashboard.jsx, actualiza la función getData():
+  const getData = () => {
+    const sourceData =
+      activePage === "main"
+        ? currentSeason.mainClan
+        : currentSeason.secondaryClan;
+    let data = [...sourceData];
 
-const getData = () => {
-  const sourceData =
-    activePage === "main"
-      ? currentSeason.mainClan
-      : currentSeason.secondaryClan;
-  let data = [...sourceData];
+    if (sortBy === "netStars") {
+      data.sort((a, b) => b.netStars - a.netStars);
+    } else if (sortBy === "netPercent") {
+      data.sort((a, b) => b.netDest - a.netDest);
+    } else if (sortBy === "threeRate") {
+      data.sort((a, b) => b.threeRate - a.threeRate);
+    } else if (sortBy === "missAtk") {
+      data.sort((a, b) => a.missAtk - b.missAtk);
+    } else {
+      // ORDENAMIENTO POR DEFECTO - Diferente para Main y Secondary
+      data.sort((a, b) => {
+        // 1. Ataques perdidos (menor es mejor)
+        if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
+        
+        // 2. Net Stars (mayor es mejor)
+        if (b.netStars !== a.netStars) return b.netStars - a.netStars;
+        
+        // 3. Average Distance - SOLO para DD (Secondary), NO para True North (Main)
+        if (activePage !== "main" && a.avgDistance !== b.avgDistance) {
+          return a.avgDistance - b.avgDistance;
+        }
+        
+        // 4. Three star rate (mayor es mejor)
+        if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
+        
+        // 5. Net destruction (mayor es mejor)
+        return b.netDest - a.netDest;
+      });
+    }
 
-  if (sortBy === "netStars") {
-    data.sort((a, b) => b.netStars - a.netStars);
-  } else if (sortBy === "netPercent") {
-    data.sort((a, b) => b.netDest - a.netDest);
-  } else if (sortBy === "threeRate") {
-    data.sort((a, b) => b.threeRate - a.threeRate);
-  } else if (sortBy === "missAtk") {
-    data.sort((a, b) => a.missAtk - b.missAtk);
-  } else {
-    // Ordenamiento por defecto - DIFERENTE según el clan
-    data.sort((a, b) => {
-      if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-      if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-      
-      // SOLO ordenar por avgDistance si NO es el clan principal (True North)
-      if (activePage !== "main" && a.avgDistance !== b.avgDistance) {
-        return a.avgDistance - b.avgDistance;
-      }
-      
-      if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-      return b.netDest - a.netDest;
-    });
-  }
+    const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
+    const pos = parseInt(info.position);
+    const bonusCount =
+      pos >= 1 && pos <= 8
+        ? (BONUSES[info.league] && BONUSES[info.league][pos - 1]) || 0
+        : 0;
 
-  const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
-  const pos = parseInt(info.position);
-  const bonusCount =
-    pos >= 1 && pos <= 8
-      ? (BONUSES[info.league] && BONUSES[info.league][pos - 1]) || 0
-      : 0;
-
-  return data.map((p, i) => ({
-    ...p,
-    getsBonus: i < bonusCount,
-  }));
-};
+    return data.map((p, i) => ({
+      ...p,
+      getsBonus: i < bonusCount,
+    }));
+  };
 
   const data = getData();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Back Button */}
+        <button
+          onClick={onBackToSelector}
+          className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back to Seasons
+        </button>
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
