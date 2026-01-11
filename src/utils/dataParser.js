@@ -44,25 +44,23 @@ export const parseData = (text, clan) => {
     });
   }
 
-  // Ordenamiento diferente según el clan
+  // Ordenamiento: avgDistance SOLO para clan Secondary (DD), NO para Main (True North)
   return data.sort((a, b) => {
-    // 1. Primero por missAtk (menor es mejor)
+    // 1. Prioridad: Ataques perdidos (menor es mejor)
     if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
     
-    // 2. Luego por netStars (mayor es mejor)
+    // 2. Net Stars (mayor es mejor)
     if (b.netStars !== a.netStars) return b.netStars - a.netStars;
     
-    // 3. SOLO ordenar por avgDistance si ambos son del MISMO clan Y ese clan NO es "Main"
-    if (a.clan === b.clan && a.clan !== "Main") {
-      if (a.avgDistance !== b.avgDistance) {
-        return a.avgDistance - b.avgDistance;
-      }
+    // 3. Average Distance - SOLO si NO es "Main" (True North)
+    if (a.clan !== "Main" && a.avgDistance !== b.avgDistance) {
+      return a.avgDistance - b.avgDistance;
     }
     
-    // 4. Luego por threeRate (mayor es mejor)
+    // 4. Three star rate (mayor es mejor)
     if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
     
-    // 5. Finalmente por netDest (mayor es mejor)
+    // 5. Net destruction (mayor es mejor)
     return b.netDest - a.netDest;
   });
 };
