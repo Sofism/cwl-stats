@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Loader } from "lucide-react";
+import SeasonSelector from "./components/SeasonSelector";
 import ImportView from "./components/ImportView";
 import Dashboard from "./components/Dashboard";
 import { useSeasons } from "./hooks/useSeasons";
@@ -21,7 +22,7 @@ const CWLStatsTracker = () => {
     getSeasonsByYear,
   } = useSeasons();
 
-  const [showImport, setShowImport] = useState(true);
+  const [view, setView] = useState("selector"); // "selector", "import", "dashboard"
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   useEffect(() => {
@@ -34,22 +35,42 @@ const CWLStatsTracker = () => {
         if (data.seasons) {
           const activeSeason = data.seasons.find(s => s.id === data.currentSeasonId) || data.seasons[0];
           setCurrentSeason(activeSeason);
+          
+          // Si la season compartida tiene datos, ir directo al dashboard
+          const hasData = (activeSeason.mainClan?.length > 0) || (activeSeason.secondaryClan?.length > 0);
+          setView(hasData ? "dashboard" : "import");
         } else if (data.season) {
           setCurrentSeason(data.season);
+          const hasData = (data.season.mainClan?.length > 0) || (data.season.secondaryClan?.length > 0);
+          setView(hasData ? "dashboard" : "import");
         }
-        setShowImport(false);
         window.history.replaceState({}, '', window.location.pathname);
       });
       return;
     }
 
-    if (currentSeason) {
-      const hasData =
-        (currentSeason.mainClan && currentSeason.mainClan.length > 0) ||
-        (currentSeason.secondaryClan && currentSeason.secondaryClan.length > 0);
-      setShowImport(!hasData);
+    // Si no hay season seleccionada, mostrar selector
+    if (!currentSeason && seasons.length > 0) {
+      setView("selector");
     }
-  }, [currentSeason, setCurrentSeason]);
+  }, [currentSeason, seasons, setCurrentSeason]);
+
+  const handleSelectSeason = (season) => {
+    setCurrentSeason(season);
+    const hasData = (season.mainClan?.length > 0) || (season.secondaryClan?.length > 0);
+    setView(hasData ? "dashboard" : "import");
+  };
+
+  const handleNewSeason = (name, year) => {
+    const newSeason = addSeason(name, year);
+    setCurrentSeason(newSeason);
+    setView("import");
+  };
+
+  const handleBackToSelector = () => {
+    setCurrentSeason(null);
+    setView("selector");
+  };
 
   if (loading) {
     return (
@@ -59,7 +80,21 @@ const CWLStatsTracker = () => {
     );
   }
 
-  if (showImport || !currentSeason) {
+  // Vista de selector de temporadas
+  if (view === "selector" || (!currentSeason && seasons.length > 0)) {
+    return (
+      <SeasonSelector
+        seasons={seasons}
+        onSelectSeason={handleSelectSeason}
+        onNewSeason={handleNewSeason}
+        onDeleteSeason={deleteSeason}
+        getSeasonsByYear={getSeasonsByYear}
+      />
+    );
+  }
+
+  // Vista de importación
+  if (view === "import" || !currentSeason) {
     return (
       <ImportView
         seasons={seasons}
@@ -70,12 +105,14 @@ const CWLStatsTracker = () => {
         deleteAllSeasons={deleteAllSeasons}
         updateSeasonData={updateSeasonData}
         saveStatus={saveStatus}
-        onClose={() => setShowImport(false)}
+        onClose={() => setView("dashboard")}
+        onBackToSelector={handleBackToSelector}
         getSeasonsByYear={getSeasonsByYear}
       />
     );
   }
 
+  // Vista del dashboard
   return (
     <>
       <Dashboard
@@ -84,7 +121,8 @@ const CWLStatsTracker = () => {
         setCurrentSeason={setCurrentSeason}
         updateSeasonData={updateSeasonData}
         saveStatus={saveStatus}
-        onOpenImport={() => setShowImport(true)}
+        onOpenImport={() => setView("import")}
+        onBackToSelector={handleBackToSelector}
         onDeleteAll={deleteAllSeasons}
         onPlayerSelect={setSelectedPlayer}
       />
