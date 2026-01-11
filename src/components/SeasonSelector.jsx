@@ -9,7 +9,8 @@ const SeasonSelector = ({
   onSelectSeason, 
   onNewSeason, 
   onDeleteSeason,
-  getSeasonsByYear 
+  getSeasonsByYear,
+  isSharedMode
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
