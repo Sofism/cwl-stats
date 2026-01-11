@@ -16,6 +16,7 @@ const ImportView = ({
   updateSeasonData,
   saveStatus,
   onClose,
+  onBackToSelector,
   getSeasonsByYear,
 }) => {
   const [showModal, setShowModal] = useState(false);
@@ -58,6 +59,17 @@ const ImportView = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-6">
       <div className="max-w-6xl mx-auto">
+        {/* Back Button */}
+        {seasons.length > 0 && (
+          <button
+            onClick={onBackToSelector}
+            className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Seasons
+          </button>
+        )}
+        
         <div className="text-center mb-8">
           <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
