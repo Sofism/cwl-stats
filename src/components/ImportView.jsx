@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Trophy, Users, AlertCircle, Calendar, Plus } from "lucide-react";
+import { Trophy, Users, AlertCircle, Calendar, Plus, ArrowLeft } from "lucide-react";
 import SeasonList from "./SeasonList";
 import LeagueSettings from "./LeagueSettings";
 import NewSeasonModal from "./NewSeasonModal";
