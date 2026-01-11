@@ -20,10 +20,7 @@ const StatsTable = memo(({ data, visibleCols, activePage, onPlayerSelect }) => {
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-        <div
-          className="overflow-x-auto"
-          style={{ maxHeight: "600px", overflowY: "auto" }}
-        >
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 sticky top-0 z-10">
               <tr className="text-left text-xs text-gray-400">
