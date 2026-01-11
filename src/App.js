@@ -20,6 +20,8 @@ const CWLStatsTracker = () => {
     saveStatus,
     loading,
     getSeasonsByYear,
+    loadSharedSeasons,
+    isSharedMode,
   } = useSeasons();
 
   const [view, setView] = useState("selector"); // "selector", "import", "dashboard"
@@ -33,16 +35,21 @@ const CWLStatsTracker = () => {
     if (shareId || sharedData) {
       loadSharedData(shareId, sharedData, (data) => {
         if (data.seasons) {
+          // Cargar TODAS las temporadas compartidas en modo solo lectura
+          loadSharedSeasons(data.seasons);
+          
           const activeSeason = data.seasons.find(s => s.id === data.currentSeasonId) || data.seasons[0];
           setCurrentSeason(activeSeason);
           
-          // Si la season compartida tiene datos, ir directo al dashboard
           const hasData = (activeSeason.mainClan?.length > 0) || (activeSeason.secondaryClan?.length > 0);
-          setView(hasData ? "dashboard" : "import");
+          setView(hasData ? "dashboard" : "selector");
         } else if (data.season) {
+          // Legacy: una sola temporada compartida
+          loadSharedSeasons([data.season]);
           setCurrentSeason(data.season);
+          
           const hasData = (data.season.mainClan?.length > 0) || (data.season.secondaryClan?.length > 0);
-          setView(hasData ? "dashboard" : "import");
+          setView(hasData ? "dashboard" : "selector");
         }
         window.history.replaceState({}, '', window.location.pathname);
       });
@@ -89,6 +96,7 @@ const CWLStatsTracker = () => {
         onNewSeason={handleNewSeason}
         onDeleteSeason={deleteSeason}
         getSeasonsByYear={getSeasonsByYear}
+        isSharedMode={isSharedMode}
       />
     );
   }
