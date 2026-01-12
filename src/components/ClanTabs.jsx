@@ -1,6 +1,3 @@
-// ============================================
-// components/ClanTabs.jsx
-// ============================================
 import React from "react";
 
 const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo }) => {
