@@ -1,6 +1,3 @@
-// ============================================
-// components/ColumnSelector.jsx
-// ============================================
 import React from "react";
 
 const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowColSelector }) => {
