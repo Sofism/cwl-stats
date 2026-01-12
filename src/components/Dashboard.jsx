@@ -6,7 +6,7 @@ import ColumnSelector from "./ColumnSelector";
 import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { createShareLink } from "../utils/shareUtils";
-import { BONUSES, DEFAULT_VISIBLE_COLS } from "../utils/constants";
+import { BASE_BONUSES, DEFAULT_VISIBLE_COLS } from "../utils/constants";
 
 const Dashboard = ({
   seasons,
@@ -27,8 +27,8 @@ const Dashboard = ({
   const [shareStatus, setShareStatus] = useState("");
   const [leagueInfo, setLeagueInfo] = useState(
     currentSeason.leagueInfo || {
-      main: { league: "Crystal I", position: 1 },
-      secondary: { league: "Crystal I", position: 1 },
+      main: { league: "Crystal I", position: 1, warsWon: 0 },
+      secondary: { league: "Crystal I", position: 1, warsWon: 0 },
     }
   );
 
@@ -103,10 +103,9 @@ const Dashboard = ({
 
     const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
     const pos = parseInt(info.position);
-    const bonusCount =
-      pos >= 1 && pos <= 8
-        ? (BONUSES[info.league] && BONUSES[info.league][pos - 1]) || 0
-        : 0;
+    const baseBonus = BASE_BONUSES[info.league] || 0;
+    const warsWon = info.warsWon || 0;
+    const bonusCount = baseBonus + warsWon;
 
     return data.map((p, i) => ({
       ...p,
