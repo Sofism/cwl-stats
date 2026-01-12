@@ -1,15 +1,13 @@
-// ============================================
-// components/StatsCards.jsx
-// ============================================
 import React from "react";
 import { Target, Shield, Trophy, Award } from "lucide-react";
-import { BONUSES } from "../utils/constants";
+import { BASE_BONUSES } from "../utils/constants";
 
 const StatsCards = ({ data, leagueInfo, activePage }) => {
   const getBonusCount = () => {
     const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
-    const pos = parseInt(info.position);
-    return pos >= 1 && pos <= 8 ? BONUSES[info.league]?.[pos - 1] || 0 : 0;
+    const baseBonus = BASE_BONUSES[info.league] || 0;
+    const warsWon = info.warsWon || 0;
+    return baseBonus + warsWon;
   };
 
   const cards = [
