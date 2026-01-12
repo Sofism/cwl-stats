@@ -23,8 +23,8 @@ const ImportView = ({
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [leagueInfo, setLeagueInfo] = useState(
     currentSeason?.leagueInfo || {
-      main: { league: "Crystal I", position: 1 },
-      secondary: { league: "Crystal I", position: 1 },
+      main: { league: "Crystal I", position: 1, warsWon: 0 },
+      secondary: { league: "Crystal I", position: 1, warsWon: 0 },
     }
   );
 
