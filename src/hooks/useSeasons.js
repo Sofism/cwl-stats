@@ -81,8 +81,8 @@ export const useSeasons = () => {
       mainClan: [],
       secondaryClan: [],
       leagueInfo: {
-        main: { league: "Crystal I", position: 1 },
-        secondary: { league: "Crystal I", position: 1 },
+        main: { league: "Crystal I", position: 1, warsWon: 0 },
+        secondary: { league: "Crystal I", position: 1, warsWon: 0 },
       },
     };
     const updated = [newSeason, ...seasons];
