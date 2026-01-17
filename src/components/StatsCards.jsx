@@ -1,15 +1,7 @@
 import React from "react";
 import { Target, Shield, Trophy, Award } from "lucide-react";
-import { BASE_BONUSES } from "../utils/constants";
 
-const StatsCards = ({ data, leagueInfo, activePage }) => {
-  const getBonusCount = () => {
-    const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
-    const baseBonus = BASE_BONUSES[info.league] || 0;
-    const warsWon = info.warsWon || 0;
-    return baseBonus + warsWon;
-  };
-
+const StatsCards = ({ data, leagueInfo, activePage, bonusCount }) => {
   const cards = [
     {
       icon: Target,
@@ -35,7 +27,7 @@ const StatsCards = ({ data, leagueInfo, activePage }) => {
     },
     {
       icon: Award,
-      value: getBonusCount(),
+      value: bonusCount, // ← Usa el prop directamente
       label: "Bonus Recipients",
       colorClass: "text-yellow-400",
     },
