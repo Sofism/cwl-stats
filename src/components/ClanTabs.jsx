@@ -1,11 +1,13 @@
 import React from "react";
 
-const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo }) => {
+const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo, clanNames }) => {
   return (
     <div className="flex gap-2 mb-6">
       {["main", "secondary"].map((page) => {
         const isActive = activePage === page;
         const isPurple = page === "main";
+        const clanName = page === "main" ? clanNames.main : clanNames.secondary;
+        
         return (
           <button
             key={page}
@@ -19,7 +21,7 @@ const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo }) => {
             }`}
           >
             <div>
-              {page === "main" ? "True North" : "DD"} (
+              {clanName} (
               {currentSeason[page === "main" ? "mainClan" : "secondaryClan"].length})
             </div>
             <div className="text-xs text-gray-400 mt-1">
