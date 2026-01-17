@@ -4,6 +4,7 @@ import SeasonSelector from "./components/SeasonSelector";
 import ImportView from "./components/ImportView";
 import Dashboard from "./components/Dashboard";
 import { useSeasons } from "./hooks/useSeasons";
+import { useClanNames } from "./hooks/useClanNames";
 import { loadSharedData } from "./utils/shareUtils";
 
 const PlayerModal = lazy(() => import("./components/PlayerModal"));
@@ -24,7 +25,13 @@ const CWLStatsTracker = () => {
     isSharedMode,
   } = useSeasons();
 
-  const [view, setView] = useState("selector"); // "selector", "import", "dashboard"
+  const {
+    clanNames,
+    updateClanNames,
+    loading: clanNamesLoading
+  } = useClanNames();
+
+  const [view, setView] = useState("selector");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   useEffect(() => {
@@ -35,19 +42,14 @@ const CWLStatsTracker = () => {
     if (shareId || sharedData) {
       loadSharedData(shareId, sharedData, (data) => {
         if (data.seasons) {
-          // Cargar TODAS las temporadas compartidas en modo solo lectura
           loadSharedSeasons(data.seasons);
-          
           const activeSeason = data.seasons.find(s => s.id === data.currentSeasonId) || data.seasons[0];
           setCurrentSeason(activeSeason);
-          
           const hasData = (activeSeason.mainClan?.length > 0) || (activeSeason.secondaryClan?.length > 0);
           setView(hasData ? "dashboard" : "selector");
         } else if (data.season) {
-          // Legacy: una sola temporada compartida
           loadSharedSeasons([data.season]);
           setCurrentSeason(data.season);
-          
           const hasData = (data.season.mainClan?.length > 0) || (data.season.secondaryClan?.length > 0);
           setView(hasData ? "dashboard" : "selector");
         }
@@ -56,11 +58,10 @@ const CWLStatsTracker = () => {
       return;
     }
 
-    // Si no hay season seleccionada, mostrar selector
     if (!currentSeason && seasons.length > 0) {
       setView("selector");
     }
-  }, [currentSeason, seasons, setCurrentSeason]);
+  }, [currentSeason, seasons, setCurrentSeason, loadSharedSeasons]);
 
   const handleSelectSeason = (season) => {
     setCurrentSeason(season);
@@ -79,7 +80,7 @@ const CWLStatsTracker = () => {
     setView("selector");
   };
 
-  if (loading) {
+  if (loading || clanNamesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
         <Loader className="animate-spin w-16 h-16 text-purple-500" />
@@ -87,7 +88,6 @@ const CWLStatsTracker = () => {
     );
   }
 
-  // Vista de selector de temporadas
   if (view === "selector" || (!currentSeason && seasons.length > 0)) {
     return (
       <SeasonSelector
@@ -97,11 +97,12 @@ const CWLStatsTracker = () => {
         onDeleteSeason={deleteSeason}
         getSeasonsByYear={getSeasonsByYear}
         isSharedMode={isSharedMode}
+        clanNames={clanNames}
+        onUpdateClanNames={updateClanNames}
       />
     );
   }
 
-  // Vista de importación
   if (view === "import" || !currentSeason) {
     return (
       <ImportView
@@ -116,11 +117,11 @@ const CWLStatsTracker = () => {
         onClose={() => setView("dashboard")}
         onBackToSelector={handleBackToSelector}
         getSeasonsByYear={getSeasonsByYear}
+        clanNames={clanNames}
       />
     );
   }
 
-  // Vista del dashboard
   return (
     <>
       <Dashboard
@@ -133,6 +134,7 @@ const CWLStatsTracker = () => {
         onBackToSelector={handleBackToSelector}
         onDeleteAll={deleteAllSeasons}
         onPlayerSelect={setSelectedPlayer}
+        clanNames={clanNames}
       />
 
       {selectedPlayer && (
