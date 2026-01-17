@@ -18,6 +18,7 @@ const Dashboard = ({
   onBackToSelector,
   onDeleteAll,
   onPlayerSelect,
+  clanNames,
 }) => {
   const [activePage, setActivePage] = useState("main");
   const [sortBy, setSortBy] = useState("default");
@@ -32,21 +33,27 @@ const Dashboard = ({
     }
   );
 
+  // Initialize bonuses from season data
+  const [selectedBonuses, setSelectedBonuses] = useState({
+    main: currentSeason.bonuses?.main || [],
+    secondary: currentSeason.bonuses?.secondary || []
+  });
+
   const handleShare = async () => {
     if (!currentSeason) return;
     
     try {
-      setShareStatus('⏳ Generando enlace...');
+      setShareStatus('⏳ Generating link...');
       const shareUrl = await createShareLink(seasons, currentSeason.id);
       
       if (navigator.share) {
         try {
           await navigator.share({
             title: `CWL Stats - ${currentSeason.name}`,
-            text: `Mis estadísticas de CWL para ${currentSeason.name}`,
+            text: `My CWL stats for ${currentSeason.name}`,
             url: shareUrl
           });
-          setShareStatus('✓ Compartido exitosamente!');
+          setShareStatus('✓ Shared successfully!');
           setTimeout(() => setShareStatus(''), 3000);
           return;
         } catch (err) {
@@ -55,13 +62,34 @@ const Dashboard = ({
       }
       
       await navigator.clipboard.writeText(shareUrl);
-      setShareStatus('✓ Link copiado al portapapeles!');
+      setShareStatus('✓ Link copied to clipboard!');
       setTimeout(() => setShareStatus(''), 5000);
     } catch (error) {
       console.error('Share error:', error);
-      setShareStatus('✗ Error al compartir');
+      setShareStatus('✗ Error sharing');
       setTimeout(() => setShareStatus(''), 3000);
     }
+  };
+
+  const handleToggleBonus = (playerName) => {
+    const currentBonuses = selectedBonuses[activePage];
+    const newBonuses = currentBonuses.includes(playerName)
+      ? currentBonuses.filter(name => name !== playerName)
+      : [...currentBonuses, playerName];
+    
+    const updatedBonuses = {
+      ...selectedBonuses,
+      [activePage]: newBonuses
+    };
+    
+    setSelectedBonuses(updatedBonuses);
+    
+    // Save to season
+    const updatedSeason = {
+      ...currentSeason,
+      bonuses: updatedBonuses
+    };
+    updateSeasonData(updatedSeason);
   };
 
   const getData = () => {
@@ -80,40 +108,30 @@ const Dashboard = ({
     } else if (sortBy === "missAtk") {
       data.sort((a, b) => a.missAtk - b.missAtk);
     } else {
-      // ORDENAMIENTO POR DEFECTO - Diferente para Main y Secondary
+      // Default sorting - Different for Main and Secondary
       data.sort((a, b) => {
-        // 1. Ataques perdidos (menor es mejor)
         if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-        
-        // 2. Net Stars (mayor es mejor)
         if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-        
-        // 3. Average Distance - SOLO para DD (Secondary), NO para True North (Main)
         if (activePage !== "main" && a.avgDistance !== b.avgDistance) {
           return a.avgDistance - b.avgDistance;
         }
-        
-        // 4. Three star rate (mayor es mejor)
         if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-        
-        // 5. Net destruction (mayor es mejor)
         return b.netDest - a.netDest;
       });
     }
 
+    return data;
+  };
+
+  const getBonusCount = () => {
     const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
-    const pos = parseInt(info.position);
     const baseBonus = BASE_BONUSES[info.league] || 0;
     const warsWon = info.warsWon || 0;
-    const bonusCount = baseBonus + warsWon;
-
-    return data.map((p, i) => ({
-      ...p,
-      getsBonus: i < bonusCount,
-    }));
+    return baseBonus + warsWon;
   };
 
   const data = getData();
+  const bonusCount = getBonusCount();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-6">
@@ -138,6 +156,7 @@ const Dashboard = ({
                 const s = seasons.find((x) => x.id === e.target.value);
                 setCurrentSeason(s);
                 if (s && s.leagueInfo) setLeagueInfo(s.leagueInfo);
+                if (s && s.bonuses) setSelectedBonuses(s.bonuses);
               }}
               className="mt-2 bg-gray-800 border border-gray-700 rounded px-3 py-1 text-sm text-white"
             >
@@ -201,15 +220,24 @@ const Dashboard = ({
           setActivePage={setActivePage}
           currentSeason={currentSeason}
           leagueInfo={leagueInfo}
+          clanNames={clanNames}
         />
 
-        <StatsCards data={data} leagueInfo={leagueInfo} activePage={activePage} />
+        <StatsCards 
+          data={data} 
+          leagueInfo={leagueInfo} 
+          activePage={activePage}
+          bonusCount={bonusCount}
+        />
 
         <StatsTable
           data={data}
           visibleCols={visibleCols}
           activePage={activePage}
           onPlayerSelect={onPlayerSelect}
+          onToggleBonus={handleToggleBonus}
+          bonusCount={bonusCount}
+          selectedBonuses={selectedBonuses[activePage]}
         />
 
         {deleteConfirm && (
