@@ -1,4 +1,4 @@
-const { kv } = require('@vercel/kv');
+const redis = require('../utils/redis');
 
 module.exports = async (req, res) => {
   // Configurar CORS
@@ -9,13 +9,13 @@ module.exports = async (req, res) => {
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
-
+  
   // Manejar OPTIONS request
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
-
+  
   console.log('Get-Share API called');
   
   if (req.method !== 'GET') {
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     const key = `share:${id}`;
     console.log('Loading from key:', key);
     
-    const data = await kv.get(key);
+    const data = await redis.get(key);
     
     if (!data) {
       return res.status(404).json({ error: 'Share not found' });
