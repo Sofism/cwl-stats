@@ -1,4 +1,4 @@
-const { kv } = require('@vercel/kv');
+const redis = require('../utils/redis');
 
 module.exports = async (req, res) => {
   // Configurar CORS
@@ -9,13 +9,13 @@ module.exports = async (req, res) => {
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
-
+  
   // Manejar OPTIONS request
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
-
+  
   console.log('Share API called, method:', req.method);
   
   if (req.method !== 'POST') {
@@ -34,7 +34,8 @@ module.exports = async (req, res) => {
     const value = JSON.stringify({ seasons, currentSeasonId });
     console.log('Saving to key:', key);
     
-    await kv.set(key, value, { ex: 2592000 });
+    // Usar el cliente Redis adaptativo
+    await redis.set(key, value, { ex: 2592000 });
     console.log('Saved successfully');
     
     return res.status(200).json({ shareId });
