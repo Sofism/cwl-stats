@@ -1,4 +1,4 @@
-const redis = require('../utils/redis');
+const redis = require('./redis');
 
 module.exports = async (req, res) => {
   // Configurar CORS
