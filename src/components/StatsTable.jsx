@@ -1,7 +1,18 @@
 import React, { memo } from "react";
 import { AlertCircle } from "lucide-react";
 
-const StatsTable = memo(({ data, visibleCols, activePage, onPlayerSelect }) => {
+const StatsTable = memo(({ 
+  data, 
+  visibleCols, 
+  activePage, 
+  onPlayerSelect,
+  onToggleBonus,
+  bonusCount,
+  selectedBonuses = []
+}) => {
+  const bonusesUsed = selectedBonuses.length;
+  const canAddMore = bonusesUsed < bonusCount;
+
   return (
     <>
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
@@ -19,12 +30,35 @@ const StatsTable = memo(({ data, visibleCols, activePage, onPlayerSelect }) => {
         </div>
       </div>
 
+      {/* Bonus Counter */}
+      {bonusCount > 0 && (
+        <div className={`mb-4 p-4 rounded-lg border ${
+          bonusesUsed === bonusCount 
+            ? "bg-green-500/10 border-green-500" 
+            : bonusesUsed > bonusCount
+            ? "bg-red-500/10 border-red-500"
+            : "bg-yellow-500/10 border-yellow-500"
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">
+              Bonuses Awarded: {bonusesUsed} / {bonusCount}
+            </span>
+            {bonusesUsed > bonusCount && (
+              <span className="text-sm text-red-400">
+                ⚠️ Too many bonuses selected!
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 sticky top-0 z-10">
               <tr className="text-left text-xs text-gray-400">
                 <th className="p-3">Rank</th>
+                {bonusCount > 0 && <th className="p-3">Bonus</th>}
                 <th className="p-3">Player</th>
                 {visibleCols.th && <th className="p-3">TH</th>}
                 {visibleCols.missAtk && <th className="p-3">Miss Atk</th>}
@@ -49,15 +83,17 @@ const StatsTable = memo(({ data, visibleCols, activePage, onPlayerSelect }) => {
                   </td>
                 </tr>
               ) : (
-                data.map((p, i) => (
-                  <tr
-                    key={i}
-                    className={`border-t border-gray-700 hover:bg-gray-700/30 ${
-                      p.getsBonus ? "bg-yellow-500/10" : ""
-                    }`}
-                  >
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
+                data.map((p, i) => {
+                  const hasBonus = selectedBonuses.includes(p.name);
+                  
+                  return (
+                    <tr
+                      key={i}
+                      className={`border-t border-gray-700 hover:bg-gray-700/30 ${
+                        hasBonus ? "bg-yellow-500/10" : ""
+                      }`}
+                    >
+                      <td className="p-3">
                         <span
                           className={`font-bold ${
                             i < 3 ? "text-yellow-400" : "text-gray-400"
@@ -65,109 +101,118 @@ const StatsTable = memo(({ data, visibleCols, activePage, onPlayerSelect }) => {
                         >
                           #{i + 1}
                         </span>
-                        {p.getsBonus && (
-                          <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded font-bold">
-                            BONUS
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 font-semibold">{p.name}</td>
-                    {visibleCols.th && <td className="p-3">{p.th}</td>}
-                    {visibleCols.missAtk && (
-                      <td className="p-3">
-                        {p.missAtk > 0 ? (
-                          <span className="text-red-400 font-bold">
-                            {p.missAtk}
-                          </span>
-                        ) : (
-                          <span className="text-green-400">✓</span>
-                        )}
                       </td>
-                    )}
-                    {activePage === "secondary" && visibleCols.missDef && (
-                      <td className="p-3">
-                        {p.missDef > 0 ? (
-                          <span className="text-orange-400 font-bold">
-                            {p.missDef}
-                          </span>
-                        ) : (
-                          <span className="text-green-400">✓</span>
-                        )}
-                      </td>
-                    )}
-                    {visibleCols.netStars && (
-                      <td className="p-3">
-                        <div className="flex items-center gap-1">
+                      
+                      {/* Bonus Checkbox */}
+                      {bonusCount > 0 && (
+                        <td className="p-3">
+                          <input
+                            type="checkbox"
+                            checked={hasBonus}
+                            onChange={() => onToggleBonus(p.name)}
+                            disabled={!hasBonus && !canAddMore}
+                            className="w-4 h-4 rounded border-gray-600 text-yellow-500 focus:ring-yellow-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                      )}
+                      
+                      <td className="p-3 font-semibold">{p.name}</td>
+                      {visibleCols.th && <td className="p-3">{p.th}</td>}
+                      {visibleCols.missAtk && (
+                        <td className="p-3">
+                          {p.missAtk > 0 ? (
+                            <span className="text-red-400 font-bold">
+                              {p.missAtk}
+                            </span>
+                          ) : (
+                            <span className="text-green-400">✓</span>
+                          )}
+                        </td>
+                      )}
+                      {activePage === "secondary" && visibleCols.missDef && (
+                        <td className="p-3">
+                          {p.missDef > 0 ? (
+                            <span className="text-orange-400 font-bold">
+                              {p.missDef}
+                            </span>
+                          ) : (
+                            <span className="text-green-400">✓</span>
+                          )}
+                        </td>
+                      )}
+                      {visibleCols.netStars && (
+                        <td className="p-3">
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={`font-bold ${
+                                p.netStars >= 0
+                                  ? "text-green-400"
+                                  : "text-red-400"
+                              }`}
+                            >
+                              {p.netStars >= 0 ? "+" : ""}
+                              {p.netStars}
+                            </span>
+                            {p.avgDistance !== 0 && (
+                              <span
+                                className={`text-xs ${
+                                  p.avgDistance < 0
+                                    ? "text-cyan-400"
+                                    : "text-orange-400"
+                                }`}
+                                title={`Avg Distance: ${p.avgDistance.toFixed(1)}`}
+                              >
+                                ({p.avgDistance > 0 ? "+" : ""}
+                                {p.avgDistance.toFixed(1)})
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                      {visibleCols.netPercent && (
+                        <td className="p-3">
                           <span
                             className={`font-bold ${
-                              p.netStars >= 0
-                                ? "text-green-400"
-                                : "text-red-400"
+                              p.netDest >= 0 ? "text-green-400" : "text-red-400"
                             }`}
                           >
-                            {p.netStars >= 0 ? "+" : ""}
-                            {p.netStars}
+                            {p.netDest >= 0 ? "+" : ""}
+                            {p.netDest.toFixed(1)}%
                           </span>
-                          {p.avgDistance !== 0 && (
-                            <span
-                              className={`text-xs ${
-                                p.avgDistance < 0
-                                  ? "text-cyan-400"
-                                  : "text-orange-400"
-                              }`}
-                              title={`Avg Distance: ${p.avgDistance.toFixed(1)}`}
-                            >
-                              ({p.avgDistance > 0 ? "+" : ""}
-                              {p.avgDistance.toFixed(1)})
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                    {visibleCols.netPercent && (
+                        </td>
+                      )}
+                      {visibleCols.threeRate && (
+                        <td className="p-3 text-purple-400 font-semibold">
+                          {p.threeRate.toFixed(1)}%
+                        </td>
+                      )}
+                      {visibleCols.starGain && (
+                        <td className="p-3 text-green-400">{p.offStars}</td>
+                      )}
+                      {visibleCols.percentGain && (
+                        <td className="p-3 text-green-400">
+                          {p.offDest.toFixed(1)}%
+                        </td>
+                      )}
+                      {visibleCols.starGive && (
+                        <td className="p-3 text-red-400">{p.defStars}</td>
+                      )}
+                      {visibleCols.percentGive && (
+                        <td className="p-3 text-red-400">
+                          {p.defDest.toFixed(1)}%
+                        </td>
+                      )}
                       <td className="p-3">
-                        <span
-                          className={`font-bold ${
-                            p.netDest >= 0 ? "text-green-400" : "text-red-400"
-                          }`}
+                        <button
+                          onClick={() => onPlayerSelect(p)}
+                          className="text-blue-400 hover:text-blue-300 text-xs"
                         >
-                          {p.netDest >= 0 ? "+" : ""}
-                          {p.netDest.toFixed(1)}%
-                        </span>
+                          View
+                        </button>
                       </td>
-                    )}
-                    {visibleCols.threeRate && (
-                      <td className="p-3 text-purple-400 font-semibold">
-                        {p.threeRate.toFixed(1)}%
-                      </td>
-                    )}
-                    {visibleCols.starGain && (
-                      <td className="p-3 text-green-400">{p.offStars}</td>
-                    )}
-                    {visibleCols.percentGain && (
-                      <td className="p-3 text-green-400">
-                        {p.offDest.toFixed(1)}%
-                      </td>
-                    )}
-                    {visibleCols.starGive && (
-                      <td className="p-3 text-red-400">{p.defStars}</td>
-                    )}
-                    {visibleCols.percentGive && (
-                      <td className="p-3 text-red-400">
-                        {p.defDest.toFixed(1)}%
-                      </td>
-                    )}
-                    <td className="p-3">
-                      <button
-                        onClick={() => onPlayerSelect(p)}
-                        className="text-blue-400 hover:text-blue-300 text-xs"
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
