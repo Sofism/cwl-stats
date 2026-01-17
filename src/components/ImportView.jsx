@@ -18,6 +18,7 @@ const ImportView = ({
   onClose,
   onBackToSelector,
   getSeasonsByYear,
+  clanNames,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -113,13 +114,14 @@ const ImportView = ({
             <LeagueSettings
               leagueInfo={leagueInfo}
               updateLeague={updateLeague}
+              clanNames={clanNames}
             />
 
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <Trophy className="w-6 h-6 text-purple-400" />
-                  True North
+                  {clanNames.main}
                 </h2>
                 <textarea
                   className="w-full h-64 bg-gray-900 border border-gray-700 rounded p-3 text-sm font-mono text-white"
@@ -136,7 +138,7 @@ const ImportView = ({
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <Users className="w-6 h-6 text-blue-400" />
-                  DD
+                  {clanNames.secondary}
                 </h2>
                 <textarea
                   className="w-full h-64 bg-gray-900 border border-gray-700 rounded p-3 text-sm font-mono text-white"
