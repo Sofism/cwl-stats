@@ -1,21 +1,23 @@
-// lib/redis.js
-
-// Detectar qué variables de entorno están disponibles
+// utils/redis.js
+// Detect which environment variables are available
 const hasVercelKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 const hasUpstash = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
 
 let redis;
 
 if (hasVercelKV) {
-  // Proyecto 1: Usar Vercel KV
+  // Project 1: Use Vercel KV
   const { kv } = require('@vercel/kv');
   redis = kv;
 } else if (hasUpstash) {
-  // Proyecto 2: Usar Upstash directo
+  // Project 2: Use Upstash directly
   const { Redis } = require('@upstash/redis');
-  redis = Redis.fromEnv();
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
 } else {
   throw new Error('No Redis configuration found. Please set up environment variables.');
 }
 
-export default redis;
+module.exports = redis;
