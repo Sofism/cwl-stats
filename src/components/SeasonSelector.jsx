@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Trophy, Calendar, Plus, ChevronDown, ChevronRight, Play, Share2 } from "lucide-react";
+import { Trophy, Calendar, Plus, ChevronDown, ChevronRight, Play, Share2, Settings } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import SettingsModal from "./SettingsModal";
 import { createShareLink } from "../utils/shareUtils";
 
 const SeasonSelector = ({ 
@@ -10,9 +11,12 @@ const SeasonSelector = ({
   onNewSeason, 
   onDeleteSeason,
   getSeasonsByYear,
-  isSharedMode
+  isSharedMode,
+  clanNames,
+  onUpdateClanNames
 }) => {
   const [showModal, setShowModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [expandedYears, setExpandedYears] = useState({});
   const [shareStatus, setShareStatus] = useState("");
@@ -20,7 +24,7 @@ const SeasonSelector = ({
   const seasonsByYear = getSeasonsByYear();
   const years = Object.keys(seasonsByYear).sort((a, b) => b - a);
 
-  // Expandir el año más reciente por defecto
+  // Expand most recent year by default
   if (years.length > 0 && Object.keys(expandedYears).length === 0) {
     expandedYears[years[0]] = true;
   }
@@ -41,19 +45,17 @@ const SeasonSelector = ({
     if (seasons.length === 0) return;
     
     try {
-      setShareStatus('⏳ Generando enlace...');
-      
-      // Compartir todas las temporadas, con la más reciente como actual
+      setShareStatus('⏳ Generating link...');
       const shareUrl = await createShareLink(seasons, seasons[0].id);
       
       if (navigator.share) {
         try {
           await navigator.share({
             title: 'CWL Stats - All Seasons',
-            text: `Todas mis temporadas de CWL (${seasons.length} seasons)`,
+            text: `All my CWL seasons (${seasons.length} seasons)`,
             url: shareUrl
           });
-          setShareStatus('✓ Compartido exitosamente!');
+          setShareStatus('✓ Shared successfully!');
           setTimeout(() => setShareStatus(''), 3000);
           return;
         } catch (err) {
@@ -62,11 +64,11 @@ const SeasonSelector = ({
       }
       
       await navigator.clipboard.writeText(shareUrl);
-      setShareStatus('✓ Link copiado! Tus compañeros verán todas las temporadas.');
+      setShareStatus('✓ Link copied! Your friends will see all seasons.');
       setTimeout(() => setShareStatus(''), 5000);
     } catch (error) {
       console.error('Share error:', error);
-      setShareStatus('✗ Error al compartir');
+      setShareStatus('✗ Error sharing');
       setTimeout(() => setShareStatus(''), 3000);
     }
   };
@@ -74,16 +76,40 @@ const SeasonSelector = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-6">
       <div className="max-w-4xl mx-auto">
+        {/* Header with Settings Button */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+          >
+            <Settings className="w-5 h-5" />
+            Settings
+          </button>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <Trophy className="w-20 h-20 text-yellow-400 mx-auto mb-4" />
           <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
             CWL Stats Tracker
           </h1>
-          <p className="text-gray-400 text-lg">Select or create a season to get started</p>
+          <p className="text-gray-400 text-lg">
+            {isSharedMode 
+              ? "Viewing shared seasons (read-only)" 
+              : "Select or create a season to get started"}
+          </p>
         </div>
 
-        {/* Create New Season Button */}
+        {/* Shared Mode Banner */}
+        {isSharedMode && (
+          <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500 rounded-lg text-center">
+            <p className="text-blue-300 font-semibold">
+              👀 You're viewing shared data. Changes won't be saved.
+            </p>
+          </div>
+        )}
+
+        {/* Create New Season and Share All Buttons */}
         <div className="mb-6 flex gap-3">
           <button
             onClick={() => setShowModal(true)}
@@ -179,7 +205,7 @@ const SeasonSelector = ({
                                     <>
                                       <span>•</span>
                                       <span>
-                                        Main: {season.mainClan.length} | DD: {season.secondaryClan.length}
+                                        {clanNames.main}: {season.mainClan.length} | {clanNames.secondary}: {season.secondaryClan.length}
                                       </span>
                                     </>
                                   )}
@@ -221,6 +247,14 @@ const SeasonSelector = ({
               setShowModal(false);
             }}
             onCancel={() => setShowModal(false)}
+          />
+        )}
+
+        {showSettings && (
+          <SettingsModal
+            clanNames={clanNames}
+            onSave={onUpdateClanNames}
+            onClose={() => setShowSettings(false)}
           />
         )}
 
