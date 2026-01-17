@@ -2,7 +2,7 @@ import React from "react";
 import { Trophy } from "lucide-react";
 import { LEAGUES, BASE_BONUSES } from "../utils/constants";
 
-const LeagueSettings = ({ leagueInfo, updateLeague }) => {
+const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
   const calculateTotalBonuses = (league, warsWon) => {
     const baseBonus = BASE_BONUSES[league] || 0;
     return baseBonus + (warsWon || 0);
@@ -18,6 +18,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague }) => {
         {["main", "secondary"].map((clan) => {
           const info = leagueInfo[clan];
           const totalBonuses = calculateTotalBonuses(info.league, info.warsWon || 0);
+          const clanName = clan === "main" ? clanNames.main : clanNames.secondary;
           
           return (
             <div key={clan} className="bg-gray-900 p-4 rounded-lg">
@@ -28,7 +29,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague }) => {
                     : "font-semibold mb-3 text-blue-400"
                 }
               >
-                {clan === "main" ? "True North" : "DD"}
+                {clanName}
               </h4>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
@@ -97,7 +98,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague }) => {
                 </div>
               </div>
               
-              {/* Mostrar cálculo de bonos */}
+              {/* Bonus calculation display */}
               <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm">
                 <p className="text-yellow-400">
                   <span className="font-bold">{totalBonuses} bonuses available</span>
