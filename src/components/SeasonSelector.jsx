@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Trophy, Calendar, Plus, ChevronDown, ChevronRight, Play, Share2, Settings } from "lucide-react";
+import { Trophy, Calendar, Plus, ChevronDown, ChevronRight, Play, Share2, Settings, GripVertical } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SettingsModal from "./SettingsModal";
@@ -10,6 +10,7 @@ const SeasonSelector = ({
   onSelectSeason, 
   onNewSeason, 
   onDeleteSeason,
+  onReorderSeasons,
   getSeasonsByYear,
   isSharedMode,
   clanNames,
@@ -20,6 +21,7 @@ const SeasonSelector = ({
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [expandedYears, setExpandedYears] = useState({});
   const [shareStatus, setShareStatus] = useState("");
+  const [draggedItem, setDraggedItem] = useState(null);
 
   const seasonsByYear = getSeasonsByYear();
   const years = Object.keys(seasonsByYear).sort((a, b) => b - a);
@@ -71,6 +73,51 @@ const SeasonSelector = ({
       setShareStatus('✗ Error sharing');
       setTimeout(() => setShareStatus(''), 3000);
     }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e, year, seasonId) => {
+    setDraggedItem({ year, seasonId });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetYear, targetSeasonId) => {
+    e.preventDefault();
+    
+    if (!draggedItem || draggedItem.seasonId === targetSeasonId) {
+      setDraggedItem(null);
+      return;
+    }
+
+    // Get all seasons from the same year
+    const yearSeasons = seasonsByYear[targetYear];
+    const draggedIndex = yearSeasons.findIndex(s => s.id === draggedItem.seasonId);
+    const targetIndex = yearSeasons.findIndex(s => s.id === targetSeasonId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedItem(null);
+      return;
+    }
+
+    // Reorder within the year
+    const reordered = [...yearSeasons];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, removed);
+
+    // Rebuild the full seasons array with new order
+    const otherYears = years.filter(y => y !== targetYear);
+    const newSeasons = [
+      ...reordered,
+      ...otherYears.flatMap(y => seasonsByYear[y])
+    ];
+
+    onReorderSeasons(newSeasons);
+    setDraggedItem(null);
   };
 
   return (
@@ -156,6 +203,14 @@ const SeasonSelector = ({
               </span>
             </div>
 
+            {!isSharedMode && (
+              <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <p className="text-sm text-blue-300">
+                  💡 Tip: Drag seasons with <GripVertical className="w-4 h-4 inline" /> to reorder them
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
               {years.map(year => {
                 const isExpanded = expandedYears[year] !== false;
@@ -187,12 +242,25 @@ const SeasonSelector = ({
                         {yearSeasons.map(season => {
                           const totalPlayers = season.mainClan.length + season.secondaryClan.length;
                           const hasData = totalPlayers > 0;
+                          const isDragging = draggedItem?.seasonId === season.id;
                           
                           return (
                             <div
                               key={season.id}
-                              className="flex items-center justify-between p-4 hover:bg-gray-800/50 transition-colors"
+                              draggable={!isSharedMode}
+                              onDragStart={(e) => handleDragStart(e, year, season.id)}
+                              onDragOver={handleDragOver}
+                              onDrop={(e) => handleDrop(e, year, season.id)}
+                              className={`flex items-center justify-between p-4 hover:bg-gray-800/50 transition-colors ${
+                                isDragging ? 'opacity-50' : ''
+                              } ${!isSharedMode ? 'cursor-move' : ''}`}
                             >
+                              {!isSharedMode && (
+                                <div className="mr-2 text-gray-500 hover:text-gray-300">
+                                  <GripVertical className="w-5 h-5" />
+                                </div>
+                              )}
+                              
                               <div className="flex-1">
                                 <h3 className="font-semibold text-lg text-white mb-1">
                                   {season.name}
@@ -220,12 +288,14 @@ const SeasonSelector = ({
                                   <Play className="w-4 h-4" />
                                   Open
                                 </button>
-                                <button
-                                  onClick={() => setDeleteConfirm(season.id)}
-                                  className="bg-red-500/20 hover:bg-red-500/30 border border-red-500 text-red-400 font-semibold px-4 py-2 rounded-lg transition-colors"
-                                >
-                                  Delete
-                                </button>
+                                {!isSharedMode && (
+                                  <button
+                                    onClick={() => setDeleteConfirm(season.id)}
+                                    className="bg-red-500/20 hover:bg-red-500/30 border border-red-500 text-red-400 font-semibold px-4 py-2 rounded-lg transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
                               </div>
                             </div>
                           );
