@@ -95,6 +95,7 @@ const CWLStatsTracker = () => {
         onSelectSeason={handleSelectSeason}
         onNewSeason={handleNewSeason}
         onDeleteSeason={deleteSeason}
+        onReorderSeasons={reorderSeasons}
         getSeasonsByYear={getSeasonsByYear}
         isSharedMode={isSharedMode}
         clanNames={clanNames}
