@@ -169,7 +169,12 @@ export const useSeasons = () => {
     setSeasons(updatedSeasons);
     await save(updatedSeasons);
   };
-
+const reorderSeasons = async (newOrder) => {
+  if (isSharedMode) return;
+  
+  setSeasons(newOrder);
+  await save(newOrder);
+};
   return {
     seasons: isSharedMode ? sharedSeasons : seasons,
     currentSeason,
@@ -178,6 +183,7 @@ export const useSeasons = () => {
     deleteSeason,
     deleteAllSeasons,
     updateSeasonData,
+    reorderSeasons,
     saveStatus,
     loading,
     getSeasonsByYear,
