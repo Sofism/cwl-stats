@@ -12,7 +12,7 @@ if (hasVercelKV) {
 } else if (hasUpstash) {
   // Project 2: Use Upstash directly
   const { Redis } = require('@upstash/redis');
-  redis = new Redis({
+  const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
