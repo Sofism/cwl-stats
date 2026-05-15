@@ -35,23 +35,42 @@ export const useSeasons = () => {
     setLoading(false);
   };
 
+  // Cargar desde API
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("cwl-seasons");
-      if (saved) {
-        const parsedSeasons = JSON.parse(saved);
-        setSeasons(parsedSeasons);
-        if (parsedSeasons.length > 0) {
-          setCurrentSeason(parsedSeasons[0]);
+    const loadSeasons = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/get-seasons');
+        const data = await response.json();
+
+        if (data.seasons && data.seasons.length > 0) {
+          setSeasons(data.seasons);
+          setCurrentSeason(data.seasons[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load seasons:', err);
+        // Fallback a localStorage si falla la API
+        try {
+          const saved = localStorage.getItem("cwl-seasons");
+          if (saved) {
+            const parsedSeasons = JSON.parse(saved);
+            setSeasons(parsedSeasons);
+            if (parsedSeasons.length > 0) {
+              setCurrentSeason(parsedSeasons[0]);
+            }
+          }
+        } catch (localErr) {
+          console.error("Error loading from localStorage:", localErr);
         }
       }
-    } catch (err) {
-      console.error("Error loading seasons:", err);
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    loadSeasons();
   }, []);
 
-  const save = (updatedSeasons) => {
+  // Guardar en API
+  const save = async (updatedSeasons) => {
     if (isSharedMode) {
       setSaveStatus("⚠ Viewing shared data - changes not saved");
       setTimeout(() => setSaveStatus(""), 3000);
@@ -59,10 +78,22 @@ export const useSeasons = () => {
     }
     
     try {
-      localStorage.setItem("cwl-seasons", JSON.stringify(updatedSeasons));
-      setSaveStatus("✓ Saved");
-      setTimeout(() => setSaveStatus(""), 2000);
-      return true;
+      const response = await fetch('/api/save-season', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seasons: updatedSeasons })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSaveStatus("✓ Saved");
+        setTimeout(() => setSaveStatus(""), 2000);
+        return true;
+      } else {
+        setSaveStatus("✗ Failed");
+        return false;
+      }
     } catch (err) {
       console.error("Save error:", err);
       setSaveStatus("✗ Failed");
@@ -92,7 +123,7 @@ export const useSeasons = () => {
     return newSeason;
   };
 
-  const deleteSeason = (seasonId) => {
+  const deleteSeason = async (seasonId) => {
     if (isSharedMode) return;
     
     const updated = seasons.filter((s) => s.id !== seasonId);
@@ -100,18 +131,25 @@ export const useSeasons = () => {
     if (currentSeason && currentSeason.id === seasonId) {
       setCurrentSeason(updated[0] || null);
     }
-    save(updated);
+    await save(updated);
   };
 
-  const deleteAllSeasons = () => {
+  const deleteAllSeasons = async () => {
     if (isSharedMode) return;
     
-    localStorage.removeItem("cwl-seasons");
-    setSeasons([]);
-    setCurrentSeason(null);
+    try {
+      await fetch('/api/delete-season', { method: 'DELETE' });
+      setSeasons([]);
+      setCurrentSeason(null);
+      setSaveStatus("✓ All deleted");
+      setTimeout(() => setSaveStatus(""), 2000);
+    } catch (err) {
+      console.error('Delete all error:', err);
+      setSaveStatus("✗ Failed to delete");
+    }
   };
 
-  const updateSeasonData = (updatedSeason) => {
+  const updateSeasonData = async (updatedSeason) => {
     if (isSharedMode) {
       // En modo compartido, actualizar solo localmente sin guardar
       const updatedShared = sharedSeasons.map((s) =>
@@ -129,7 +167,7 @@ export const useSeasons = () => {
     );
     setCurrentSeason(updatedSeason);
     setSeasons(updatedSeasons);
-    save(updatedSeasons);
+    await save(updatedSeasons);
   };
 
   return {
