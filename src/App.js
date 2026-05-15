@@ -18,6 +18,7 @@ const CWLStatsTracker = () => {
     deleteSeason,
     deleteAllSeasons,
     updateSeasonData,
+    reorderSeasons,
     saveStatus,
     loading,
     getSeasonsByYear,
