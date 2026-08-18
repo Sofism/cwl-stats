@@ -1,14 +1,56 @@
 import React, { useState } from "react";
-import { Trophy, ArrowLeft } from "lucide-react";
+import { Trophy, ArrowLeft, Filter } from "lucide-react";
+
+const COLUMNS = [
+  { key: "wars", label: "Wars" },
+  { key: "missAtk", label: "Miss Atk" },
+  { key: "netStars", label: "Net ★" },
+  { key: "netDest", label: "Net %" },
+  { key: "threeRate", label: "3★%" },
+  { key: "offStars", label: "★ Gain" },
+  { key: "defStars", label: "★ Give" },
+  { key: "seasonsCount", label: "Seasons" },
+];
 
 const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const [historicalClan, setHistoricalClan] = useState("main");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [seasonFilter, setSeasonFilter] = useState("all");
+  const [selectedSeasons, setSelectedSeasons] = useState([]);
+  const [visibleCols, setVisibleCols] = useState({
+    wars: true,
+    missAtk: true,
+    netStars: true,
+    netDest: false,
+    threeRate: true,
+    offStars: false,
+    defStars: false,
+    seasonsCount: true,
+  });
+
+  // Get filtered seasons based on filter selection
+  const getFilteredSeasons = () => {
+    if (seasonFilter === "manual" && selectedSeasons.length > 0) {
+      return seasons.filter((s) => selectedSeasons.includes(s.id));
+    }
+    if (seasonFilter === "last3") return seasons.slice(0, 3);
+    if (seasonFilter === "last6") return seasons.slice(0, 6);
+    return seasons;
+  };
+
+  const filteredSeasons = getFilteredSeasons();
+
+  const toggleSeasonSelection = (id) => {
+    setSelectedSeasons((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
 
   const getHistoricalData = (clanKey) => {
     const allPlayers = {};
 
-    seasons.forEach((season) => {
+    filteredSeasons.forEach((season) => {
       const clanData =
         clanKey === "main" ? season.mainClan : season.secondaryClan;
       if (!clanData) return;
@@ -67,7 +109,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   };
 
   const getPlayerEvolution = (playerName, clanKey) => {
-    return seasons
+    return filteredSeasons
       .slice()
       .reverse()
       .map((season) => {
@@ -111,7 +153,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
           </div>
 
           {/* Clan Selector */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex gap-2 mb-4">
             {["main", "secondary"].map((clan) => (
               <button
                 key={clan}
@@ -129,17 +171,116 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               >
                 {clan === "main"
                   ? clanNames?.main || "True North"
-                  : clanNames?.secondary || "DD"}{" "}
-                — {seasons.length} seasons
+                  : clanNames?.secondary || "DD"}
               </button>
             ))}
           </div>
 
-          {seasons.length < 2 ? (
+          {/* Filters Panel */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg mb-6">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="w-full flex items-center justify-between p-4 text-sm font-semibold"
+            >
+              <span className="flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Filters & Columns
+                <span className="text-gray-400 font-normal">
+                  ({filteredSeasons.length} of {seasons.length} seasons)
+                </span>
+              </span>
+              <span className="text-gray-400">{showFilters ? "▼" : "▶"}</span>
+            </button>
+
+            {showFilters && (
+              <div className="px-4 pb-4 space-y-4 border-t border-gray-700 pt-4">
+
+                {/* Season Filter */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-300 mb-2">
+                    Season Range
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: "all", label: `All (${seasons.length})` },
+                      { value: "last3", label: "Last 3" },
+                      { value: "last6", label: "Last 6" },
+                      { value: "manual", label: "Manual" },
+                    ].map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setSeasonFilter(value)}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                          seasonFilter === value
+                            ? "bg-purple-500 text-white"
+                            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Manual Season Selection */}
+                {seasonFilter === "manual" && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-300 mb-2">
+                      Select Seasons
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {seasons.map((s) => (
+                        <label
+                          key={s.id}
+                          className="flex items-center gap-2 text-sm cursor-pointer bg-gray-900 p-2 rounded hover:bg-gray-700"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSeasons.includes(s.id)}
+                            onChange={() => toggleSeasonSelection(s.id)}
+                          />
+                          <span className="text-gray-300">{s.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Column Visibility */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-300 mb-2">
+                    Visible Columns
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {COLUMNS.map(({ key, label }) => (
+                      <label
+                        key={key}
+                        className="flex items-center gap-2 text-sm cursor-pointer bg-gray-900 p-2 rounded hover:bg-gray-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={visibleCols[key]}
+                          onChange={() =>
+                            setVisibleCols((prev) => ({
+                              ...prev,
+                              [key]: !prev[key],
+                            }))
+                          }
+                        />
+                        <span className="text-gray-300">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {filteredSeasons.length < 1 ? (
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
               <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-gray-400 text-lg">
-                You need at least 2 seasons to see historical data.
+                Select at least one season to see historical data.
               </p>
             </div>
           ) : !selectedPlayer ? (
@@ -147,16 +288,8 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[
-                  {
-                    label: "Total Seasons",
-                    value: seasons.length,
-                    color: "text-purple-400",
-                  },
-                  {
-                    label: "Total Players",
-                    value: historicalData.length,
-                    color: "text-green-400",
-                  },
+                  { label: "Seasons", value: filteredSeasons.length, color: "text-purple-400" },
+                  { label: "Players", value: historicalData.length, color: "text-green-400" },
                   {
                     label: "Avg 3★ Rate",
                     value: `${(
@@ -167,17 +300,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   },
                   {
                     label: "Total Wars",
-                    value: historicalData.reduce(
-                      (s, p) => s + p.totalWars,
-                      0
-                    ),
+                    value: historicalData.reduce((s, p) => s + p.totalWars, 0),
                     color: "text-blue-400",
                   },
                 ].map(({ label, value, color }, i) => (
-                  <div
-                    key={i}
-                    className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center"
-                  >
+                  <div key={i} className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
                     <p className={`text-2xl font-bold ${color}`}>{value}</p>
                     <p className="text-sm text-gray-400 mt-1">{label}</p>
                   </div>
@@ -188,28 +315,18 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mb-6">
                 <div className="p-4 border-b border-gray-700">
                   <h3 className="font-bold text-lg">Cumulative Rankings</h3>
-                  <p className="text-sm text-gray-400">
-                    Click on a player to see their evolution
-                  </p>
+                  <p className="text-sm text-gray-400">Click on a player to see their evolution</p>
                 </div>
-                <div
-                  className="overflow-x-auto"
-                  style={{ maxHeight: "400px", overflowY: "auto" }}
-                >
+                <div className="overflow-x-auto" style={{ maxHeight: "400px", overflowY: "auto" }}>
                   <table className="w-full text-sm">
                     <thead className="bg-gray-900 sticky top-0">
                       <tr className="text-left text-xs text-gray-400">
                         <th className="p-3">Rank</th>
                         <th className="p-3">Player</th>
                         <th className="p-3">TH</th>
-                        <th className="p-3">Seasons</th>
-                        <th className="p-3">Wars</th>
-                        <th className="p-3">Miss Atk</th>
-                        <th className="p-3">Net ★</th>
-                        <th className="p-3">Net %</th>
-                        <th className="p-3">3★%</th>
-                        <th className="p-3">★ Gain</th>
-                        <th className="p-3">★ Give</th>
+                        {COLUMNS.filter((c) => visibleCols[c.key]).map((c) => (
+                          <th key={c.key} className="p-3">{c.label}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -220,64 +337,42 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                           className="border-t border-gray-700 hover:bg-gray-700/50 cursor-pointer"
                         >
                           <td className="p-3">
-                            <span
-                              className={`font-bold ${
-                                i < 3 ? "text-yellow-400" : "text-gray-400"
-                              }`}
-                            >
+                            <span className={`font-bold ${i < 3 ? "text-yellow-400" : "text-gray-400"}`}>
                               #{i + 1}
                             </span>
                           </td>
-                          <td className="p-3 font-semibold text-blue-400 hover:text-blue-300">
-                            {p.name}
-                          </td>
+                          <td className="p-3 font-semibold text-blue-400">{p.name}</td>
                           <td className="p-3">{p.th}</td>
-                          <td className="p-3 text-purple-400">
-                            {p.seasonsCount}
-                          </td>
-                          <td className="p-3">{p.totalWars}</td>
-                          <td className="p-3">
-                            {p.totalMissAtk > 0 ? (
-                              <span className="text-red-400 font-bold">
-                                {p.totalMissAtk}
+                          {visibleCols.wars && <td className="p-3">{p.totalWars}</td>}
+                          {visibleCols.missAtk && (
+                            <td className="p-3">
+                              {p.totalMissAtk > 0 ? (
+                                <span className="text-red-400 font-bold">{p.totalMissAtk}</span>
+                              ) : (
+                                <span className="text-green-400">✓</span>
+                              )}
+                            </td>
+                          )}
+                          {visibleCols.netStars && (
+                            <td className="p-3">
+                              <span className={`font-bold ${p.netStars >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {p.netStars >= 0 ? "+" : ""}{p.netStars}
                               </span>
-                            ) : (
-                              <span className="text-green-400">✓</span>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`font-bold ${
-                                p.netStars >= 0
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }`}
-                            >
-                              {p.netStars >= 0 ? "+" : ""}
-                              {p.netStars}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`font-bold ${
-                                p.netDest >= 0
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }`}
-                            >
-                              {p.netDest >= 0 ? "+" : ""}
-                              {p.netDest.toFixed(1)}%
-                            </span>
-                          </td>
-                          <td className="p-3 text-purple-400 font-semibold">
-                            {p.threeRate.toFixed(1)}%
-                          </td>
-                          <td className="p-3 text-green-400">
-                            {p.totalOffStars}
-                          </td>
-                          <td className="p-3 text-red-400">
-                            {p.totalDefStars}
-                          </td>
+                            </td>
+                          )}
+                          {visibleCols.netDest && (
+                            <td className="p-3">
+                              <span className={`font-bold ${p.netDest >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {p.netDest >= 0 ? "+" : ""}{p.netDest.toFixed(1)}%
+                              </span>
+                            </td>
+                          )}
+                          {visibleCols.threeRate && (
+                            <td className="p-3 text-purple-400 font-semibold">{p.threeRate.toFixed(1)}%</td>
+                          )}
+                          {visibleCols.offStars && <td className="p-3 text-green-400">{p.totalOffStars}</td>}
+                          {visibleCols.defStars && <td className="p-3 text-red-400">{p.totalDefStars}</td>}
+                          {visibleCols.seasonsCount && <td className="p-3 text-purple-400">{p.seasonsCount}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -288,9 +383,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               {/* Season by Season Overview */}
               <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
                 <div className="p-4 border-b border-gray-700">
-                  <h3 className="font-bold text-lg">
-                    Season by Season Overview
-                  </h3>
+                  <h3 className="font-bold text-lg">Season by Season Overview</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -304,51 +397,25 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {seasons.map((season, i) => {
-                        const clanData =
-                          historicalClan === "main"
-                            ? season.mainClan
-                            : season.secondaryClan;
+                      {filteredSeasons.map((season, i) => {
+                        const clanData = historicalClan === "main" ? season.mainClan : season.secondaryClan;
                         if (!clanData || clanData.length === 0) return null;
-                        const avgThreeRate =
-                          clanData.reduce((s, p) => s + p.threeRate, 0) /
-                          clanData.length;
-                        const avgNetStars =
-                          clanData.reduce((s, p) => s + p.netStars, 0) /
-                          clanData.length;
-                        const totalMissAtk = clanData.reduce(
-                          (s, p) => s + p.missAtk,
-                          0
-                        );
+                        const avgThreeRate = clanData.reduce((s, p) => s + p.threeRate, 0) / clanData.length;
+                        const avgNetStars = clanData.reduce((s, p) => s + p.netStars, 0) / clanData.length;
+                        const totalMissAtk = clanData.reduce((s, p) => s + p.missAtk, 0);
                         return (
-                          <tr
-                            key={i}
-                            className="border-t border-gray-700 hover:bg-gray-700/30"
-                          >
-                            <td className="p-3 font-semibold text-purple-400">
-                              {season.name}
-                            </td>
+                          <tr key={i} className="border-t border-gray-700 hover:bg-gray-700/30">
+                            <td className="p-3 font-semibold text-purple-400">{season.name}</td>
                             <td className="p-3">{clanData.length}</td>
-                            <td className="p-3 text-yellow-400">
-                              {avgThreeRate.toFixed(1)}%
-                            </td>
+                            <td className="p-3 text-yellow-400">{avgThreeRate.toFixed(1)}%</td>
                             <td className="p-3">
-                              <span
-                                className={
-                                  avgNetStars >= 0
-                                    ? "text-green-400"
-                                    : "text-red-400"
-                                }
-                              >
-                                {avgNetStars >= 0 ? "+" : ""}
-                                {avgNetStars.toFixed(1)}
+                              <span className={avgNetStars >= 0 ? "text-green-400" : "text-red-400"}>
+                                {avgNetStars >= 0 ? "+" : ""}{avgNetStars.toFixed(1)}
                               </span>
                             </td>
                             <td className="p-3">
                               {totalMissAtk > 0 ? (
-                                <span className="text-red-400 font-bold">
-                                  {totalMissAtk}
-                                </span>
+                                <span className="text-red-400 font-bold">{totalMissAtk}</span>
                               ) : (
                                 <span className="text-green-400">✓ None</span>
                               )}
@@ -373,70 +440,22 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               </button>
 
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
-                <h3 className="text-2xl font-bold text-white mb-1">
-                  {selectedPlayer.name}
-                </h3>
-                <p className="text-gray-400 mb-6">
-                  TH{selectedPlayer.th} • {selectedPlayer.seasonsCount} seasons
-                </p>
+                <h3 className="text-2xl font-bold text-white mb-1">{selectedPlayer.name}</h3>
+                <p className="text-gray-400 mb-6">TH{selectedPlayer.th} • {selectedPlayer.seasonsCount} seasons</p>
 
                 {/* Cumulative Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {[
-                    {
-                      label: "Stars Gained",
-                      value: selectedPlayer.totalOffStars,
-                      color: "text-green-400",
-                    },
-                    {
-                      label: "Stars Given",
-                      value: selectedPlayer.totalDefStars,
-                      color: "text-red-400",
-                    },
-                    {
-                      label: "Net Stars",
-                      value: `${selectedPlayer.netStars >= 0 ? "+" : ""}${selectedPlayer.netStars}`,
-                      color:
-                        selectedPlayer.netStars >= 0
-                          ? "text-green-400"
-                          : "text-red-400",
-                    },
-                    {
-                      label: "Avg 3★ Rate",
-                      value: `${selectedPlayer.threeRate.toFixed(1)}%`,
-                      color: "text-purple-400",
-                    },
-                    {
-                      label: "Total Wars",
-                      value: selectedPlayer.totalWars,
-                      color: "text-blue-400",
-                    },
-                    {
-                      label: "Missed Attacks",
-                      value: selectedPlayer.totalMissAtk,
-                      color:
-                        selectedPlayer.totalMissAtk > 0
-                          ? "text-red-400"
-                          : "text-green-400",
-                    },
-                    {
-                      label: "Net Destruction",
-                      value: `${selectedPlayer.netDest >= 0 ? "+" : ""}${selectedPlayer.netDest.toFixed(1)}%`,
-                      color:
-                        selectedPlayer.netDest >= 0
-                          ? "text-green-400"
-                          : "text-red-400",
-                    },
-                    {
-                      label: "Seasons Played",
-                      value: selectedPlayer.seasonsCount,
-                      color: "text-yellow-400",
-                    },
+                    { label: "Stars Gained", value: selectedPlayer.totalOffStars, color: "text-green-400" },
+                    { label: "Stars Given", value: selectedPlayer.totalDefStars, color: "text-red-400" },
+                    { label: "Net Stars", value: `${selectedPlayer.netStars >= 0 ? "+" : ""}${selectedPlayer.netStars}`, color: selectedPlayer.netStars >= 0 ? "text-green-400" : "text-red-400" },
+                    { label: "Avg 3★ Rate", value: `${selectedPlayer.threeRate.toFixed(1)}%`, color: "text-purple-400" },
+                    { label: "Total Wars", value: selectedPlayer.totalWars, color: "text-blue-400" },
+                    { label: "Missed Attacks", value: selectedPlayer.totalMissAtk, color: selectedPlayer.totalMissAtk > 0 ? "text-red-400" : "text-green-400" },
+                    { label: "Net Destruction", value: `${selectedPlayer.netDest >= 0 ? "+" : ""}${selectedPlayer.netDest.toFixed(1)}%`, color: selectedPlayer.netDest >= 0 ? "text-green-400" : "text-red-400" },
+                    { label: "Seasons Played", value: selectedPlayer.seasonsCount, color: "text-yellow-400" },
                   ].map(({ label, value, color }, i) => (
-                    <div
-                      key={i}
-                      className="bg-gray-900 p-4 rounded-lg text-center"
-                    >
+                    <div key={i} className="bg-gray-900 p-4 rounded-lg text-center">
                       <p className={`text-2xl font-bold ${color}`}>{value}</p>
                       <p className="text-xs text-gray-400 mt-1">{label}</p>
                     </div>
@@ -444,9 +463,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                 </div>
 
                 {/* Season by Season Evolution */}
-                <h4 className="font-bold text-lg mb-4 text-yellow-400">
-                  Season by Season Evolution
-                </h4>
+                <h4 className="font-bold text-lg mb-4 text-yellow-400">Season by Season Evolution</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-900">
@@ -462,54 +479,28 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {getPlayerEvolution(
-                        selectedPlayer.name,
-                        historicalClan
-                      ).map((s, i) => (
-                        <tr
-                          key={i}
-                          className="border-t border-gray-700 hover:bg-gray-700/30"
-                        >
-                          <td className="p-3 font-semibold text-purple-400">
-                            {s.season}
-                          </td>
+                      {getPlayerEvolution(selectedPlayer.name, historicalClan).map((s, i) => (
+                        <tr key={i} className="border-t border-gray-700 hover:bg-gray-700/30">
+                          <td className="p-3 font-semibold text-purple-400">{s.season}</td>
                           <td className="p-3">{s.wars}</td>
                           <td className="p-3">
                             {s.missAtk > 0 ? (
-                              <span className="text-red-400 font-bold">
-                                {s.missAtk}
-                              </span>
+                              <span className="text-red-400 font-bold">{s.missAtk}</span>
                             ) : (
                               <span className="text-green-400">✓</span>
                             )}
                           </td>
                           <td className="p-3">
-                            <span
-                              className={`font-bold ${
-                                s.netStars >= 0
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }`}
-                            >
-                              {s.netStars >= 0 ? "+" : ""}
-                              {s.netStars}
+                            <span className={`font-bold ${s.netStars >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              {s.netStars >= 0 ? "+" : ""}{s.netStars}
                             </span>
                           </td>
                           <td className="p-3">
-                            <span
-                              className={`font-bold ${
-                                s.netDest >= 0
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }`}
-                            >
-                              {s.netDest >= 0 ? "+" : ""}
-                              {s.netDest.toFixed(1)}%
+                            <span className={`font-bold ${s.netDest >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              {s.netDest >= 0 ? "+" : ""}{s.netDest.toFixed(1)}%
                             </span>
                           </td>
-                          <td className="p-3 text-purple-400">
-                            {s.threeRate.toFixed(1)}%
-                          </td>
+                          <td className="p-3 text-purple-400">{s.threeRate.toFixed(1)}%</td>
                           <td className="p-3 text-green-400">{s.offStars}</td>
                           <td className="p-3 text-red-400">{s.defStars}</td>
                         </tr>
