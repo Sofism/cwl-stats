@@ -159,7 +159,7 @@ const SeasonSelector = ({
         )}
 
         {/* Create New Season and Share All Buttons */}
-       <div className="mb-6 flex gap-3">
+       <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
   <button
     onClick={() => setShowModal(true)}
     className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
@@ -273,42 +273,37 @@ const SeasonSelector = ({
                                 </div>
                               )}
                               
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-lg text-white mb-1">
-                                  {season.name}
-                                </h3>
-                                <div className="flex items-center gap-4 text-sm text-gray-400">
-                                  <span>
-                                    {totalPlayers} player{totalPlayers !== 1 ? 's' : ''}
-                                  </span>
-                                  {hasData && (
-                                    <>
-                                      <span>•</span>
-                                      <span>
-                                        {clanNames.main}: {season.mainClan.length} | {clanNames.secondary}: {season.secondaryClan.length}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => onSelectSeason(season)}
-                                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                                >
-                                  <Play className="w-4 h-4" />
-                                  Open
-                                </button>
-                                {!isSharedMode && (
-                                  <button
-                                    onClick={() => setDeleteConfirm(season.id)}
-                                    className="bg-red-500/20 hover:bg-red-500/30 border border-red-500 text-red-400 font-semibold px-4 py-2 rounded-lg transition-colors"
-                                  >
-                                    Delete
-                                  </button>
-                                )}
-                              </div>
+                             <div className="flex-1 min-w-0">
+  <h3 className="font-semibold text-base text-white mb-1 truncate">
+    {season.name}
+  </h3>
+  <div className="flex flex-col gap-1 text-sm text-gray-400">
+    <span>{totalPlayers} player{totalPlayers !== 1 ? 's' : ''}</span>
+    {hasData && (
+      <span className="truncate">
+        {clanNames.main}: {season.mainClan.length} | {clanNames.secondary}: {season.secondaryClan.length}
+      </span>
+    )}
+  </div>
+</div>
+
+<div className="flex items-center gap-2 flex-shrink-0">
+  <button
+    onClick={() => onSelectSeason(season)}
+    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm"
+  >
+    <Play className="w-4 h-4" />
+    Open
+  </button>
+  {!isSharedMode && (
+    <button
+      onClick={() => setDeleteConfirm(season.id)}
+      className="bg-red-500/20 hover:bg-red-500/30 border border-red-500 text-red-400 font-semibold px-3 py-2 rounded-lg transition-colors text-sm"
+    >
+      Delete
+    </button>
+  )}
+</div>
                             </div>
                           );
                         })}
