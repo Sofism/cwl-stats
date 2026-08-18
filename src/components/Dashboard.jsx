@@ -171,26 +171,33 @@ const Dashboard = ({
             </select>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={handleShare}
-              className="px-4 py-2 bg-green-600 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-              Share
-            </button>
-            <button
-              onClick={onOpenImport}
-              className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Update
-            </button>
-            <button
-              onClick={() => setDeleteConfirm("ALL")}
-              className="px-4 py-2 bg-red-600/20 border border-red-600 rounded-lg hover:bg-red-600/30 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
+  <button
+    onClick={() => setShowHistorical(true)}
+    className="px-4 py-2 bg-purple-700 border border-purple-500 rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-2"
+  >
+    <Trophy className="w-4 h-4" />
+    Historical
+  </button>
+  <button
+    onClick={handleShare}
+    className="px-4 py-2 bg-green-600 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+  >
+    <Share2 className="w-4 h-4" />
+    Share
+  </button>
+  <button
+    onClick={onOpenImport}
+    className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
+  >
+    Update
+  </button>
+  <button
+    onClick={() => setDeleteConfirm("ALL")}
+    className="px-4 py-2 bg-red-600/20 border border-red-600 rounded-lg hover:bg-red-600/30 transition-colors"
+  >
+    <Trash2 className="w-4 h-4" />
+  </button>
+</div>
         </div>
 
         {(saveStatus || shareStatus) && (
