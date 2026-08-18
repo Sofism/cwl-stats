@@ -7,6 +7,7 @@ import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { createShareLink } from "../utils/shareUtils";
 import { BASE_BONUSES, DEFAULT_VISIBLE_COLS } from "../utils/constants";
+import HistoricalView from "./HistoricalView";
 
 const Dashboard = ({
   seasons,
