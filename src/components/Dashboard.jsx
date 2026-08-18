@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Share2, Trash2, ArrowLeft, Trophy } from "lucide-react";
 import StatsCards from "./StatsCards";
 import StatsTable from "./StatsTable";
 import ColumnSelector from "./ColumnSelector";
