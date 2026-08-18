@@ -8,6 +8,7 @@ import DeleteConfirmModal from "./DeleteConfirmModal";
 import { createShareLink } from "../utils/shareUtils";
 import { BASE_BONUSES, DEFAULT_VISIBLE_COLS } from "../utils/constants";
 import HistoricalView from "./HistoricalView";
+import { Share2, Trash2, ArrowLeft, Trophy } from "lucide-react";
 
 const Dashboard = ({
   seasons,
@@ -27,6 +28,7 @@ const Dashboard = ({
   const [showColSelector, setShowColSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [shareStatus, setShareStatus] = useState("");
+  const [showHistorical, setShowHistorical] = useState(false);
   const [leagueInfo, setLeagueInfo] = useState(
     currentSeason.leagueInfo || {
       main: { league: "Crystal I", position: 1, warsWon: 0 },
@@ -251,6 +253,13 @@ const Dashboard = ({
           />
         )}
       </div>
+      {showHistorical && (
+  <HistoricalView
+    seasons={seasons}
+    clanNames={clanNames}
+    onClose={() => setShowHistorical(false)}
+  />
+)}
     </div>
   );
 };
