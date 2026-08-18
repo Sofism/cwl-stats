@@ -4,6 +4,7 @@ import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SettingsModal from "./SettingsModal";
 import { createShareLink } from "../utils/shareUtils";
+import HistoricalView from "./HistoricalView";
 
 const SeasonSelector = ({ 
   seasons, 
@@ -22,6 +23,7 @@ const SeasonSelector = ({
   const [expandedYears, setExpandedYears] = useState({});
   const [shareStatus, setShareStatus] = useState("");
   const [draggedItem, setDraggedItem] = useState(null);
+  const [showHistorical, setShowHistorical] = useState(false);
 
   const seasonsByYear = getSeasonsByYear();
   const years = Object.keys(seasonsByYear).sort((a, b) => b - a);
@@ -157,25 +159,35 @@ const SeasonSelector = ({
         )}
 
         {/* Create New Season and Share All Buttons */}
-        <div className="mb-6 flex gap-3">
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
-          >
-            <Plus className="w-6 h-6" />
-            <span className="text-lg">Create New Season</span>
-          </button>
-          
-          {seasons.length > 0 && (
-            <button
-              onClick={handleShareAll}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
-            >
-              <Share2 className="w-6 h-6" />
-              <span className="text-lg">Share All</span>
-            </button>
-          )}
-        </div>
+       <div className="mb-6 flex gap-3">
+  <button
+    onClick={() => setShowModal(true)}
+    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+  >
+    <Plus className="w-6 h-6" />
+    <span className="text-lg">Create New Season</span>
+  </button>
+  
+  {seasons.length > 1 && (
+    <button
+      onClick={() => setShowHistorical(true)}
+      className="bg-purple-700 hover:bg-purple-600 border border-purple-500 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+    >
+      <Trophy className="w-6 h-6" />
+      <span className="text-lg">Historical</span>
+    </button>
+  )}
+  
+  {seasons.length > 0 && (
+    <button
+      onClick={handleShareAll}
+      className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+    >
+      <Share2 className="w-6 h-6" />
+      <span className="text-lg">Share All</span>
+    </button>
+  )}
+</div>
 
         {/* Share Status Message */}
         {shareStatus && (
