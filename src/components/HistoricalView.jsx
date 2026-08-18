@@ -176,20 +176,20 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
             ))}
           </div>
 
-          {/* Filters Panel */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg mb-6">
+        {/* Filters Panel */}
+          <div className="bg-purple-900/40 border-2 border-purple-500 rounded-lg mb-6">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="w-full flex items-center justify-between p-4 text-sm font-semibold"
+              className="w-full flex items-center justify-between p-5 font-bold text-purple-300 hover:text-white transition-colors"
             >
-              <span className="flex items-center gap-2">
-                <Filter className="w-4 h-4" />
+              <span className="flex items-center gap-3 text-lg">
+                <Filter className="w-6 h-6 text-purple-400" />
                 Filters & Columns
-                <span className="text-gray-400 font-normal">
-                  ({filteredSeasons.length} of {seasons.length} seasons)
+                <span className="text-sm font-normal bg-purple-500/40 text-purple-200 px-3 py-1 rounded-full">
+                  {filteredSeasons.length} of {seasons.length} seasons
                 </span>
               </span>
-              <span className="text-gray-400">{showFilters ? "▼" : "▶"}</span>
+              <span className="text-purple-400 text-xl">{showFilters ? "▼" : "▶"}</span>
             </button>
 
             {showFilters && (
