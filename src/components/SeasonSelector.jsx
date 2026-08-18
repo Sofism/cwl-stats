@@ -347,6 +347,14 @@ const SeasonSelector = ({
             onCancel={() => setDeleteConfirm(null)}
           />
         )}
+
+        {showHistorical && (
+          <HistoricalView
+            seasons={seasons}
+            clanNames={clanNames}
+            onClose={() => setShowHistorical(false)}
+          />
+        )}
       </div>
     </div>
   );
