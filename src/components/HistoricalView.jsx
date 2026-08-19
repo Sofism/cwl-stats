@@ -18,6 +18,21 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [seasonFilter, setSeasonFilter] = useState("all");
   const [selectedSeasons, setSelectedSeasons] = useState([]);
+  const [excludedPlayers, setExcludedPlayers] = useState([]);
+  const toggleExcludePlayer = (name) => {
+  setExcludedPlayers(prev =>
+    prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]
+  );
+};
+
+  const getAllPlayers = (clanKey) => {
+  const players = new Set();
+  seasons.forEach(season => {
+    const clanData = clanKey === "main" ? season.mainClan : season.secondaryClan;
+    if (clanData) clanData.forEach(p => players.add(p.name));
+  });
+  return [...players].sort();
+};
   const [visibleCols, setVisibleCols] = useState({
     wars: true,
     missAtk: true,
@@ -55,8 +70,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
         clanKey === "main" ? season.mainClan : season.secondaryClan;
       if (!clanData) return;
 
-      clanData.forEach((player) => {
-        if (!allPlayers[player.name]) {
+clanData.forEach((player) => {
+  if (excludedPlayers.includes(player.name)) return;
+  if (!allPlayers[player.name]) {
           allPlayers[player.name] = {
             name: player.name,
             th: player.th,
@@ -260,7 +276,47 @@ const sortedData = getSortedData(historicalData);
                     </div>
                   </div>
                 )}
-
+{/* Player Exclusion */}
+<div>
+  <p className="text-sm font-semibold text-gray-300 mb-2">
+    Exclude Players
+    {excludedPlayers.length > 0 && (
+      <span className="ml-2 text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full">
+        {excludedPlayers.length} hidden
+      </span>
+    )}
+  </p>
+  {excludedPlayers.length > 0 && (
+    <button
+      onClick={() => setExcludedPlayers([])}
+      className="mb-2 text-xs text-purple-400 hover:text-purple-300"
+    >
+      ↺ Show all players
+    </button>
+  )}
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+    {getAllPlayers(historicalClan).map((name) => (
+      <label
+        key={name}
+        className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-colors ${
+          excludedPlayers.includes(name)
+            ? "bg-red-500/20 border border-red-500/50"
+            : "bg-gray-900 hover:bg-gray-700"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={excludedPlayers.includes(name)}
+          onChange={() => toggleExcludePlayer(name)}
+          className="rounded"
+        />
+        <span className={excludedPlayers.includes(name) ? "text-red-300 line-through" : "text-gray-300"}>
+          {name}
+        </span>
+      </label>
+    ))}
+  </div>
+</div>
                 {/* Column Visibility */}
                 <div>
                   <p className="text-sm font-semibold text-gray-300 mb-2">
