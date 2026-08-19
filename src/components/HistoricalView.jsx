@@ -133,6 +133,21 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   };
 
   const historicalData = getHistoricalData(historicalClan);
+  const [sortByHistorical, setSortByHistorical] = useState("default");
+
+const getSortedData = (data) => {
+  const sorted = [...data];
+  if (sortByHistorical === "threeRate") return sorted.sort((a, b) => b.threeRate - a.threeRate);
+  if (sortByHistorical === "netStars") return sorted.sort((a, b) => b.netStars - a.netStars);
+  if (sortByHistorical === "netDest") return sorted.sort((a, b) => b.netDest - a.netDest);
+  if (sortByHistorical === "missAtk") return sorted.sort((a, b) => a.totalMissAtk - b.totalMissAtk);
+  if (sortByHistorical === "wars") return sorted.sort((a, b) => b.totalWars - a.totalWars);
+  if (sortByHistorical === "offStars") return sorted.sort((a, b) => b.totalOffStars - a.totalOffStars);
+  if (sortByHistorical === "seasons") return sorted.sort((a, b) => b.seasonsCount - a.seasonsCount);
+  return sorted; // default
+};
+
+const sortedData = getSortedData(historicalData);
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto">
@@ -313,10 +328,26 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
 
               {/* Cumulative Rankings Table */}
               <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mb-6">
-                <div className="p-4 border-b border-gray-700">
-                  <h3 className="font-bold text-lg">Cumulative Rankings</h3>
-                  <p className="text-sm text-gray-400">Click on a player to see their evolution</p>
-                </div>
+                <div className="p-4 border-b border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  <div>
+    <h3 className="font-bold text-lg">Cumulative Rankings</h3>
+    <p className="text-sm text-gray-400">Click on a player to see their evolution</p>
+  </div>
+  <select
+    value={sortByHistorical}
+    onChange={(e) => setSortByHistorical(e.target.value)}
+    className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white"
+  >
+    <option value="default">Default Sort</option>
+    <option value="netStars">Net ★</option>
+    <option value="netDest">Net %</option>
+    <option value="threeRate">3★ Rate</option>
+    <option value="missAtk">Missed Attacks</option>
+    <option value="offStars">★ Gained</option>
+    <option value="wars">Wars Played</option>
+    <option value="seasons">Seasons Played</option>
+  </select>
+</div>
                 <div className="overflow-x-auto" style={{ maxHeight: "400px", overflowY: "auto" }}>
                   <table className="w-full text-sm">
                     <thead className="bg-gray-900 sticky top-0">
@@ -330,7 +361,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {historicalData.map((p, i) => (
+                      {sortedData.map((p, i) => (
                         <tr
                           key={i}
                           onClick={() => setSelectedPlayer(p)}
