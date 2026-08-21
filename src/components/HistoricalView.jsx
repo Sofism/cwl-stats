@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Trophy, ArrowLeft, Filter } from "lucide-react";
+import PlayerBarChart from "./PlayerBarChart";
+import PlayerLineChart from "./PlayerLineChart";
 
 const COLUMNS = [
   { key: "wars", label: "Wars" },
@@ -386,6 +388,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </div>
                 ))}
               </div>
+              <PlayerBarChart data={sortedData} />
 
               {/* Cumulative Rankings Table */}
               <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mb-6">
@@ -541,6 +544,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   ))}
                 </div>
 
+                <PlayerLineChart
+                evolution={getPlayerEvolution(selectedPlayer.name)}
+                playerName={selectedPlayer.name}
+                  />
+                
                 {/* Season by Season Evolution */}
                 <h4 className="font-bold text-lg mb-4 text-yellow-400">Season by Season Evolution</h4>
                 <div className="overflow-x-auto">
