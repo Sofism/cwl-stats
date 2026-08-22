@@ -34,10 +34,10 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   });
 
   const {
-    aliases, inactivePlayers, activeMembers,
-    addAlias, removeAlias, toggleInactive,
-    setActiveMembers, resetAll,
-  } = useHistoricalSettings();
+  aliases, activeMembers,
+  addAlias, removeAlias,
+  setActiveMembers, resetAll,
+} = useHistoricalSettings();
 
   const getFilteredSeasons = () => {
     if (seasonFilter === "manual" && selectedSeasons.length > 0)
