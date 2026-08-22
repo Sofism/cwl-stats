@@ -74,11 +74,8 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   };
 
   const isPlayerActive = (name) => {
-    if (historicalClan === "unified") {
-      return activeMembers.main.includes(name) || activeMembers.secondary.includes(name);
-    }
-    return activeMembers[historicalClan]?.includes(name);
-  };
+  return activeMembers.includes(name);
+};
 
   const getHistoricalData = () => {
     const allPlayers = {};
@@ -179,15 +176,15 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
     return sorted;
   };
 
-  const handleSetActiveMembers = (clan) => {
-    const names = activeMembersInput
-      .split("\n")
-      .map(n => n.trim())
-      .filter(Boolean);
-    setActiveMembers(clan, names);
-    setActiveMembersInput("");
-    setShowActiveMembersInput(false);
-  };
+  const handleSetActiveMembers = () => {
+  const names = activeMembersInput
+    .split("\n")
+    .map(n => n.trim())
+    .filter(Boolean);
+  setActiveMembers(names);
+  setActiveMembersInput("");
+  setShowActiveMembersInput(false);
+};
 
   const historicalData = getHistoricalData();
   const sortedData = getSortedData(historicalData);
@@ -391,12 +388,12 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </div>
 
                   <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={() => setShowActiveMembersInput(showActiveMembersInput === "main" ? false : "main")}
-                      className="flex-1 text-xs bg-purple-600/30 border border-purple-500/50 text-purple-300 py-2 rounded hover:bg-purple-600/50 transition-colors"
-                    >
-                      Update {clanNames?.main || "Main"} ({activeMembers.main.length})
-                    </button>
+                   <button
+                    onClick={() => setShowActiveMembersInput(!showActiveMembersInput)}
+                    className="w-full text-xs bg-green-600/30 border border-green-500/50 text-green-300 py-2 rounded hover:bg-green-600/50 transition-colors"
+                  >
+                    Update Active Members ({activeMembers.length})
+                  </button>
                     <button
                       onClick={() => setShowActiveMembersInput(showActiveMembersInput === "secondary" ? false : "secondary")}
                       className="flex-1 text-xs bg-blue-600/30 border border-blue-500/50 text-blue-300 py-2 rounded hover:bg-blue-600/50 transition-colors"
@@ -418,7 +415,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       />
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleSetActiveMembers(showActiveMembersInput)}
+                          onClick={() => handleSetActiveMembers()}
                           className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-sm transition-colors"
                         >
                           Save Members
