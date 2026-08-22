@@ -467,13 +467,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
     })}
   </div>
 </div>
-                  )}
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
                 {/* Column Visibility */}
                 <div>
                   <p className="text-sm font-semibold text-gray-300 mb-2">Visible Columns</p>
