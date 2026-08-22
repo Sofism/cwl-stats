@@ -4,8 +4,7 @@ const STORAGE_KEY = "cwl-historical-settings";
 
 const defaultSettings = {
   aliases: {},
-  inactivePlayers: [],
-  activeMembers: { main: [], secondary: [] },
+  activeMembers: [],
 };
 
 export const useHistoricalSettings = () => {
@@ -56,10 +55,7 @@ export const useHistoricalSettings = () => {
     updateSettings({ inactivePlayers: updated });
   };
 
-  const setActiveMembers = (clan, members) => {
-    updateSettings({
-      activeMembers: { ...settings.activeMembers, [clan]: members }
-    });
+  const setActiveMembers = (members) => updateSettings({ activeMembers: members });
   };
 
   const resetAll = () => {
