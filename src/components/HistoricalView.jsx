@@ -382,37 +382,91 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     </label>
                   </div>
 
-                  <button
-                    onClick={() => setShowActiveMembersInput(!showActiveMembersInput)}
-                    className="w-full text-xs bg-green-600/30 border border-green-500/50 text-green-300 py-2 rounded hover:bg-green-600/50 transition-colors mb-3"
-                  >
-                    Update Active Members ({(activeMembers || []).length})
-                  </button>
+                 <div className="space-y-3">
+  {/* Quick paste option */}
+  <div>
+    <button
+      onClick={() => setShowActiveMembersInput(!showActiveMembersInput)}
+      className="w-full text-xs bg-green-600/30 border border-green-500/50 text-green-300 py-2 rounded hover:bg-green-600/50 transition-colors"
+    >
+      {showActiveMembersInput ? "▼ Hide paste option" : "▶ Paste list of names"}
+    </button>
 
-                  {showActiveMembersInput && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-400">Paste one player name per line:</p>
-                      <textarea
-                        value={activeMembersInput}
-                        onChange={(e) => setActiveMembersInput(e.target.value)}
-                        placeholder={"PlayerName1\nPlayerName2\nPlayerName3..."}
-                        className="w-full h-32 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white font-mono"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSetActiveMembers}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-sm transition-colors"
-                        >
-                          Save Members
-                        </button>
-                        <button
-                          onClick={() => { setActiveMembersInput(""); setShowActiveMembersInput(false); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded text-sm transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
+    {showActiveMembersInput && (
+      <div className="space-y-2 mt-2">
+        <p className="text-xs text-gray-400">Paste one player name per line:</p>
+        <textarea
+          value={activeMembersInput}
+          onChange={(e) => setActiveMembersInput(e.target.value)}
+          placeholder={"PlayerName1\nPlayerName2\nPlayerName3..."}
+          className="w-full h-32 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white font-mono"
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={handleSetActiveMembers}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-sm transition-colors"
+          >
+            Save Members
+          </button>
+          <button
+            onClick={() => { setActiveMembersInput(""); setShowActiveMembersInput(false); }}
+            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* Checkboxes */}
+  <div className="flex items-center justify-between">
+    <p className="text-xs text-gray-400">Or toggle individually:</p>
+    <div className="flex gap-3">
+      <button
+        onClick={() => setActiveMembers(allPlayerNames)}
+        className="text-xs text-green-400 hover:text-green-300 font-semibold"
+      >
+        All ✓
+      </button>
+      <button
+        onClick={() => setActiveMembers([])}
+        className="text-xs text-red-400 hover:text-red-300 font-semibold"
+      >
+        None ✗
+      </button>
+    </div>
+  </div>
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+    {allPlayerNames.map(name => {
+      const active = isPlayerActive(name);
+      return (
+        <label
+          key={name}
+          className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-colors ${
+            active
+              ? "bg-green-500/20 border border-green-500/50"
+              : "bg-gray-900 hover:bg-gray-700 border border-transparent"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={() => {
+              const updated = active
+                ? (activeMembers || []).filter(n => n !== name)
+                : [...(activeMembers || []), name];
+              setActiveMembers(updated);
+            }}
+          />
+          <span className={active ? "text-green-300" : "text-gray-300"}>
+            {active ? "🟢 " : "⚪ "}{name}
+          </span>
+        </label>
+      );
+    })}
+  </div>
+</div>
                   )}
 
                   {!showActiveMembersInput && (activeMembers || []).length > 0 && (
