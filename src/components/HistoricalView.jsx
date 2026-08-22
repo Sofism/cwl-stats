@@ -468,16 +468,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   </div>
 </div>
                   )}
-
-                  {!showActiveMembersInput && (activeMembers || []).length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1 max-h-32 overflow-y-auto">
-                      {allPlayerNames.map(name => {
-                        const active = isPlayerActive(name);
-                        return (
-                          <div key={name} className="text-xs p-1 rounded flex items-center gap-1">
-                            <span>{active ? "🟢" : "⚪"}</span>
-                            <span className={active ? "text-green-300" : "text-gray-500"}>{name}</span>
-                          </div>
                         );
                       })}
                     </div>
