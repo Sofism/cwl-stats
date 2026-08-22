@@ -10,7 +10,6 @@ const defaultSettings = {
 export const useHistoricalSettings = () => {
   const [settings, setSettings] = useState(defaultSettings);
 
-  // Load from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -22,7 +21,6 @@ export const useHistoricalSettings = () => {
     }
   }, []);
 
-  // Save to localStorage whenever settings change
   const updateSettings = (newSettings) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
@@ -33,30 +31,17 @@ export const useHistoricalSettings = () => {
     }
   };
 
-  const setAliases = (aliases) => updateSettings({ aliases });
-  
   const addAlias = (from, to) => {
     updateSettings({ aliases: { ...settings.aliases, [from]: to } });
   };
-  
+
   const removeAlias = (from) => {
     const updated = { ...settings.aliases };
     delete updated[from];
     updateSettings({ aliases: updated });
   };
 
-  const setInactivePlayers = (inactivePlayers) => updateSettings({ inactivePlayers });
-  
-  const toggleInactive = (name) => {
-    const current = settings.inactivePlayers;
-    const updated = current.includes(name)
-      ? current.filter(p => p !== name)
-      : [...current, name];
-    updateSettings({ inactivePlayers: updated });
-  };
-
   const setActiveMembers = (members) => updateSettings({ activeMembers: members });
-  };
 
   const resetAll = () => {
     setSettings(defaultSettings);
@@ -65,12 +50,9 @@ export const useHistoricalSettings = () => {
 
   return {
     aliases: settings.aliases,
-    inactivePlayers: settings.inactivePlayers,
     activeMembers: settings.activeMembers,
     addAlias,
     removeAlias,
-    toggleInactive,
-    setInactivePlayers,
     setActiveMembers,
     resetAll,
   };
