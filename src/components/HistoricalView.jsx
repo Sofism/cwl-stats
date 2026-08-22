@@ -494,7 +494,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </button>
                 </div>
               </div>
-            )}
+            )'}
           </div>
 
           {filteredSeasons.length < 1 ? (
