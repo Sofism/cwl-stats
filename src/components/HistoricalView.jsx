@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Trophy, ArrowLeft, Filter } from "lucide-react";
+import { useHistoricalSettings } from "../hooks/useHistoricalSettings";
 import PlayerBarChart from "./PlayerBarChart";
 import PlayerLineChart from "./PlayerLineChart";
 
@@ -20,22 +21,37 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [seasonFilter, setSeasonFilter] = useState("all");
   const [selectedSeasons, setSelectedSeasons] = useState([]);
-  const [excludedPlayers, setExcludedPlayers] = useState([]);
   const [sortByHistorical, setSortByHistorical] = useState("default");
+  const [showOnlyActive, setShowOnlyActive] = useState(false);
+  const [showMergePanel, setShowMergePanel] = useState(false);
+  const [mergeFrom, setMergeFrom] = useState("");
+  const [mergeTo, setMergeTo] = useState("");
+  const [activeMembersInput, setActiveMembersInput] = useState("");
+  const [showActiveMembersInput, setShowActiveMembersInput] = useState(false);
   const [visibleCols, setVisibleCols] = useState({
-    wars: true,
-    missAtk: true,
-    netStars: true,
-    netDest: false,
-    threeRate: true,
-    offStars: false,
-    defStars: false,
-    seasonsCount: true,
+    wars: true, missAtk: true, netStars: true, netDest: false,
+    threeRate: true, offStars: false, defStars: false, seasonsCount: true,
   });
 
-  const toggleExcludePlayer = (name) => {
-    setExcludedPlayers(prev =>
-      prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]
+  const {
+    aliases, inactivePlayers, activeMembers,
+    addAlias, removeAlias, toggleInactive,
+    setActiveMembers, resetAll,
+  } = useHistoricalSettings();
+
+  const getFilteredSeasons = () => {
+    if (seasonFilter === "manual" && selectedSeasons.length > 0)
+      return seasons.filter((s) => selectedSeasons.includes(s.id));
+    if (seasonFilter === "last3") return seasons.slice(0, 3);
+    if (seasonFilter === "last6") return seasons.slice(0, 6);
+    return seasons;
+  };
+
+  const filteredSeasons = getFilteredSeasons();
+
+  const toggleSeasonSelection = (id) => {
+    setSelectedSeasons((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
   };
 
@@ -48,27 +64,20 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
     seasons.forEach(season => {
       clanKeys.forEach(clanKey => {
         const clanData = season[clanKey];
-        if (clanData) clanData.forEach(p => players.add(p.name));
+        if (clanData) clanData.forEach(p => {
+          const resolved = aliases[p.name] || p.name;
+          players.add(resolved);
+        });
       });
     });
     return [...players].sort();
   };
 
-  const getFilteredSeasons = () => {
-    if (seasonFilter === "manual" && selectedSeasons.length > 0) {
-      return seasons.filter((s) => selectedSeasons.includes(s.id));
+  const isPlayerActive = (name) => {
+    if (historicalClan === "unified") {
+      return activeMembers.main.includes(name) || activeMembers.secondary.includes(name);
     }
-    if (seasonFilter === "last3") return seasons.slice(0, 3);
-    if (seasonFilter === "last6") return seasons.slice(0, 6);
-    return seasons;
-  };
-
-  const filteredSeasons = getFilteredSeasons();
-
-  const toggleSeasonSelection = (id) => {
-    setSelectedSeasons((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
+    return activeMembers[historicalClan]?.includes(name);
   };
 
   const getHistoricalData = () => {
@@ -83,58 +92,51 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
         if (!clanData) return;
 
         clanData.forEach((player) => {
-          if (excludedPlayers.includes(player.name)) return;
+          const resolvedName = aliases[player.name] || player.name;
+          if (showOnlyActive && !isPlayerActive(resolvedName)) return;
 
-          if (!allPlayers[player.name]) {
-            allPlayers[player.name] = {
-              name: player.name,
+          if (!allPlayers[resolvedName]) {
+            allPlayers[resolvedName] = {
+              name: resolvedName,
               th: player.th,
               seasons: [],
-              totalWars: 0,
-              totalOffStars: 0,
-              totalDefStars: 0,
-              totalOffDest: 0,
-              totalDefDest: 0,
-              totalMissAtk: 0,
-              totalMissDef: 0,
-              totalStars3: 0,
+              totalWars: 0, totalOffStars: 0, totalDefStars: 0,
+              totalOffDest: 0, totalDefDest: 0, totalMissAtk: 0,
+              totalMissDef: 0, totalStars3: 0,
+              isActive: isPlayerActive(resolvedName),
+              isInactive: inactivePlayers.includes(resolvedName),
             };
           }
 
-          allPlayers[player.name].seasons.push({
+          allPlayers[resolvedName].seasons.push({
             seasonName: season.name,
             clan: clanKey === "mainClan" ? "Main" : "Secondary",
-            ...player,
+            ...player, name: resolvedName,
           });
-          allPlayers[player.name].totalWars += player.wars || 0;
-          allPlayers[player.name].totalOffStars += player.offStars || 0;
-          allPlayers[player.name].totalDefStars += player.defStars || 0;
-          allPlayers[player.name].totalOffDest += player.offDest || 0;
-          allPlayers[player.name].totalDefDest += player.defDest || 0;
-          allPlayers[player.name].totalMissAtk += player.missAtk || 0;
-          allPlayers[player.name].totalMissDef += player.missDef || 0;
-          allPlayers[player.name].totalStars3 += player.stars3 || 0;
-          allPlayers[player.name].th = Math.max(
-            allPlayers[player.name].th,
-            player.th || 0
-          );
+          allPlayers[resolvedName].totalWars += player.wars || 0;
+          allPlayers[resolvedName].totalOffStars += player.offStars || 0;
+          allPlayers[resolvedName].totalDefStars += player.defStars || 0;
+          allPlayers[resolvedName].totalOffDest += player.offDest || 0;
+          allPlayers[resolvedName].totalDefDest += player.defDest || 0;
+          allPlayers[resolvedName].totalMissAtk += player.missAtk || 0;
+          allPlayers[resolvedName].totalMissDef += player.missDef || 0;
+          allPlayers[resolvedName].totalStars3 += player.stars3 || 0;
+          allPlayers[resolvedName].th = Math.max(allPlayers[resolvedName].th, player.th || 0);
         });
       });
     });
 
-    return Object.values(allPlayers)
-      .map((p) => ({
-        ...p,
-        netStars: p.totalOffStars - p.totalDefStars,
-        netDest: p.totalOffDest - p.totalDefDest,
-        threeRate: p.totalWars > 0 ? (p.totalStars3 / p.totalWars) * 100 : 0,
-        seasonsCount: p.seasons.length,
-      }))
-      .sort((a, b) => {
-        if (a.totalMissAtk !== b.totalMissAtk) return a.totalMissAtk - b.totalMissAtk;
-        if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-        return b.threeRate - a.threeRate;
-      });
+    return Object.values(allPlayers).map((p) => ({
+      ...p,
+      netStars: p.totalOffStars - p.totalDefStars,
+      netDest: p.totalOffDest - p.totalDefDest,
+      threeRate: p.totalWars > 0 ? (p.totalStars3 / p.totalWars) * 100 : 0,
+      seasonsCount: p.seasons.length,
+    })).sort((a, b) => {
+      if (a.totalMissAtk !== b.totalMissAtk) return a.totalMissAtk - b.totalMissAtk;
+      if (b.netStars !== a.netStars) return b.netStars - a.netStars;
+      return b.threeRate - a.threeRate;
+    });
   };
 
   const getPlayerEvolution = (playerName) => {
@@ -142,31 +144,27 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
       ? ["mainClan", "secondaryClan"]
       : [historicalClan === "main" ? "mainClan" : "secondaryClan"];
 
-    return filteredSeasons
-      .slice()
-      .reverse()
-      .map((season) => {
-        let player = null;
-        for (const clanKey of clanKeys) {
-          const clanData = season[clanKey];
-          if (clanData) {
-            const found = clanData.find((p) => p.name === playerName);
-            if (found) { player = found; break; }
-          }
+    return filteredSeasons.slice().reverse().map((season) => {
+      let player = null;
+      for (const clanKey of clanKeys) {
+        const clanData = season[clanKey];
+        if (clanData) {
+          const found = clanData.find((p) => (aliases[p.name] || p.name) === playerName);
+          if (found) { player = found; break; }
         }
-        if (!player) return null;
-        return {
-          season: season.name,
-          wars: player.wars || 0,
-          threeRate: player.threeRate || 0,
-          netStars: player.netStars || 0,
-          netDest: player.netDest || 0,
-          missAtk: player.missAtk || 0,
-          offStars: player.offStars || 0,
-          defStars: player.defStars || 0,
-        };
-      })
-      .filter(Boolean);
+      }
+      if (!player) return null;
+      return {
+        season: season.name,
+        wars: player.wars || 0,
+        threeRate: player.threeRate || 0,
+        netStars: player.netStars || 0,
+        netDest: player.netDest || 0,
+        missAtk: player.missAtk || 0,
+        offStars: player.offStars || 0,
+        defStars: player.defStars || 0,
+      };
+    }).filter(Boolean);
   };
 
   const getSortedData = (data) => {
@@ -181,25 +179,19 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
     return sorted;
   };
 
+  const handleSetActiveMembers = (clan) => {
+    const names = activeMembersInput
+      .split("\n")
+      .map(n => n.trim())
+      .filter(Boolean);
+    setActiveMembers(clan, names);
+    setActiveMembersInput("");
+    setShowActiveMembersInput(false);
+  };
+
   const historicalData = getHistoricalData();
   const sortedData = getSortedData(historicalData);
-
-  // Season by Season Overview data (combines clans if unified)
-  const getSeasonOverview = (season) => {
-    const clanKeys = historicalClan === "unified"
-      ? ["mainClan", "secondaryClan"]
-      : [historicalClan === "main" ? "mainClan" : "secondaryClan"];
-
-    const combined = clanKeys.flatMap(k => season[k] || []);
-    if (combined.length === 0) return null;
-
-    return {
-      players: combined.length,
-      avgThreeRate: combined.reduce((s, p) => s + p.threeRate, 0) / combined.length,
-      avgNetStars: combined.reduce((s, p) => s + p.netStars, 0) / combined.length,
-      totalMissAtk: combined.reduce((s, p) => s + p.missAtk, 0),
-    };
-  };
+  const allPlayerNames = getAllPlayers();
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto">
@@ -247,15 +239,20 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               onClick={() => setShowFilters(!showFilters)}
               className="w-full flex items-center justify-between p-5 font-bold text-purple-300 hover:text-white transition-colors"
             >
-              <span className="flex items-center gap-3 text-lg">
+              <span className="flex items-center gap-3 text-lg flex-wrap">
                 <Filter className="w-6 h-6 text-purple-400" />
                 Filters & Columns
                 <span className="text-sm font-normal bg-purple-500/40 text-purple-200 px-3 py-1 rounded-full">
                   {filteredSeasons.length} of {seasons.length} seasons
                 </span>
-                {excludedPlayers.length > 0 && (
-                  <span className="text-sm font-normal bg-red-500/40 text-red-200 px-3 py-1 rounded-full">
-                    {excludedPlayers.length} players hidden
+                {Object.keys(aliases).length > 0 && (
+                  <span className="text-sm font-normal bg-blue-500/40 text-blue-200 px-3 py-1 rounded-full">
+                    {Object.keys(aliases).length} merged
+                  </span>
+                )}
+                {showOnlyActive && (
+                  <span className="text-sm font-normal bg-green-500/40 text-green-200 px-3 py-1 rounded-full">
+                    Active only
                   </span>
                 )}
               </span>
@@ -263,9 +260,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
             </button>
 
             {showFilters && (
-              <div className="px-4 pb-4 space-y-4 border-t border-gray-700 pt-4">
+              <div className="px-4 pb-4 space-y-5 border-t border-gray-700 pt-4">
 
-                {/* Season Filter */}
+                {/* Season Range */}
                 <div>
                   <p className="text-sm font-semibold text-gray-300 mb-2">Season Range</p>
                   <div className="flex flex-wrap gap-2">
@@ -279,9 +276,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                         key={value}
                         onClick={() => setSeasonFilter(value)}
                         className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                          seasonFilter === value
-                            ? "bg-purple-500 text-white"
-                            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                          seasonFilter === value ? "bg-purple-500 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                         }`}
                       >
                         {label}
@@ -290,7 +285,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </div>
                 </div>
 
-                {/* Manual Season Selection */}
                 {seasonFilter === "manual" && (
                   <div>
                     <p className="text-sm font-semibold text-gray-300 mb-2">Select Seasons</p>
@@ -305,38 +299,154 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </div>
                 )}
 
-                {/* Player Exclusion */}
-                <div>
-                  <p className="text-sm font-semibold text-gray-300 mb-2">
-                    Exclude Players
-                    {excludedPlayers.length > 0 && (
-                      <span className="ml-2 text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full">
-                        {excludedPlayers.length} hidden
-                      </span>
-                    )}
-                  </p>
-                  {excludedPlayers.length > 0 && (
-                    <button onClick={() => setExcludedPlayers([])} className="mb-2 text-xs text-purple-400 hover:text-purple-300">
-                      ↺ Show all players
-                    </button>
-                  )}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                    {getAllPlayers().map((name) => (
-                      <label
-                        key={name}
-                        className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-colors ${
-                          excludedPlayers.includes(name)
-                            ? "bg-red-500/20 border border-red-500/50"
-                            : "bg-gray-900 hover:bg-gray-700"
-                        }`}
-                      >
-                        <input type="checkbox" checked={excludedPlayers.includes(name)} onChange={() => toggleExcludePlayer(name)} className="rounded" />
-                        <span className={excludedPlayers.includes(name) ? "text-red-300 line-through" : "text-gray-300"}>
-                          {name}
+                {/* Merge Players */}
+                <div className="border border-gray-700 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-gray-300">
+                      🔀 Merge Players (name changes)
+                      {Object.keys(aliases).length > 0 && (
+                        <span className="ml-2 text-xs bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full">
+                          {Object.keys(aliases).length} merged
                         </span>
-                      </label>
-                    ))}
+                      )}
+                    </p>
+                    <button onClick={() => setShowMergePanel(!showMergePanel)} className="text-xs text-purple-400 hover:text-purple-300">
+                      {showMergePanel ? "▼ Hide" : "▶ Show"}
+                    </button>
                   </div>
+
+                  {showMergePanel && (
+                    <div className="space-y-3">
+                      {Object.entries(aliases).map(([from, to]) => (
+                        <div key={from} className="flex items-center justify-between bg-blue-500/10 border border-blue-500/30 rounded p-2 text-sm">
+                          <span>
+                            <span className="text-red-300 line-through">{from}</span>
+                            <span className="text-gray-500 mx-2">→</span>
+                            <span className="text-green-300">{to}</span>
+                          </span>
+                          <button onClick={() => removeAlias(from)} className="text-red-400 hover:text-red-300 text-xs ml-2">
+                            ✕ Remove
+                          </button>
+                        </div>
+                      ))}
+
+                      <div className="bg-gray-900 rounded-lg p-3 space-y-2">
+                        <p className="text-xs text-gray-400">Merge old name → current name</p>
+                        <select
+                          value={mergeFrom}
+                          onChange={(e) => setMergeFrom(e.target.value)}
+                          className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white"
+                        >
+                          <option value="">Old name (to be merged)...</option>
+                          {allPlayerNames
+                            .filter(p => !Object.keys(aliases).includes(p) && !Object.values(aliases).includes(p))
+                            .map(name => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                        <select
+                          value={mergeTo}
+                          onChange={(e) => setMergeTo(e.target.value)}
+                          className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white"
+                        >
+                          <option value="">Current name (keep this)...</option>
+                          {allPlayerNames
+                            .filter(p => p !== mergeFrom && !Object.keys(aliases).includes(p))
+                            .map(name => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                        <button
+                          onClick={() => {
+                            if (!mergeFrom || !mergeTo || mergeFrom === mergeTo) return;
+                            addAlias(mergeFrom, mergeTo);
+                            setMergeFrom(""); setMergeTo("");
+                          }}
+                          disabled={!mergeFrom || !mergeTo || mergeFrom === mergeTo}
+                          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
+                        >
+                          Merge Players
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Active Members */}
+                <div className="border border-gray-700 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-gray-300">
+                      🟢 Active Members
+                      {(activeMembers.main.length > 0 || activeMembers.secondary.length > 0) && (
+                        <span className="ml-2 text-xs bg-green-500/30 text-green-300 px-2 py-0.5 rounded-full">
+                          {activeMembers.main.length + activeMembers.secondary.length} defined
+                        </span>
+                      )}
+                    </p>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <span className="text-gray-400 text-xs">Show active only</span>
+                      <input
+                        type="checkbox"
+                        checked={showOnlyActive}
+                        onChange={(e) => setShowOnlyActive(e.target.checked)}
+                        className="rounded"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => setShowActiveMembersInput(showActiveMembersInput === "main" ? false : "main")}
+                      className="flex-1 text-xs bg-purple-600/30 border border-purple-500/50 text-purple-300 py-2 rounded hover:bg-purple-600/50 transition-colors"
+                    >
+                      Update {clanNames?.main || "Main"} ({activeMembers.main.length})
+                    </button>
+                    <button
+                      onClick={() => setShowActiveMembersInput(showActiveMembersInput === "secondary" ? false : "secondary")}
+                      className="flex-1 text-xs bg-blue-600/30 border border-blue-500/50 text-blue-300 py-2 rounded hover:bg-blue-600/50 transition-colors"
+                    >
+                      Update {clanNames?.secondary || "Secondary"} ({activeMembers.secondary.length})
+                    </button>
+                  </div>
+
+                  {showActiveMembersInput && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-400">
+                        Paste one player name per line for <span className="text-white font-semibold">{showActiveMembersInput === "main" ? clanNames?.main : clanNames?.secondary}</span>:
+                      </p>
+                      <textarea
+                        value={activeMembersInput}
+                        onChange={(e) => setActiveMembersInput(e.target.value)}
+                        placeholder={"PlayerName1\nPlayerName2\nPlayerName3..."}
+                        className="w-full h-32 bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white font-mono"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSetActiveMembers(showActiveMembersInput)}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-sm transition-colors"
+                        >
+                          Save Members
+                        </button>
+                        <button
+                          onClick={() => { setActiveMembersInput(""); setShowActiveMembersInput(false); }}
+                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded text-sm transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show current active members */}
+                  {!showActiveMembersInput && (activeMembers.main.length > 0 || activeMembers.secondary.length > 0) && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1 max-h-32 overflow-y-auto">
+                      {getAllPlayers().map(name => {
+                        const active = isPlayerActive(name);
+                        return (
+                          <div key={name} className="text-xs p-1 rounded flex items-center gap-1">
+                            <span>{active ? "🟢" : "⚪"}</span>
+                            <span className={active ? "text-green-300" : "text-gray-500"}>{name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Column Visibility */}
@@ -355,6 +465,17 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     ))}
                   </div>
                 </div>
+
+                {/* Reset */}
+                <div className="border-t border-gray-700 pt-3">
+                  <button
+                    onClick={() => { if (window.confirm("Reset all merges and active members?")) resetAll(); }}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    ↺ Reset all settings
+                  </button>
+                </div>
+
               </div>
             )}
           </div>
@@ -388,6 +509,8 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </div>
                 ))}
               </div>
+
+              {/* Bar Chart */}
               <PlayerBarChart data={sortedData} />
 
               {/* Cumulative Rankings Table */}
@@ -426,11 +549,20 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     </thead>
                     <tbody>
                       {sortedData.map((p, i) => (
-                        <tr key={i} onClick={() => setSelectedPlayer(p)} className="border-t border-gray-700 hover:bg-gray-700/50 cursor-pointer">
+                        <tr
+                          key={i}
+                          onClick={() => setSelectedPlayer(p)}
+                          className={`border-t border-gray-700 hover:bg-gray-700/50 cursor-pointer ${
+                            p.isActive ? "bg-green-500/5" : ""
+                          }`}
+                        >
                           <td className="p-3">
                             <span className={`font-bold ${i < 3 ? "text-yellow-400" : "text-gray-400"}`}>#{i + 1}</span>
                           </td>
-                          <td className="p-3 font-semibold text-blue-400">{p.name}</td>
+                          <td className="p-3 font-semibold">
+                            <span className="text-blue-400">{p.name}</span>
+                            {p.isActive && <span className="ml-1 text-xs">🟢</span>}
+                          </td>
                           <td className="p-3">{p.th}</td>
                           {visibleCols.wars && <td className="p-3">{p.totalWars}</td>}
                           {visibleCols.missAtk && (
@@ -485,21 +617,27 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     </thead>
                     <tbody>
                       {filteredSeasons.map((season, i) => {
-                        const overview = getSeasonOverview(season);
-                        if (!overview) return null;
+                        const clanKeys = historicalClan === "unified"
+                          ? ["mainClan", "secondaryClan"]
+                          : [historicalClan === "main" ? "mainClan" : "secondaryClan"];
+                        const combined = clanKeys.flatMap(k => season[k] || []);
+                        if (combined.length === 0) return null;
+                        const avgThreeRate = combined.reduce((s, p) => s + p.threeRate, 0) / combined.length;
+                        const avgNetStars = combined.reduce((s, p) => s + p.netStars, 0) / combined.length;
+                        const totalMissAtk = combined.reduce((s, p) => s + p.missAtk, 0);
                         return (
                           <tr key={i} className="border-t border-gray-700 hover:bg-gray-700/30">
                             <td className="p-3 font-semibold text-purple-400">{season.name}</td>
-                            <td className="p-3">{overview.players}</td>
-                            <td className="p-3 text-yellow-400">{overview.avgThreeRate.toFixed(1)}%</td>
+                            <td className="p-3">{combined.length}</td>
+                            <td className="p-3 text-yellow-400">{avgThreeRate.toFixed(1)}%</td>
                             <td className="p-3">
-                              <span className={overview.avgNetStars >= 0 ? "text-green-400" : "text-red-400"}>
-                                {overview.avgNetStars >= 0 ? "+" : ""}{overview.avgNetStars.toFixed(1)}
+                              <span className={avgNetStars >= 0 ? "text-green-400" : "text-red-400"}>
+                                {avgNetStars >= 0 ? "+" : ""}{avgNetStars.toFixed(1)}
                               </span>
                             </td>
                             <td className="p-3">
-                              {overview.totalMissAtk > 0
-                                ? <span className="text-red-400 font-bold">{overview.totalMissAtk}</span>
+                              {totalMissAtk > 0
+                                ? <span className="text-red-400 font-bold">{totalMissAtk}</span>
                                 : <span className="text-green-400">✓ None</span>}
                             </td>
                           </tr>
@@ -522,7 +660,10 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               </button>
 
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
-                <h3 className="text-2xl font-bold text-white mb-1">{selectedPlayer.name}</h3>
+                <h3 className="text-2xl font-bold text-white mb-1">
+                  {selectedPlayer.name}
+                  {selectedPlayer.isActive && <span className="ml-2 text-base">🟢 Active</span>}
+                </h3>
                 <p className="text-gray-400 mb-6">TH{selectedPlayer.th} • {selectedPlayer.seasonsCount} seasons</p>
 
                 {/* Cumulative Stats */}
@@ -544,12 +685,13 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   ))}
                 </div>
 
+                {/* Line Chart */}
                 <PlayerLineChart
-                evolution={getPlayerEvolution(selectedPlayer.name)}
-                playerName={selectedPlayer.name}
-                  />
-                
-                {/* Season by Season Evolution */}
+                  evolution={getPlayerEvolution(selectedPlayer.name)}
+                  playerName={selectedPlayer.name}
+                />
+
+                {/* Season by Season Table */}
                 <h4 className="font-bold text-lg mb-4 text-yellow-400">Season by Season Evolution</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
