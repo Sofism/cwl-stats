@@ -34,10 +34,10 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   });
 
   const {
-  aliases, activeMembers,
-  addAlias, removeAlias,
-  setActiveMembers, resetAll,
-} = useHistoricalSettings();
+    aliases, activeMembers,
+    addAlias, removeAlias,
+    setActiveMembers, resetAll,
+  } = useHistoricalSettings();
 
   const getFilteredSeasons = () => {
     if (seasonFilter === "manual" && selectedSeasons.length > 0)
@@ -60,7 +60,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
     const clanKeys = historicalClan === "unified"
       ? ["mainClan", "secondaryClan"]
       : [historicalClan === "main" ? "mainClan" : "secondaryClan"];
-
     seasons.forEach(season => {
       clanKeys.forEach(clanKey => {
         const clanData = season[clanKey];
@@ -73,9 +72,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
     return [...players].sort();
   };
 
-  const isPlayerActive = (name) => {
-  return activeMembers.includes(name);
-};
+  const isPlayerActive = (name) => (activeMembers || []).includes(name);
 
   const getHistoricalData = () => {
     const allPlayers = {};
@@ -101,7 +98,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               totalOffDest: 0, totalDefDest: 0, totalMissAtk: 0,
               totalMissDef: 0, totalStars3: 0,
               isActive: isPlayerActive(resolvedName),
-              isInactive: inactivePlayers.includes(resolvedName),
             };
           }
 
@@ -177,14 +173,14 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   };
 
   const handleSetActiveMembers = () => {
-  const names = activeMembersInput
-    .split("\n")
-    .map(n => n.trim())
-    .filter(Boolean);
-  setActiveMembers(names);
-  setActiveMembersInput("");
-  setShowActiveMembersInput(false);
-};
+    const names = activeMembersInput
+      .split("\n")
+      .map(n => n.trim())
+      .filter(Boolean);
+    setActiveMembers(names);
+    setActiveMembersInput("");
+    setShowActiveMembersInput(false);
+  };
 
   const historicalData = getHistoricalData();
   const sortedData = getSortedData(historicalData);
@@ -326,7 +322,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                           </button>
                         </div>
                       ))}
-
                       <div className="bg-gray-900 rounded-lg p-3 space-y-2">
                         <p className="text-xs text-gray-400">Merge old name → current name</p>
                         <select
@@ -370,9 +365,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-gray-300">
                       🟢 Active Members
-                      {(activeMembers.main.length > 0 || activeMembers.secondary.length > 0) && (
+                      {(activeMembers || []).length > 0 && (
                         <span className="ml-2 text-xs bg-green-500/30 text-green-300 px-2 py-0.5 rounded-full">
-                          {activeMembers.main.length + activeMembers.secondary.length} defined
+                          {activeMembers.length} defined
                         </span>
                       )}
                     </p>
@@ -387,26 +382,16 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     </label>
                   </div>
 
-                  <div className="flex gap-2 mb-3">
-                   <button
+                  <button
                     onClick={() => setShowActiveMembersInput(!showActiveMembersInput)}
-                    className="w-full text-xs bg-green-600/30 border border-green-500/50 text-green-300 py-2 rounded hover:bg-green-600/50 transition-colors"
+                    className="w-full text-xs bg-green-600/30 border border-green-500/50 text-green-300 py-2 rounded hover:bg-green-600/50 transition-colors mb-3"
                   >
-                    Update Active Members ({activeMembers.length})
+                    Update Active Members ({(activeMembers || []).length})
                   </button>
-                    <button
-                      onClick={() => setShowActiveMembersInput(showActiveMembersInput === "secondary" ? false : "secondary")}
-                      className="flex-1 text-xs bg-blue-600/30 border border-blue-500/50 text-blue-300 py-2 rounded hover:bg-blue-600/50 transition-colors"
-                    >
-                      Update {clanNames?.secondary || "Secondary"} ({activeMembers.secondary.length})
-                    </button>
-                  </div>
 
                   {showActiveMembersInput && (
                     <div className="space-y-2">
-                      <p className="text-xs text-gray-400">
-                        Paste one player name per line for <span className="text-white font-semibold">{showActiveMembersInput === "main" ? clanNames?.main : clanNames?.secondary}</span>:
-                      </p>
+                      <p className="text-xs text-gray-400">Paste one player name per line:</p>
                       <textarea
                         value={activeMembersInput}
                         onChange={(e) => setActiveMembersInput(e.target.value)}
@@ -415,7 +400,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       />
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleSetActiveMembers()}
+                          onClick={handleSetActiveMembers}
                           className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded text-sm transition-colors"
                         >
                           Save Members
@@ -430,10 +415,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     </div>
                   )}
 
-                  {/* Show current active members */}
-                  {!showActiveMembersInput && (activeMembers.main.length > 0 || activeMembers.secondary.length > 0) && (
+                  {!showActiveMembersInput && (activeMembers || []).length > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-1 max-h-32 overflow-y-auto">
-                      {getAllPlayers().map(name => {
+                      {allPlayerNames.map(name => {
                         const active = isPlayerActive(name);
                         return (
                           <div key={name} className="text-xs p-1 rounded flex items-center gap-1">
@@ -472,7 +456,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     ↺ Reset all settings
                   </button>
                 </div>
-
               </div>
             )}
           </div>
@@ -507,7 +490,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                 ))}
               </div>
 
-              {/* Bar Chart */}
               <PlayerBarChart data={sortedData} />
 
               {/* Cumulative Rankings Table */}
@@ -549,9 +531,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                         <tr
                           key={i}
                           onClick={() => setSelectedPlayer(p)}
-                          className={`border-t border-gray-700 hover:bg-gray-700/50 cursor-pointer ${
-                            p.isActive ? "bg-green-500/5" : ""
-                          }`}
+                          className={`border-t border-gray-700 hover:bg-gray-700/50 cursor-pointer ${p.isActive ? "bg-green-500/5" : ""}`}
                         >
                           <td className="p-3">
                             <span className={`font-bold ${i < 3 ? "text-yellow-400" : "text-gray-400"}`}>#{i + 1}</span>
@@ -646,7 +626,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               </div>
             </>
           ) : (
-            /* Player Evolution View */
             <div>
               <button
                 onClick={() => setSelectedPlayer(null)}
@@ -663,7 +642,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                 </h3>
                 <p className="text-gray-400 mb-6">TH{selectedPlayer.th} • {selectedPlayer.seasonsCount} seasons</p>
 
-                {/* Cumulative Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {[
                     { label: "Stars Gained", value: selectedPlayer.totalOffStars, color: "text-green-400" },
@@ -682,13 +660,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   ))}
                 </div>
 
-                {/* Line Chart */}
                 <PlayerLineChart
                   evolution={getPlayerEvolution(selectedPlayer.name)}
                   playerName={selectedPlayer.name}
                 />
 
-                {/* Season by Season Table */}
                 <h4 className="font-bold text-lg mb-4 text-yellow-400">Season by Season Evolution</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
