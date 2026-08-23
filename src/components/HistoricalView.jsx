@@ -306,7 +306,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     <button onClick={() => setShowMergePanel(!showMergePanel)} className="text-xs text-purple-400 hover:text-purple-300">
                       {showMergePanel ? "▼ Hide" : "▶ Show"}
                     </button>
-                  </div>
+                </div>
 
                   {showMergePanel && (
                     <div className="space-y-3">
@@ -381,6 +381,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       />
                     </label>
                   </div>
+                </div>
+              </div>
+    
 
                  <div className="space-y-3">
   {/* Quick paste option */}
@@ -493,7 +496,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </button>
                 </div>
               </div>
-            )'}
+            )}
           </div>
 
           {filteredSeasons.length < 1 ? (
