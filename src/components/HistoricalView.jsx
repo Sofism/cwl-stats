@@ -465,7 +465,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
         </label>
       );
     })}
-  </div>
 </div>
                 {/* Column Visibility */}
                 <div>
