@@ -381,9 +381,6 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       />
                     </label>
                   </div>
-                </div>
-              </div>
-    
 
                  <div className="space-y-3">
   {/* Quick paste option */}
@@ -495,6 +492,8 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     ↺ Reset all settings
                   </button>
                 </div>
+              </div>
+              </div>
               </div>
             )}
           </div>
