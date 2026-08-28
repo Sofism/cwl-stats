@@ -5,7 +5,8 @@ import ColumnSelector from "./ColumnSelector";
 import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { createShareLink } from "../utils/shareUtils";
-import { BASE_BONUSES, DEFAULT_VISIBLE_COLS } from "../utils/constants";
+import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
+import { calculateBonusSlots } from "../utils/bonusCalculator";
 import HistoricalView from "./HistoricalView";
 import { Share2, Trash2, ArrowLeft, Trophy } from "lucide-react";
 
@@ -30,8 +31,8 @@ const Dashboard = ({
   const [showHistorical, setShowHistorical] = useState(false);
   const [leagueInfo, setLeagueInfo] = useState(
     currentSeason.leagueInfo || {
-      main: { league: "Crystal I", position: 1, warsWon: 0 },
-      secondary: { league: "Crystal I", position: 1, warsWon: 0 },
+      main: { league: "Crystal I", position: 1, warsWon: 0, warSize: 15 },
+      secondary: { league: "Crystal I", position: 1, warsWon: 0, warSize: 15 },
     }
   );
 
@@ -127,21 +128,23 @@ const Dashboard = ({
 
   const getBonusCount = () => {
     const info = activePage === "main" ? leagueInfo.main : leagueInfo.secondary;
-    const baseBonus = BASE_BONUSES[info.league] || 0;
-    const warsWon = info.warsWon || 0;
-    return baseBonus + warsWon;
+    return calculateBonusSlots({
+      league: info.league,
+      warsWon: info.warsWon,
+      warSize: info.warSize || 15,
+    });
   };
 
   const data = getData();
   const bonusCount = getBonusCount();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gradient-to-br from-void-950 via-signal-900 to-void-950 text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Back Button */}
         <button
           onClick={onBackToSelector}
-          className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="mb-4 flex items-center gap-2 text-ink-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Seasons
@@ -149,7 +152,7 @@ const Dashboard = ({
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-display font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent">
               CWL Performance
             </h1>
             <select
@@ -160,7 +163,7 @@ const Dashboard = ({
                 if (s && s.leagueInfo) setLeagueInfo(s.leagueInfo);
                 if (s && s.bonuses) setSelectedBonuses(s.bonuses);
               }}
-              className="mt-2 bg-gray-800 border border-gray-700 rounded px-3 py-1 text-sm text-white"
+              className="mt-2 bg-void-800 border border-void-700 rounded px-3 py-1 text-sm text-white"
             >
               {seasons.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -172,7 +175,7 @@ const Dashboard = ({
           <div className="flex gap-2">
   <button
     onClick={() => setShowHistorical(true)}
-    className="px-4 py-2 bg-purple-700 border border-purple-500 rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-2"
+    className="px-4 py-2 bg-signal-700 border border-signal-500 rounded-lg hover:bg-signal-600 transition-colors flex items-center gap-2"
   >
     <Trophy className="w-4 h-4" />
     Historical
@@ -186,7 +189,7 @@ const Dashboard = ({
   </button>
   <button
     onClick={onOpenImport}
-    className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
+    className="px-4 py-2 bg-void-800 border border-void-700 rounded-lg hover:bg-void-700 transition-colors"
   >
     Update
   </button>
@@ -208,7 +211,7 @@ const Dashboard = ({
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="w-full mb-4 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+          className="w-full mb-4 bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
         >
           <option value="default">Default Sort</option>
           <option value="netStars">Net Stars</option>

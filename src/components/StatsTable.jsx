@@ -15,10 +15,10 @@ const StatsTable = memo(({
 
   return (
     <>
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+      <div className="bg-steel-500/10 border border-steel-500/30 rounded-lg p-4 mb-4">
         <div className="flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-200">
+          <AlertCircle className="w-5 h-5 text-steel-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-steel-200">
             <p className="font-semibold mb-1">Missed Defences Correction:</p>
             <p>
               When a player misses a defence, the system adds{" "}
@@ -52,11 +52,11 @@ const StatsTable = memo(({
         </div>
       )}
 
-      <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+      <div className="bg-void-800 border border-void-700 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-900 sticky top-0 z-10">
-              <tr className="text-left text-xs text-gray-400">
+            <thead className="bg-void-950 sticky top-0 z-10">
+              <tr className="text-left text-xs text-ink-400">
                 <th className="p-3">Rank</th>
                 {bonusCount > 0 && <th className="p-3">Bonus</th>}
                 <th className="p-3">Player</th>
@@ -78,7 +78,7 @@ const StatsTable = memo(({
             <tbody>
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={20} className="p-8 text-center text-gray-400">
+                  <td colSpan={20} className="p-8 text-center text-ink-400">
                     No data
                   </td>
                 </tr>
@@ -89,14 +89,14 @@ const StatsTable = memo(({
                   return (
                     <tr
                       key={i}
-                      className={`border-t border-gray-700 hover:bg-gray-700/30 ${
+                      className={`border-t border-void-700 hover:bg-void-700/30 ${
                         hasBonus ? "bg-yellow-500/10" : ""
                       }`}
                     >
                       <td className="p-3">
                         <span
                           className={`font-bold ${
-                            i < 3 ? "text-yellow-400" : "text-gray-400"
+                            i < 3 ? "text-yellow-400" : "text-ink-400"
                           }`}
                         >
                           #{i + 1}
@@ -111,7 +111,7 @@ const StatsTable = memo(({
                             checked={hasBonus}
                             onChange={() => onToggleBonus(p.name)}
                             disabled={!hasBonus && !canAddMore}
-                            className="w-4 h-4 rounded border-gray-600 text-yellow-500 focus:ring-yellow-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-4 h-4 rounded border-void-600 text-yellow-500 focus:ring-yellow-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </td>
                       )}
@@ -182,7 +182,7 @@ const StatsTable = memo(({
                         </td>
                       )}
                       {visibleCols.threeRate && (
-                        <td className="p-3 text-purple-400 font-semibold">
+                        <td className="p-3 text-signal-400 font-semibold">
                           {p.threeRate.toFixed(1)}%
                         </td>
                       )}
@@ -205,7 +205,7 @@ const StatsTable = memo(({
                       <td className="p-3">
                         <button
                           onClick={() => onPlayerSelect(p)}
-                          className="text-blue-400 hover:text-blue-300 text-xs"
+                          className="text-steel-400 hover:text-steel-300 text-xs"
                         >
                           View
                         </button>

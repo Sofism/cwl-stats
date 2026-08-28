@@ -1,15 +1,16 @@
 import React from "react";
 import { Trophy } from "lucide-react";
-import { LEAGUES, BASE_BONUSES } from "../utils/constants";
+import { LEAGUES } from "../utils/constants";
+import { calculateBonusSlots } from "../utils/bonusCalculator";
+
+const WAR_SIZES = [5, 15, 30];
 
 const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
-  const calculateTotalBonuses = (league, warsWon) => {
-    const baseBonus = BASE_BONUSES[league] || 0;
-    return baseBonus + (warsWon || 0);
-  };
+  const calculateTotalBonuses = (league, warsWon, warSize) =>
+    calculateBonusSlots({ league, warsWon, warSize: warSize || 15 });
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6">
+    <div className="bg-void-800 border border-void-700 rounded-lg p-4 mb-6">
       <h3 className="font-bold mb-3 flex items-center gap-2">
         <Trophy className="w-5 h-5 text-yellow-400" />
         League Settings
@@ -17,23 +18,27 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
       <div className="space-y-4">
         {["main", "secondary"].map((clan) => {
           const info = leagueInfo[clan];
-          const totalBonuses = calculateTotalBonuses(info.league, info.warsWon || 0);
+          const totalBonuses = calculateTotalBonuses(
+            info.league,
+            info.warsWon || 0,
+            info.warSize || 15
+          );
           const clanName = clan === "main" ? clanNames.main : clanNames.secondary;
           
           return (
-            <div key={clan} className="bg-gray-900 p-4 rounded-lg">
+            <div key={clan} className="bg-void-950 p-4 rounded-lg">
               <h4
                 className={
                   clan === "main"
-                    ? "font-semibold mb-3 text-purple-400"
-                    : "font-semibold mb-3 text-blue-400"
+                    ? "font-semibold mb-3 text-signal-400"
+                    : "font-semibold mb-3 text-steel-400"
                 }
               >
                 {clanName}
               </h4>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">League</label>
+                  <label className="block text-sm text-ink-400 mb-2">League</label>
                   <select
                     value={info.league}
                     onChange={(e) => {
@@ -43,7 +48,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                       };
                       updateLeague(newLeagueInfo);
                     }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
                   >
                     {LEAGUES.map((l) => (
                       <option key={l} value={l}>
@@ -53,7 +58,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="block text-sm text-ink-400 mb-2">
                     Final Position (1-8)
                   </label>
                   <input
@@ -71,11 +76,11 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                       };
                       updateLeague(newLeagueInfo);
                     }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="block text-sm text-ink-400 mb-2">
                     Wars Won (0-7)
                   </label>
                   <input
@@ -93,8 +98,33 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                       };
                       updateLeague(newLeagueInfo);
                     }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm text-ink-400 mb-2">
+                    War Size
+                  </label>
+                  <select
+                    value={info.warSize || 15}
+                    onChange={(e) => {
+                      const newLeagueInfo = {
+                        ...leagueInfo,
+                        [clan]: {
+                          ...info,
+                          warSize: parseInt(e.target.value),
+                        },
+                      };
+                      updateLeague(newLeagueInfo);
+                    }}
+                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
+                  >
+                    {WAR_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size}v{size}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               
@@ -102,7 +132,11 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
               <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm">
                 <p className="text-yellow-400">
                   <span className="font-bold">{totalBonuses} bonuses available</span>
-                  {' '}= {BASE_BONUSES[info.league] || 0} base + {info.warsWon || 0} wars won
+                  {' '}({info.warSize || 15}v{info.warSize || 15}, {info.warsWon || 0} wars won)
+                </p>
+                <p className="text-ink-500 text-xs mt-1">
+                  El valor de cada medalla también se ajusta según la posición final (
+                  {info.position || 1}º).
                 </p>
               </div>
             </div>

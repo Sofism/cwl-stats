@@ -23,7 +23,7 @@ const StatsCards = ({ data, leagueInfo, activePage, bonusCount }) => {
           : 0
       }%`,
       label: "Avg 3★ Rate",
-      colorClass: "text-purple-400",
+      colorClass: "text-signal-400",
     },
     {
       icon: Award,
@@ -38,11 +38,11 @@ const StatsCards = ({ data, leagueInfo, activePage, bonusCount }) => {
       {cards.map(({ icon: Icon, value, label, colorClass }, i) => (
         <div
           key={i}
-          className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-center"
+          className="bg-void-800 border border-void-700 rounded-lg p-6 text-center"
         >
           <Icon className={`w-8 h-8 ${colorClass} mx-auto mb-3`} />
           <p className={`text-3xl font-bold mb-1 ${colorClass}`}>{value}</p>
-          <p className="text-sm text-gray-400">{label}</p>
+          <p className="text-sm text-ink-400">{label}</p>
         </div>
       ))}
     </div>

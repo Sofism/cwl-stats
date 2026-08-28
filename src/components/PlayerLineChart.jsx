@@ -16,9 +16,9 @@ const CustomTooltip = ({ active, payload, label, metric }) => {
   if (!active || !payload?.length) return null;
   const m = METRICS.find(m => m.key === metric);
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm">
-      <p className="font-bold text-purple-400 mb-1">{label}</p>
-      <p className="text-gray-300">{m?.label}: <span className="text-white font-semibold">{m?.format(payload[0].value)}</span></p>
+    <div className="bg-void-950 border border-void-700 rounded-lg p-3 text-sm">
+      <p className="font-bold text-signal-400 mb-1">{label}</p>
+      <p className="text-ink-200">{m?.label}: <span className="text-white font-semibold">{m?.format(payload[0].value)}</span></p>
     </div>
   );
 };
@@ -29,7 +29,7 @@ const PlayerLineChart = ({ evolution, playerName }) => {
 
   if (!evolution || evolution.length < 2) {
     return (
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-center text-gray-400 mb-6">
+      <div className="bg-void-800 border border-void-700 rounded-lg p-6 text-center text-ink-400 mb-6">
         Need at least 2 seasons to show evolution chart.
       </div>
     );
@@ -44,16 +44,16 @@ const PlayerLineChart = ({ evolution, playerName }) => {
   const avg = chartData.reduce((s, d) => s + d[metric], 0) / chartData.length;
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6">
+    <div className="bg-void-800 border border-void-700 rounded-lg p-4 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h3 className="font-bold text-lg">Evolution Chart</h3>
-          <p className="text-sm text-gray-400">{playerName}</p>
+          <p className="text-sm text-ink-400">{playerName}</p>
         </div>
         <select
           value={metric}
           onChange={(e) => setMetric(e.target.value)}
-          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white"
+          className="bg-void-700 border border-void-600 rounded px-3 py-2 text-sm text-white"
         >
           {METRICS.map(m => (
             <option key={m.key} value={m.key}>{m.label}</option>
