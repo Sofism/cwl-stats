@@ -120,6 +120,7 @@ const CWLStatsTracker = () => {
         onBackToSelector={handleBackToSelector}
         getSeasonsByYear={getSeasonsByYear}
         clanNames={clanNames}
+        updateClanNames={updateClanNames}
       />
     );
   }

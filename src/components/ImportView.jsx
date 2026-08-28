@@ -29,12 +29,14 @@ const ImportView = ({
   onBackToSelector,
   getSeasonsByYear,
   clanNames,
+  updateClanNames,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showManualImport, setShowManualImport] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessages, setSyncMessages] = useState([]);
+  const [syncProgress, setSyncProgress] = useState(null);
   const [leagueInfo, setLeagueInfo] = useState(
     currentSeason?.leagueInfo || {
       main: { league: "Crystal I", position: 1, warsWon: 0, warSize: 15 },
@@ -75,8 +77,8 @@ const ImportView = ({
     const [mainResult, secondaryResult] = results;
 
     const messages = [];
-    if (!mainResult) messages.push(`⚠ ${clanNames.main}: no está en CWL ahora mismo (o el tag/proxy falló).`);
-    if (!secondaryResult) messages.push(`⚠ ${clanNames.secondary}: no está en CWL ahora mismo (o el tag/proxy falló).`);
+    if (!mainResult) messages.push(`⚠ ${clanNames.main}: not currently in CWL (or the clan tag / proxy failed).`);
+    if (!secondaryResult) messages.push(`⚠ ${clanNames.secondary}: not currently in CWL (or the clan tag / proxy failed).`);
 
     const newLeagueInfo = {
       main: mainResult
@@ -107,8 +109,33 @@ const ImportView = ({
     setLeagueInfo(newLeagueInfo);
     updateSeasonData(updated);
 
-    if (mainResult) messages.push(`✓ ${clanNames.main}: ${mainResult.players.length} jugadores sincronizados.`);
-    if (secondaryResult) messages.push(`✓ ${clanNames.secondary}: ${secondaryResult.players.length} jugadores sincronizados.`);
+    if (mainResult) messages.push(`✓ ${mainResult.clanName || clanNames.main}: ${mainResult.players.length} players synced.`);
+    if (secondaryResult) messages.push(`✓ ${secondaryResult.clanName || clanNames.secondary}: ${secondaryResult.players.length} players synced.`);
+
+    // Nombres reales de los clanes desde la API: si difieren de los
+    // guardados a mano, se actualizan solos.
+    const apiNames = {};
+    if (mainResult?.clanName) apiNames.main = mainResult.clanName;
+    if (secondaryResult?.clanName) apiNames.secondary = secondaryResult.clanName;
+    if (Object.keys(apiNames).length && updateClanNames) {
+      updateClanNames({ ...clanNames, ...apiNames });
+    }
+
+    // Progreso de la liga: rondas jugadas / totales, para saber si lo que
+    // se ve es definitivo o todavia esta en marcha.
+    const ref = mainResult || secondaryResult;
+    setSyncProgress(
+      ref
+        ? {
+            season: ref.season,
+            roundsCompleted: ref.roundsCompleted,
+            roundsTotal: ref.roundsTotal,
+            live: ref.liveRounds > 0,
+            isComplete: ref.isComplete,
+          }
+        : null
+    );
+
     setSyncMessages(messages);
     setSyncing(false);
   };
@@ -191,13 +218,13 @@ const ImportView = ({
 
               {!hasTags ? (
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-sm text-yellow-200">
-                  Añade los tags de ambos clanes en Ajustes (⚙) para poder sincronizar automáticamente.
+                  Add both clan tags in Settings (⚙) to enable automatic syncing.
                 </div>
               ) : (
                 <>
                   <p className="text-ink-400 text-sm mb-4">
-                    Trae la liga, la posición, las guerras ganadas y las stats de cada jugador
-                    directamente de la API del juego. Ya no hace falta pegar nada a mano.
+                    Pulls league, final position, wars won and every player’s stats straight from
+                    the game API. No more pasting data by hand.
                   </p>
                   <button
                     onClick={handleSync}
@@ -205,8 +232,25 @@ const ImportView = ({
                     className="w-full bg-signal-500 hover:bg-signal-600 disabled:opacity-50 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     <RefreshCw className={`w-5 h-5 ${syncing ? "animate-spin" : ""}`} />
-                    {syncing ? "Sincronizando..." : "Sincronizar ahora"}
+                    {syncing ? "Syncing..." : "Sync now"}
                   </button>
+                  {syncProgress && (
+                    <div className="mt-3 p-3 rounded border border-signal-500/30 bg-signal-500/10 text-sm">
+                      <p className="text-signal-200 font-semibold">
+                        {syncProgress.season ? `Season ${syncProgress.season} — ` : ""}
+                        Round {syncProgress.roundsCompleted}
+                        {syncProgress.roundsTotal ? ` of ${syncProgress.roundsTotal}` : ""}
+                        {syncProgress.live ? " · next round in progress" : ""}
+                      </p>
+                      <p className="text-ink-400 text-xs mt-1">
+                        {syncProgress.live
+                          ? "The ongoing round is not counted yet. Sync again once it ends."
+                          : !syncProgress.isComplete
+                          ? "Sync again after each war to keep stats up to date."
+                          : "All rounds finished — these stats are final."}
+                      </p>
+                    </div>
+                  )}
                   {syncMessages.length > 0 && (
                     <div className="mt-3 space-y-1 text-sm">
                       {syncMessages.map((m, i) => (
@@ -223,7 +267,7 @@ const ImportView = ({
                   className="text-xs text-ink-500 hover:text-ink-200 flex items-center gap-1"
                 >
                   <ChevronDown className={`w-3 h-3 transition-transform ${showManualImport ? "rotate-180" : ""}`} />
-                  {showManualImport ? "Ocultar" : "Pegar datos manualmente (respaldo)"}
+                  {showManualImport ? "Hide manual import" : "Paste data manually (fallback)"}
                 </button>
               </div>
             </div>

@@ -7,54 +7,55 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Tema "War Room Ledger": grafito cálido + acento señal (teal) para el
-      // clan principal + acento acero (azul grisáceo) para el secundario.
+      // Tema "HUD": grises fríos casi negros + azul técnico para el clan
+      // principal + periwinkle/índigo para el secundario.
       tailwind.config = {
         theme: {
           extend: {
             colors: {
               void: {
-                950: "#0e0f12",
-                900: "#15171b",
-                800: "#1c1f25",
-                700: "#262a31",
-                600: "#333941",
-                500: "#454c56",
+                950: "#080b12",
+                900: "#0d111a",
+                800: "#141a25",
+                700: "#1e2634",
+                600: "#2b3547",
+                500: "#3d4a61",
               },
               ink: {
-                50: "#f2f0e9",
-                200: "#d6d3c9",
-                400: "#9a9890",
-                500: "#7d7b74",
-                600: "#5f5d58",
+                50: "#eef2f8",
+                200: "#cbd5e6",
+                400: "#8b97ad",
+                500: "#6f7b91",
+                600: "#556073",
               },
               signal: {
-                200: "#b7e4ea",
-                300: "#8ad2db",
-                400: "#55b9c6",
-                500: "#3a9aa8",
-                600: "#2c7d8a",
-                700: "#22626c",
-                900: "#122b30",
+                200: "#bcdcff",
+                300: "#7dbcff",
+                400: "#3d99ff",
+                500: "#1a7fff",
+                600: "#0d63d6",
+                700: "#0b4ea8",
+                900: "#0a2547",
               },
               steel: {
-                200: "#cdd6e0",
-                300: "#a7b6c8",
-                400: "#7891aa",
-                500: "#5c7591",
-                600: "#495d74",
-                700: "#37475a",
+                200: "#d3d5f7",
+                300: "#aab0ef",
+                400: "#7b83e0",
+                500: "#5f68cf",
+                600: "#4a51a8",
+                700: "#383e80",
               },
             },
             fontFamily: {
-              display: ['"Barlow Condensed"', "sans-serif"],
+              display: ['"Orbitron"', "sans-serif"],
+              heading: ['"Rajdhani"', "sans-serif"],
               sans: ['"Inter"', "sans-serif"],
-              mono: ['"IBM Plex Mono"', "monospace"],
+              mono: ['"JetBrains Mono"', "monospace"],
             },
           },
         },

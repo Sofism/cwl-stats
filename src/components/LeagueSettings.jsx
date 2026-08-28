@@ -5,6 +5,13 @@ import { calculateBonusSlots } from "../utils/bonusCalculator";
 
 const WAR_SIZES = [5, 15, 30];
 
+// 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 4 -> "4th"... (las posiciones de CWL
+// van de 1 a 8, así que no hace falta cubrir los casos raros de 11-13).
+const ordinal = (n) => {
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n] || "th";
+  return `${n}${suffix}`;
+};
+
 const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
   const calculateTotalBonuses = (league, warsWon, warSize) =>
     calculateBonusSlots({ league, warsWon, warSize: warSize || 15 });
@@ -135,8 +142,8 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                   {' '}({info.warSize || 15}v{info.warSize || 15}, {info.warsWon || 0} wars won)
                 </p>
                 <p className="text-ink-500 text-xs mt-1">
-                  El valor de cada medalla también se ajusta según la posición final (
-                  {info.position || 1}º).
+                  Each medal's value also scales with the final position (
+                  {ordinal(info.position || 1)}).
                 </p>
               </div>
             </div>

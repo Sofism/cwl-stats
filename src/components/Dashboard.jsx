@@ -8,7 +8,10 @@ import { createShareLink } from "../utils/shareUtils";
 import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
 import HistoricalView from "./HistoricalView";
-import { Share2, Trash2, ArrowLeft, Trophy } from "lucide-react";
+import CurrentWarView from "./CurrentWarView";
+import { Share2, Trash2, ArrowLeft, Trophy,
+  Swords,
+} from "lucide-react";
 
 const Dashboard = ({
   seasons,
@@ -29,6 +32,7 @@ const Dashboard = ({
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [shareStatus, setShareStatus] = useState("");
   const [showHistorical, setShowHistorical] = useState(false);
+  const [showCurrentWar, setShowCurrentWar] = useState(false);
   const [leagueInfo, setLeagueInfo] = useState(
     currentSeason.leagueInfo || {
       main: { league: "Crystal I", position: 1, warsWon: 0, warSize: 15 },
@@ -174,6 +178,13 @@ const Dashboard = ({
           </div>
           <div className="flex gap-2">
   <button
+    onClick={() => setShowCurrentWar(true)}
+    className="px-4 py-2 bg-void-700 border border-signal-500/40 rounded-lg hover:bg-void-600 transition-colors flex items-center gap-2"
+  >
+    <Swords className="w-4 h-4 text-signal-400" />
+    Current War
+  </button>
+  <button
     onClick={() => setShowHistorical(true)}
     className="px-4 py-2 bg-signal-700 border border-signal-500 rounded-lg hover:bg-signal-600 transition-colors flex items-center gap-2"
   >
@@ -262,6 +273,13 @@ const Dashboard = ({
           />
         )}
       </div>
+      {showCurrentWar && (
+        <CurrentWarView
+          clanTag={activePage === "main" ? clanNames.mainTag : clanNames.secondaryTag}
+          clanName={activePage === "main" ? clanNames.main : clanNames.secondary}
+          onClose={() => setShowCurrentWar(false)}
+        />
+      )}
       {showHistorical && (
   <HistoricalView
     seasons={seasons}

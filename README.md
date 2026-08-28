@@ -157,7 +157,11 @@ npm run build  # build de producción
 ## Tema visual
 
 Paleta y tipografía personalizadas vía config de Tailwind (CDN) en
-`public/index.html`: grafito cálido (`void`), texto tipo pergamino
-(`ink`), acento teal para el clan principal (`signal`) y acento azul
-grisáceo para el secundario (`steel`). Tipografía: Barlow Condensed
-(títulos) + Inter (cuerpo) + IBM Plex Mono (datos numéricos).
+`public/index.html`: grises fríos casi negros (`void`), texto neutro claro
+(`ink`), azul técnico para el clan principal (`signal`) y periwinkle para
+el secundario (`steel`). Tipografía: Orbitron (títulos, estilo HUD) +
+Rajdhani (cabeceras y tablas) + Inter (cuerpo) + JetBrains Mono (datos).
+
+Como todos los componentes usan los nombres `void-*`, `ink-*`, `signal-*`
+y `steel-*`, cambiar la paleta entera es solo editar los valores hex de
+ese bloque en `public/index.html` — no hay que tocar ningún componente.

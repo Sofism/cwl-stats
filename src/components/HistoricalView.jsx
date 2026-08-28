@@ -15,6 +15,8 @@ const COLUMNS = [
   { key: "seasonsCount", label: "Seasons" },
 ];
 
+const normalizeName = (name) => (name || "").trim().toLowerCase();
+
 const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const [historicalClan, setHistoricalClan] = useState("unified");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
@@ -31,7 +33,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   // Miembros activos: en vez de una lista pegada a mano, se comprueba en
   // vivo contra la API quién sigue en el clan ahora mismo (por tag).
   const [activeTags, setActiveTags] = useState(new Set());
+  // Respaldo para temporadas antiguas importadas a mano, que no tienen tag:
+  // se cruza por nombre normalizado (minusculas, sin espacios sobrantes).
+  const [activeNames, setActiveNames] = useState(new Set());
   const [loadingActive, setLoadingActive] = useState(false);
+  const [activeError, setActiveError] = useState(null);
 
   useEffect(() => {
     const mainTag = clanNames?.mainTag;
@@ -39,15 +45,19 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
     if (!mainTag && !secondaryTag) return;
 
     setLoadingActive(true);
+    setActiveError(null);
     Promise.all([
       mainTag ? getClanMembers(mainTag) : Promise.resolve([]),
       secondaryTag ? getClanMembers(secondaryTag) : Promise.resolve([]),
     ])
       .then(([mainMembers, secondaryMembers]) => {
-        const tags = new Set(
-          [...mainMembers, ...secondaryMembers].map((m) => m.tag)
-        );
-        setActiveTags(tags);
+        const roster = [...mainMembers, ...secondaryMembers];
+        setActiveTags(new Set(roster.map((m) => m.tag)));
+        setActiveNames(new Set(roster.map((m) => normalizeName(m.name))));
+      })
+      .catch((err) => {
+        console.error("Error fetching clan members:", err);
+        setActiveError(err.message || "Could not reach the clan API.");
       })
       .finally(() => setLoadingActive(false));
   }, [clanNames?.mainTag, clanNames?.secondaryTag]);
@@ -75,7 +85,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   // temporadas cambió de nombre en su día, aparecerá como dos entradas.
   const playerKey = (p) => p.tag || p.name;
 
-  const isPlayerActive = (p) => (p.tag ? activeTags.has(p.tag) : false);
+  // Un jugador cuenta como activo si su tag esta en el roster actual. Para
+  // registros antiguos sin tag se cae al nombre, que es menos fiable (dos
+  // jugadores pueden llamarse igual) pero es lo unico disponible.
+  const isPlayerActive = (p) =>
+    p.tag ? activeTags.has(p.tag) : activeNames.has(normalizeName(p.name));
 
   const getHistoricalData = () => {
     const allPlayers = {};
@@ -289,7 +303,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     <p className="text-sm font-semibold text-ink-200">
                       🟢 Active Members
                       <span className="ml-2 text-xs bg-green-500/30 text-green-300 px-2 py-0.5 rounded-full">
-                        {loadingActive ? "checking..." : `${activeTags.size} en el clan ahora mismo`}
+                        {loadingActive ? "checking..." : `${activeTags.size} in clan now`}
                       </span>
                     </p>
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -302,9 +316,14 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       />
                     </label>
                   </div>
-                  {activeTags.size === 0 && !loadingActive && (
+                  {activeError && (
+                    <p className="text-xs text-red-300 mt-2">
+                      ⚠ {activeError}
+                    </p>
+                  )}
+                  {!activeError && activeTags.size === 0 && !loadingActive && (
                     <p className="text-xs text-ink-500 mt-2">
-                      Añade los tags de los clanes en Ajustes para poder marcar quién sigue activo.
+                      Add your clan tags in Settings to track who is still in the clan.
                     </p>
                   )}
                 </div>
