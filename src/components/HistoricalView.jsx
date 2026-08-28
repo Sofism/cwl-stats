@@ -755,4 +755,4 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   );
 };
 
-export default HistoricalView; 
+export default HistoricalView;
