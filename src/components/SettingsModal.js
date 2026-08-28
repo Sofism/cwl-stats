@@ -4,6 +4,8 @@ import { Settings, X } from "lucide-react";
 const SettingsModal = ({ clanNames, onSave, onClose }) => {
   const [mainName, setMainName] = useState(clanNames.main);
   const [secondaryName, setSecondaryName] = useState(clanNames.secondary);
+  const [mainTag, setMainTag] = useState(clanNames.mainTag || "");
+  const [secondaryTag, setSecondaryTag] = useState(clanNames.secondaryTag || "");
 
   const handleSave = () => {
     if (!mainName.trim() || !secondaryName.trim()) {
@@ -12,7 +14,9 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
     }
     onSave({
       main: mainName.trim(),
-      secondary: secondaryName.trim()
+      secondary: secondaryName.trim(),
+      mainTag: mainTag.trim(),
+      secondaryTag: secondaryTag.trim(),
     });
     onClose();
   };
@@ -25,16 +29,13 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
             <Settings className="w-6 h-6 text-purple-400" />
             Clan Settings
           </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
 
         <p className="text-sm text-gray-400 mb-4">
-          Customize your clan names. These will appear throughout the app.
+          Customize your clan names and tags. Tags are used to sync members automatically.
         </p>
 
         <div className="space-y-4 mb-6">
@@ -50,6 +51,18 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               className="w-full bg-gray-900 border border-gray-700 rounded px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Main Clan Tag
+            </label>
+            <input
+              type="text"
+              value={mainTag}
+              onChange={(e) => setMainTag(e.target.value)}
+              placeholder="e.g., #PQQGGJYQ"
+              className="w-full bg-gray-900 border border-gray-700 rounded px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
+            />
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -60,6 +73,18 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               value={secondaryName}
               onChange={(e) => setSecondaryName(e.target.value)}
               placeholder="e.g., DD"
+              className="w-full bg-gray-900 border border-gray-700 rounded px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Secondary Clan Tag
+            </label>
+            <input
+              type="text"
+              value={secondaryTag}
+              onChange={(e) => setSecondaryTag(e.target.value)}
+              placeholder="e.g., #2LL8C8Y2Q"
               className="w-full bg-gray-900 border border-gray-700 rounded px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
             />
           </div>
