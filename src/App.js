@@ -83,8 +83,8 @@ const CWLStatsTracker = () => {
 
   if (loading || clanNamesLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
-        <Loader className="animate-spin w-16 h-16 text-purple-500" />
+      <div className="min-h-screen bg-gradient-to-br from-void-950 via-signal-900 to-void-950 flex items-center justify-center">
+        <Loader className="animate-spin w-16 h-16 text-signal-500" />
       </div>
     );
   }

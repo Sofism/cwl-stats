@@ -123,13 +123,13 @@ const SeasonSelector = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gradient-to-br from-void-950 via-signal-900 to-void-950 text-white p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header with Settings Button */}
         <div className="flex justify-end mb-4">
           <button
             onClick={() => setShowSettings(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-void-800 hover:bg-void-700 border border-void-700 rounded-lg transition-colors"
           >
             <Settings className="w-5 h-5" />
             Settings
@@ -139,10 +139,10 @@ const SeasonSelector = ({
         {/* Header */}
         <div className="text-center mb-8">
           <Trophy className="w-20 h-20 text-yellow-400 mx-auto mb-4" />
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-5xl font-display font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent mb-2">
             CWL Stats Tracker
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-ink-400 text-lg">
             {isSharedMode 
               ? "Viewing shared seasons (read-only)" 
               : "Select or create a season to get started"}
@@ -151,8 +151,8 @@ const SeasonSelector = ({
 
         {/* Shared Mode Banner */}
         {isSharedMode && (
-          <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500 rounded-lg text-center">
-            <p className="text-blue-300 font-semibold">
+          <div className="mb-6 p-4 bg-steel-500/20 border border-steel-500 rounded-lg text-center">
+            <p className="text-steel-300 font-semibold">
               👀 You're viewing shared data. Changes won't be saved.
             </p>
           </div>
@@ -162,7 +162,7 @@ const SeasonSelector = ({
        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
   <button
     onClick={() => setShowModal(true)}
-    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+    className="flex-1 bg-signal-500 hover:bg-signal-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
   >
     <Plus className="w-6 h-6" />
     <span className="text-lg">Create New Season</span>
@@ -171,7 +171,7 @@ const SeasonSelector = ({
   {seasons.length > 1 && (
     <button
       onClick={() => setShowHistorical(true)}
-      className="bg-purple-700 hover:bg-purple-600 border border-purple-500 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+      className="bg-signal-700 hover:bg-signal-600 border border-signal-500 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
     >
       <Trophy className="w-6 h-6" />
       <span className="text-lg">Historical</span>
@@ -198,26 +198,26 @@ const SeasonSelector = ({
 
         {/* Seasons List */}
         {seasons.length === 0 ? (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
-            <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-400 mb-2">No Seasons Yet</h2>
-            <p className="text-gray-500">Create your first season to start tracking CWL stats</p>
+          <div className="bg-void-800 border border-void-700 rounded-lg p-12 text-center">
+            <Calendar className="w-16 h-16 text-ink-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-ink-400 mb-2">No Seasons Yet</h2>
+            <p className="text-ink-500">Create your first season to start tracking CWL stats</p>
           </div>
         ) : (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-void-800 border border-void-700 rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-purple-400" />
+                <Calendar className="w-6 h-6 text-signal-400" />
                 Your Seasons
               </h2>
-              <span className="text-sm text-gray-400">
+              <span className="text-sm text-ink-400">
                 {seasons.length} season{seasons.length !== 1 ? 's' : ''} total
               </span>
             </div>
 
             {!isSharedMode && (
-              <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <p className="text-sm text-blue-300">
+              <div className="mb-4 p-3 bg-steel-500/10 border border-steel-500/30 rounded-lg">
+                <p className="text-sm text-steel-300">
                   💡 Tip: Drag seasons with <GripVertical className="w-4 h-4 inline" /> to reorder them
                 </p>
               </div>
@@ -229,20 +229,20 @@ const SeasonSelector = ({
                 const yearSeasons = seasonsByYear[year];
                 
                 return (
-                  <div key={year} className="border border-gray-700 rounded-lg overflow-hidden">
+                  <div key={year} className="border border-void-700 rounded-lg overflow-hidden">
                     {/* Year Header */}
                     <button
                       onClick={() => toggleYear(year)}
-                      className="w-full flex items-center justify-between bg-gray-900 p-4 hover:bg-gray-800 transition-colors"
+                      className="w-full flex items-center justify-between bg-void-950 p-4 hover:bg-void-800 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         {isExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-purple-400" />
+                          <ChevronDown className="w-5 h-5 text-signal-400" />
                         ) : (
-                          <ChevronRight className="w-5 h-5 text-purple-400" />
+                          <ChevronRight className="w-5 h-5 text-signal-400" />
                         )}
-                        <span className="font-bold text-xl text-purple-400">{year}</span>
-                        <span className="text-sm text-gray-400 bg-gray-800 px-3 py-1 rounded-full">
+                        <span className="font-bold text-xl text-signal-400">{year}</span>
+                        <span className="text-sm text-ink-400 bg-void-800 px-3 py-1 rounded-full">
                           {yearSeasons.length} season{yearSeasons.length !== 1 ? 's' : ''}
                         </span>
                       </div>
@@ -250,7 +250,7 @@ const SeasonSelector = ({
                     
                     {/* Seasons in this year */}
                     {isExpanded && (
-                      <div className="bg-gray-900/50 divide-y divide-gray-700">
+                      <div className="bg-void-950/50 divide-y divide-void-700">
                         {yearSeasons.map(season => {
                           const totalPlayers = season.mainClan.length + season.secondaryClan.length;
                           const hasData = totalPlayers > 0;
@@ -263,12 +263,12 @@ const SeasonSelector = ({
                               onDragStart={(e) => handleDragStart(e, year, season.id)}
                               onDragOver={handleDragOver}
                               onDrop={(e) => handleDrop(e, year, season.id)}
-                              className={`flex items-center justify-between p-4 hover:bg-gray-800/50 transition-colors ${
+                              className={`flex items-center justify-between p-4 hover:bg-void-800/50 transition-colors ${
                                 isDragging ? 'opacity-50' : ''
                               } ${!isSharedMode ? 'cursor-move' : ''}`}
                             >
                               {!isSharedMode && (
-                                <div className="mr-2 text-gray-500 hover:text-gray-300">
+                                <div className="mr-2 text-ink-500 hover:text-ink-200">
                                   <GripVertical className="w-5 h-5" />
                                 </div>
                               )}
@@ -277,7 +277,7 @@ const SeasonSelector = ({
   <h3 className="font-semibold text-base text-white mb-1 truncate">
     {season.name}
   </h3>
-  <div className="flex flex-col gap-1 text-sm text-gray-400">
+  <div className="flex flex-col gap-1 text-sm text-ink-400">
     <span>{totalPlayers} player{totalPlayers !== 1 ? 's' : ''}</span>
     {hasData && (
       <span className="truncate">
