@@ -4,12 +4,11 @@ import StatsTable from "./StatsTable";
 import ColumnSelector from "./ColumnSelector";
 import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
-import { createShareLink } from "../utils/shareUtils";
 import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
 import HistoricalView from "./HistoricalView";
 import CurrentWarView from "./CurrentWarView";
-import { Share2, Trash2, ArrowLeft, Trophy,
+import { Trash2, ArrowLeft, Trophy,
   Swords,
 } from "lucide-react";
 
@@ -30,7 +29,6 @@ const Dashboard = ({
   const [visibleCols, setVisibleCols] = useState(DEFAULT_VISIBLE_COLS);
   const [showColSelector, setShowColSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [shareStatus, setShareStatus] = useState("");
   const [showHistorical, setShowHistorical] = useState(false);
   const [showCurrentWar, setShowCurrentWar] = useState(false);
   const [leagueInfo, setLeagueInfo] = useState(
@@ -46,37 +44,7 @@ const Dashboard = ({
     secondary: currentSeason.bonuses?.secondary || []
   });
 
-  const handleShare = async () => {
-    if (!currentSeason) return;
-    
-    try {
-      setShareStatus('⏳ Generating link...');
-      const shareUrl = await createShareLink(seasons, currentSeason.id);
-      
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: `CWL Stats - ${currentSeason.name}`,
-            text: `My CWL stats for ${currentSeason.name}`,
-            url: shareUrl
-          });
-          setShareStatus('✓ Shared successfully!');
-          setTimeout(() => setShareStatus(''), 3000);
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-      
-      await navigator.clipboard.writeText(shareUrl);
-      setShareStatus('✓ Link copied to clipboard!');
-      setTimeout(() => setShareStatus(''), 5000);
-    } catch (error) {
-      console.error('Share error:', error);
-      setShareStatus('✗ Error sharing');
-      setTimeout(() => setShareStatus(''), 3000);
-    }
-  };
+
 
   const handleToggleBonus = (playerName) => {
     const currentBonuses = selectedBonuses[activePage];
@@ -191,13 +159,7 @@ const Dashboard = ({
     <Trophy className="w-4 h-4" />
     Historical
   </button>
-  <button
-    onClick={handleShare}
-    className="px-4 py-2 bg-gradient-to-b from-steel-500 to-steel-700 hover:from-steel-400 hover:to-steel-600 border border-steel-400/30 rounded-lg flex items-center gap-2 transition-all"
-  >
-    <Share2 className="w-4 h-4" />
-    Share
-  </button>
+
   <button
     onClick={onOpenImport}
     className="px-4 py-2 bg-void-800 border border-void-700 rounded-lg hover:bg-void-700 transition-colors"
@@ -213,9 +175,9 @@ const Dashboard = ({
 </div>
         </div>
 
-        {(saveStatus || shareStatus) && (
+        {saveStatus && (
           <div className="mb-4 p-3 rounded-lg bg-green-500/20 border border-green-500 text-green-300">
-            {shareStatus || saveStatus}
+            {saveStatus}
           </div>
         )}
 

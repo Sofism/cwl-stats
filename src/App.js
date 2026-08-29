@@ -1,11 +1,10 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { Loader } from "lucide-react";
 import SeasonSelector from "./components/SeasonSelector";
 import ImportView from "./components/ImportView";
 import Dashboard from "./components/Dashboard";
 import { useSeasons } from "./hooks/useSeasons";
 import { useClanNames } from "./hooks/useClanNames";
-import { loadSharedData } from "./utils/shareUtils";
 
 const PlayerModal = lazy(() => import("./components/PlayerModal"));
 
@@ -22,7 +21,6 @@ const CWLStatsTracker = () => {
     saveStatus,
     loading,
     getSeasonsByYear,
-    loadSharedSeasons,
     isSharedMode,
   } = useSeasons();
 
@@ -35,34 +33,6 @@ const CWLStatsTracker = () => {
   const [view, setView] = useState("selector");
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shareId = params.get("share");
-    const sharedData = params.get("data");
-
-    if (shareId || sharedData) {
-      loadSharedData(shareId, sharedData, (data) => {
-        if (data.seasons) {
-          loadSharedSeasons(data.seasons);
-          const activeSeason = data.seasons.find(s => s.id === data.currentSeasonId) || data.seasons[0];
-          setCurrentSeason(activeSeason);
-          const hasData = (activeSeason.mainClan?.length > 0) || (activeSeason.secondaryClan?.length > 0);
-          setView(hasData ? "dashboard" : "selector");
-        } else if (data.season) {
-          loadSharedSeasons([data.season]);
-          setCurrentSeason(data.season);
-          const hasData = (data.season.mainClan?.length > 0) || (data.season.secondaryClan?.length > 0);
-          setView(hasData ? "dashboard" : "selector");
-        }
-        window.history.replaceState({}, '', window.location.pathname);
-      });
-      return;
-    }
-
-    if (!currentSeason && seasons.length > 0) {
-      setView("selector");
-    }
-  }, [currentSeason, seasons, setCurrentSeason, loadSharedSeasons]);
 
   const handleSelectSeason = (season) => {
     setCurrentSeason(season);
