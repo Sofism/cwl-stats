@@ -1,4 +1,7 @@
-const PROXY_URL = process.env.REACT_APP_COC_PROXY_URL;
+// Se quitan las barras finales: si la variable de entorno acaba en "/",
+// la URL resultante seria ".../api/coc" con doble barra y Express
+// devolveria un 404 que parece de la API pero es del propio proxy.
+const PROXY_URL = (process.env.REACT_APP_COC_PROXY_URL || "").replace(/\/+$/, "");
 const PROXY_SECRET = process.env.REACT_APP_COC_PROXY_SECRET;
 
 /**
@@ -26,9 +29,19 @@ const proxyFetch = (endpointPath) => {
 };
 
 export const getClanMembers = async (clanTag) => {
-  const encodedTag = encodeURIComponent(normalizeTag(clanTag));
-  const response = await proxyFetch(`clans/${encodedTag}/members`);
+  const tag = normalizeTag(clanTag);
+  const response = await proxyFetch(`clans/${encodeURIComponent(tag)}/members`);
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(
+        `Clan ${tag} not found (404). Check the tag in Settings, and that the proxy URL has no trailing slash.`
+      );
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        `Access denied (${response.status}). Check the proxy secret, the CoC API token, and that Render's IP is whitelisted.`
+      );
+    }
     throw new Error(`Clan members request failed (${response.status})`);
   }
   const data = await response.json();

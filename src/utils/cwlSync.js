@@ -3,6 +3,7 @@ import {
   getClanMembers,
   getCurrentWarLeagueGroup,
   getClanWarLeagueWar,
+  normalizeTag,
 } from "./cocApi";
 
 /**
@@ -51,9 +52,13 @@ const didWeWin = (ourSide, theirSide) => {
  * encontrado / 404).
  */
 export const syncCwlData = async (clanTag, clanLabel) => {
+  // La API devuelve los tags SIEMPRE en mayusculas y con "#". Hay que
+  // comparar contra la version normalizada o ninguna guerra coincidiria.
+  const tag = normalizeTag(clanTag);
+
   const [clanInfo, group] = await Promise.all([
-    getClanInfo(clanTag),
-    getCurrentWarLeagueGroup(clanTag),
+    getClanInfo(tag),
+    getCurrentWarLeagueGroup(tag),
   ]);
 
   if (!group || !group.rounds) {
@@ -73,8 +78,8 @@ export const syncCwlData = async (clanTag, clanLabel) => {
   // grupo de 8 clanes ese día, no solo el nuestro).
   const ourWars = wars
     .map((war) => {
-      const isHome = war.clan?.tag === clanTag;
-      const isAway = war.opponent?.tag === clanTag;
+      const isHome = war.clan?.tag === tag;
+      const isAway = war.opponent?.tag === tag;
       if (!isHome && !isAway) return null;
       return {
         raw: war,
@@ -209,7 +214,7 @@ export const syncCwlData = async (clanTag, clanLabel) => {
   });
 
   // Posición final dentro del grupo (provisional si aún quedan guerras).
-  const position = calculateGroupPosition(group, wars, clanTag);
+  const position = calculateGroupPosition(group, wars, tag);
 
   return {
     players,
@@ -274,7 +279,8 @@ const calculateGroupPosition = (group, wars, clanTag) => {
  * abierta en este momento (p. ej. entre rondas).
  */
 export const getCurrentCwlWar = async (clanTag) => {
-  const group = await getCurrentWarLeagueGroup(clanTag);
+  const tag = normalizeTag(clanTag);
+  const group = await getCurrentWarLeagueGroup(tag);
   if (!group || !group.rounds) return null;
 
   const warTags = group.rounds
@@ -287,8 +293,8 @@ export const getCurrentCwlWar = async (clanTag) => {
 
   const ours = wars
     .map((war) => {
-      const isHome = war.clan?.tag === clanTag;
-      const isAway = war.opponent?.tag === clanTag;
+      const isHome = war.clan?.tag === tag;
+      const isAway = war.opponent?.tag === tag;
       if (!isHome && !isAway) return null;
       return {
         raw: war,

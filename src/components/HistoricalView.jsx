@@ -24,7 +24,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const [seasonFilter, setSeasonFilter] = useState("all");
   const [selectedSeasons, setSelectedSeasons] = useState([]);
   const [sortByHistorical, setSortByHistorical] = useState("default");
-  const [showOnlyActive, setShowOnlyActive] = useState(false);
+  // Por defecto se muestran solo los miembros actuales del clan: es la
+  // vista util el 90% del tiempo. Ver a todos es la excepcion.
+  const [showOnlyActive, setShowOnlyActive] = useState(true);
   const [visibleCols, setVisibleCols] = useState({
     wars: true, missAtk: true, netStars: true, netDest: false,
     threeRate: true, offStars: false, defStars: false, seasonsCount: true,
@@ -32,10 +34,10 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
 
   // Miembros activos: en vez de una lista pegada a mano, se comprueba en
   // vivo contra la API quién sigue en el clan ahora mismo (por tag).
-  const [activeTags, setActiveTags] = useState(new Set());
-  // Respaldo para temporadas antiguas importadas a mano, que no tienen tag:
-  // se cruza por nombre normalizado (minusculas, sin espacios sobrantes).
-  const [activeNames, setActiveNames] = useState(new Set());
+  // Rosters separados por clan: el recuento total de los dos juntos puede
+  // pasar de 50 (el maximo de UN clan), que despista. Ademas asi el filtro
+  // de clan de esta vista puede aplicarse tambien a "quien esta activo".
+  const [rosters, setRosters] = useState({ main: [], secondary: [] });
   const [loadingActive, setLoadingActive] = useState(false);
   const [activeError, setActiveError] = useState(null);
 
@@ -51,9 +53,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
       secondaryTag ? getClanMembers(secondaryTag) : Promise.resolve([]),
     ])
       .then(([mainMembers, secondaryMembers]) => {
-        const roster = [...mainMembers, ...secondaryMembers];
-        setActiveTags(new Set(roster.map((m) => m.tag)));
-        setActiveNames(new Set(roster.map((m) => normalizeName(m.name))));
+        setRosters({ main: mainMembers, secondary: secondaryMembers });
       })
       .catch((err) => {
         console.error("Error fetching clan members:", err);
@@ -85,11 +85,28 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   // temporadas cambió de nombre en su día, aparecerá como dos entradas.
   const playerKey = (p) => p.tag || p.name;
 
+  // El roster relevante depende del filtro de clan de esta vista.
+  const relevantRoster =
+    historicalClan === "main"
+      ? rosters.main
+      : historicalClan === "secondary"
+      ? rosters.secondary
+      : [...rosters.main, ...rosters.secondary];
+
+  const activeTags = new Set(relevantRoster.map((m) => m.tag));
+  const activeNames = new Set(relevantRoster.map((m) => normalizeName(m.name)));
+
   // Un jugador cuenta como activo si su tag esta en el roster actual. Para
   // registros antiguos sin tag se cae al nombre, que es menos fiable (dos
   // jugadores pueden llamarse igual) pero es lo unico disponible.
   const isPlayerActive = (p) =>
     p.tag ? activeTags.has(p.tag) : activeNames.has(normalizeName(p.name));
+
+  // Si el roster todavia no ha cargado (o no hay tags configurados, o fallo
+  // la API) el filtro de activos se ignora. Sin esto la tabla apareceria
+  // vacia y pareceria que se han perdido los datos.
+  const rosterReady = relevantRoster.length > 0;
+  const activeFilterOn = showOnlyActive && rosterReady;
 
   const getHistoricalData = () => {
     const allPlayers = {};
@@ -105,7 +122,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
         clanData.forEach((player) => {
           const key = playerKey(player);
           const active = isPlayerActive(player);
-          if (showOnlyActive && !active) return;
+          if (activeFilterOn && !active) return;
 
           if (!allPlayers[key]) {
             allPlayers[key] = {
@@ -236,6 +253,32 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
             ))}
           </div>
 
+          {/* Toggle principal: activos vs todos */}
+          <div className="mb-6 flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => setShowOnlyActive(!showOnlyActive)}
+              disabled={!rosterReady}
+              className={`flex-1 min-w-[240px] py-4 px-5 rounded-lg font-semibold text-base border-2 transition-colors flex items-center justify-center gap-3 ${
+                activeFilterOn
+                  ? "bg-green-500/20 border-green-500 text-green-300 hover:bg-green-500/30"
+                  : "bg-void-800 border-void-600 text-ink-200 hover:bg-void-700"
+              } ${!rosterReady ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <span className="text-xl">{activeFilterOn ? "🟢" : "👥"}</span>
+              {activeFilterOn ? "Current members only" : "All players (including former)"}
+              <span className="text-sm font-normal bg-void-950/60 px-3 py-1 rounded-full">
+                {sortedData.length}
+              </span>
+            </button>
+            {!rosterReady && (
+              <p className="text-xs text-ink-500 basis-full">
+                {loadingActive
+                  ? "Checking who is currently in the clan…"
+                  : "Showing everyone — add clan tags in Settings to filter by current members."}
+              </p>
+            )}
+          </div>
+
           {/* Filters Panel */}
           <div className="bg-signal-900/40 border-2 border-signal-500 rounded-lg mb-6">
             <button
@@ -303,18 +346,18 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     <p className="text-sm font-semibold text-ink-200">
                       🟢 Active Members
                       <span className="ml-2 text-xs bg-green-500/30 text-green-300 px-2 py-0.5 rounded-full">
-                        {loadingActive ? "checking..." : `${activeTags.size} in clan now`}
+                        {loadingActive
+                          ? "checking..."
+                          : historicalClan === "unified"
+                          ? `${rosters.main.length} + ${rosters.secondary.length} across both clans`
+                          : `${activeTags.size} in ${
+                              historicalClan === "main"
+                                ? clanNames?.main || "Main"
+                                : clanNames?.secondary || "Secondary"
+                            }`}
                       </span>
                     </p>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <span className="text-ink-400 text-xs">Show active only</span>
-                      <input
-                        type="checkbox"
-                        checked={showOnlyActive}
-                        onChange={(e) => setShowOnlyActive(e.target.checked)}
-                        className="rounded"
-                      />
-                    </label>
+
                   </div>
                   {activeError && (
                     <p className="text-xs text-red-300 mt-2">
