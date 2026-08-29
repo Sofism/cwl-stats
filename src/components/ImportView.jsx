@@ -165,7 +165,7 @@ const ImportView = ({
         
         <div className="text-center mb-8">
           <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-          <h1 className="text-4xl font-display font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent">
             CWL Stats Tracker
           </h1>
         </div>

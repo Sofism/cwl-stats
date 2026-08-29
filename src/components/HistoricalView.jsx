@@ -48,16 +48,22 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
 
     setLoadingActive(true);
     setActiveError(null);
-    Promise.all([
+    // allSettled y no all: si UN clan falla (tag mal escrito, por ejemplo)
+    // el otro se sigue cargando. Con Promise.all un solo fallo dejaba los
+    // dos rosters vacios y el filtro de activos se desactivaba entero.
+    Promise.allSettled([
       mainTag ? getClanMembers(mainTag) : Promise.resolve([]),
       secondaryTag ? getClanMembers(secondaryTag) : Promise.resolve([]),
     ])
-      .then(([mainMembers, secondaryMembers]) => {
-        setRosters({ main: mainMembers, secondary: secondaryMembers });
-      })
-      .catch((err) => {
-        console.error("Error fetching clan members:", err);
-        setActiveError(err.message || "Could not reach the clan API.");
+      .then(([mainRes, secondaryRes]) => {
+        setRosters({
+          main: mainRes.status === "fulfilled" ? mainRes.value : [],
+          secondary: secondaryRes.status === "fulfilled" ? secondaryRes.value : [],
+        });
+        const failures = [];
+        if (mainRes.status === "rejected") failures.push(`Main: ${mainRes.reason?.message}`);
+        if (secondaryRes.status === "rejected") failures.push(`Secondary: ${secondaryRes.reason?.message}`);
+        setActiveError(failures.length ? failures.join(" · ") : null);
       })
       .finally(() => setLoadingActive(false));
   }, [clanNames?.mainTag, clanNames?.secondaryTag]);

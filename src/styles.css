@@ -5,10 +5,11 @@ body {
 
 /* Titulares principales: Orbitron (marcado, estilo HUD de videojuego).
    Se usa espaciado extra porque a tamaños grandes gana mucho. */
+/* El titulo usa la misma familia que las cabeceras de Historical Stats. */
 h1,
 .font-display {
-  font-family: "Orbitron", sans-serif;
-  letter-spacing: 0.04em;
+  font-family: "Rajdhani", sans-serif;
+  letter-spacing: 0.02em;
 }
 
 /* Subtítulos y cabeceras: Rajdhani, mismo aire gaming pero mucho más

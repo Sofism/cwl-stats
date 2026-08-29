@@ -139,7 +139,7 @@ const SeasonSelector = ({
         {/* Header */}
         <div className="text-center mb-8">
           <Trophy className="w-20 h-20 text-yellow-400 mx-auto mb-4" />
-          <h1 className="text-5xl font-display font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent mb-2">
+          <h1 className="text-5xl font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent mb-2">
             CWL Stats Tracker
           </h1>
           <p className="text-ink-400 text-lg">

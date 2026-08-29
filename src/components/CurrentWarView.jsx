@@ -78,7 +78,7 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
     <div className="fixed inset-0 bg-void-950/95 z-50 overflow-y-auto p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-display font-bold flex items-center gap-2 text-white">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
             <Swords className="w-6 h-6 text-signal-400" />
             Current War
           </h2>
