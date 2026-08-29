@@ -13,8 +13,30 @@ const PROXY_SECRET = process.env.REACT_APP_COC_PROXY_SECRET;
  */
 export const normalizeTag = (tag) => {
   if (!tag) return "";
-  const clean = tag.trim().toUpperCase().replace(/^#/, "").replace(/O/g, "0");
-  return `#${clean}`;
+  const cleaned = tag
+    .trim()
+    .toUpperCase()
+    .replace(/^#/, "")
+    // Se quita cualquier signo de puntuacion o espacio pegado al copiar
+    // (puntos, comas, guiones, espacios intermedios...).
+    .replace(/[^A-Z0-9]/g, "")
+    // Los tags de Clash of Clans nunca llevan la letra O: siempre es cero.
+    .replace(/O/g, "0");
+  return `#${cleaned}`;
+};
+
+// Alfabeto real de los tags de Clash of Clans. Cualquier otro caracter es
+// un error de transcripcion (la I y el 1 se confunden con la L, etc.).
+const VALID_TAG_CHARS = /^[0289PYLQGRJCUV]+$/;
+
+export const describeTagProblem = (tag) => {
+  const normalized = normalizeTag(tag).slice(1);
+  if (!normalized) return "empty";
+  if (!VALID_TAG_CHARS.test(normalized)) {
+    const bad = [...new Set(normalized.split("").filter((c) => !"0289PYLQGRJCUV".includes(c)))];
+    return `invalid character(s): ${bad.join(", ")}`;
+  }
+  return null;
 };
 
 const proxyFetch = (endpointPath) => {
@@ -33,8 +55,11 @@ export const getClanMembers = async (clanTag) => {
   const response = await proxyFetch(`clans/${encodeURIComponent(tag)}/members`);
   if (!response.ok) {
     if (response.status === 404) {
+      const problem = describeTagProblem(clanTag);
       throw new Error(
-        `Clan ${tag} not found (404). Check the tag in Settings, and that the proxy URL has no trailing slash.`
+        problem
+          ? `Clan tag ${tag} looks wrong (${problem}). Valid tag characters are 0 2 8 9 P Y L Q G R J C U V.`
+          : `Clan ${tag} not found (404). Double-check the tag in Settings.`
       );
     }
     if (response.status === 401 || response.status === 403) {

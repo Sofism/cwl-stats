@@ -229,7 +229,7 @@ const ImportView = ({
                   <button
                     onClick={handleSync}
                     disabled={syncing}
-                    className="w-full bg-signal-500 hover:bg-signal-600 disabled:opacity-50 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-b from-signal-500 to-signal-700 hover:from-signal-400 hover:to-signal-600 border border-signal-400/40 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-signal-900/30 flex items-center justify-center gap-2"
                   >
                     <RefreshCw className={`w-5 h-5 ${syncing ? "animate-spin" : ""}`} />
                     {syncing ? "Syncing..." : "Sync now"}
@@ -322,7 +322,7 @@ const ImportView = ({
             {(currentSeason.mainClan.length > 0 || currentSeason.secondaryClan.length > 0) && (
               <button
                 onClick={onClose}
-                className="w-full bg-signal-500 hover:bg-signal-600 text-white font-bold py-4 rounded-lg transition-colors"
+                className="w-full bg-gradient-to-b from-signal-500 to-signal-700 hover:from-signal-400 hover:to-signal-600 border border-signal-400/40 text-white font-semibold py-4 rounded-lg transition-all shadow-lg shadow-signal-900/30"
               >
                 View Dashboard →
               </button>

@@ -162,7 +162,7 @@ const SeasonSelector = ({
        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
   <button
     onClick={() => setShowModal(true)}
-    className="flex-1 bg-signal-500 hover:bg-signal-600 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+    className="flex-1 bg-gradient-to-b from-signal-500 to-signal-700 hover:from-signal-400 hover:to-signal-600 border border-signal-400/40 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-all shadow-lg shadow-signal-900/40"
   >
     <Plus className="w-6 h-6" />
     <span className="text-lg">Create New Season</span>
@@ -171,7 +171,7 @@ const SeasonSelector = ({
   {seasons.length > 1 && (
     <button
       onClick={() => setShowHistorical(true)}
-      className="bg-signal-700 hover:bg-signal-600 border border-signal-500 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+      className="bg-gradient-to-b from-void-700 to-void-800 hover:from-void-600 hover:to-void-700 border border-signal-500/40 text-signal-200 font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-all shadow-lg"
     >
       <Trophy className="w-6 h-6" />
       <span className="text-lg">Historical</span>
@@ -181,7 +181,7 @@ const SeasonSelector = ({
   {seasons.length > 0 && (
     <button
       onClick={handleShareAll}
-      className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-lg"
+      className="bg-gradient-to-b from-steel-500 to-steel-700 hover:from-steel-400 hover:to-steel-600 border border-steel-400/40 text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-all shadow-lg shadow-void-950/40"
     >
       <Share2 className="w-6 h-6" />
       <span className="text-lg">Share All</span>
@@ -290,7 +290,7 @@ const SeasonSelector = ({
 <div className="flex items-center gap-2 flex-shrink-0">
   <button
     onClick={() => onSelectSeason(season)}
-    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm"
+    className="bg-gradient-to-b from-steel-500 to-steel-700 hover:from-steel-400 hover:to-steel-600 border border-steel-400/30 text-white font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-all text-sm"
   >
     <Play className="w-4 h-4" />
     Open

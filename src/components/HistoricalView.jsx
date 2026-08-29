@@ -85,13 +85,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   // temporadas cambió de nombre en su día, aparecerá como dos entradas.
   const playerKey = (p) => p.tag || p.name;
 
-  // El roster relevante depende del filtro de clan de esta vista.
-  const relevantRoster =
-    historicalClan === "main"
-      ? rosters.main
-      : historicalClan === "secondary"
-      ? rosters.secondary
-      : [...rosters.main, ...rosters.secondary];
+  // "Activo" = sigue en CUALQUIERA de los dos clanes, sin importar que
+  // pestana de clan se este mirando. Los jugadores se mueven entre el
+  // principal y el secundario, asi que filtrar por el roster de un solo
+  // clan ocultaria a gente que sigue en la comunidad.
+  const relevantRoster = [...rosters.main, ...rosters.secondary];
 
   const activeTags = new Set(relevantRoster.map((m) => m.tag));
   const activeNames = new Set(relevantRoster.map((m) => normalizeName(m.name)));
@@ -348,13 +346,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       <span className="ml-2 text-xs bg-green-500/30 text-green-300 px-2 py-0.5 rounded-full">
                         {loadingActive
                           ? "checking..."
-                          : historicalClan === "unified"
-                          ? `${rosters.main.length} + ${rosters.secondary.length} across both clans`
-                          : `${activeTags.size} in ${
-                              historicalClan === "main"
-                                ? clanNames?.main || "Main"
-                                : clanNames?.secondary || "Secondary"
-                            }`}
+                          : `${rosters.main.length} + ${rosters.secondary.length} across both clans`}
                       </span>
                     </p>
 
