@@ -15,15 +15,15 @@ const StatsTable = memo(({
 
   return (
     <>
-      <div className="bg-steel-500/10 border border-steel-500/30 rounded-lg p-4 mb-4">
+      <div className="bg-surface-800 border border-line-strong rounded-md p-4 mb-4">
         <div className="flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 text-steel-400 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-steel-200">
+          <AlertCircle className="w-5 h-5 text-txt-low flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-txt-mid">
             <p className="font-semibold mb-1">Missed Defences Correction:</p>
             <p>
               When a player misses a defence, the system adds{" "}
-              <span className="font-bold">+2 stars</span> and{" "}
-              <span className="font-bold">+85%</span> to defensive stats for
+              <span className="font-semibold">+2 stars</span> and{" "}
+              <span className="font-semibold">+85%</span> to defensive stats for
               fair ranking.
             </p>
           </div>
@@ -32,19 +32,19 @@ const StatsTable = memo(({
 
       {/* Bonus Counter */}
       {bonusCount > 0 && (
-        <div className={`mb-4 p-4 rounded-lg border ${
+        <div className={`mb-4 p-4 rounded-md border ${
           bonusesUsed === bonusCount 
-            ? "bg-green-500/10 border-green-500" 
+            ? "bg-ok-900/40 border-ok-400/40" 
             : bonusesUsed > bonusCount
-            ? "bg-red-500/10 border-red-500"
-            : "bg-yellow-500/10 border-yellow-500"
+            ? "bg-bad-900/40 border-bad-400/40"
+            : "bg-amber-900/40 border-amber-400/40"
         }`}>
           <div className="flex items-center justify-between">
             <span className="font-semibold">
               Bonuses Awarded: {bonusesUsed} / {bonusCount}
             </span>
             {bonusesUsed > bonusCount && (
-              <span className="text-sm text-red-400">
+              <span className="text-sm text-bad-400">
                 ⚠️ Too many bonuses selected!
               </span>
             )}
@@ -52,15 +52,16 @@ const StatsTable = memo(({
         </div>
       )}
 
-      <div className="bg-void-800 border border-void-700 rounded-lg overflow-hidden">
+      <div className="border border-line rounded-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-void-950 sticky top-0 z-10">
-              <tr className="text-left text-xs text-ink-400">
+            <thead className="bg-surface-950 sticky top-0 z-10">
+              <tr className="text-left text-xs text-txt-low">
                 <th className="p-3">Rank</th>
                 {bonusCount > 0 && <th className="p-3">Bonus</th>}
                 <th className="p-3">Player</th>
                 {visibleCols.th && <th className="p-3">TH</th>}
+                {visibleCols.wars && <th className="p-3">Wars</th>}
                 {visibleCols.missAtk && <th className="p-3">Miss Atk</th>}
                 {activePage === "secondary" && visibleCols.missDef && (
                   <th className="p-3">Miss Def</th>
@@ -78,7 +79,7 @@ const StatsTable = memo(({
             <tbody>
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={20} className="p-8 text-center text-ink-400">
+                  <td colSpan={20} className="p-8 text-center text-txt-low">
                     No data
                   </td>
                 </tr>
@@ -89,14 +90,14 @@ const StatsTable = memo(({
                   return (
                     <tr
                       key={i}
-                      className={`border-t border-void-700 hover:bg-void-700/30 ${
-                        hasBonus ? "bg-yellow-500/10" : ""
+ className={`border-t border-line hover:bg-surface-700/30 ${
+                        hasBonus ? "bg-amber-900/40" : ""
                       }`}
                     >
                       <td className="p-3">
                         <span
-                          className={`font-bold ${
-                            i < 3 ? "text-yellow-400" : "text-ink-400"
+ className={`font-semibold ${
+                            i < 3 ? "text-amber-400" : "text-txt-low"
                           }`}
                         >
                           #{i + 1}
@@ -111,32 +112,35 @@ const StatsTable = memo(({
                             checked={hasBonus}
                             onChange={() => onToggleBonus(p.name)}
                             disabled={!hasBonus && !canAddMore}
-                            className="w-4 h-4 rounded border-void-600 text-yellow-500 focus:ring-yellow-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+ className="w-4 h-4 rounded border-line-strong text-amber-400 focus:ring-amber-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </td>
                       )}
                       
                       <td className="p-3 font-semibold">{p.name}</td>
                       {visibleCols.th && <td className="p-3">{p.th}</td>}
+                      {visibleCols.wars && (
+                        <td className="p-3 tabular">{p.wars ?? "—"}</td>
+                      )}
                       {visibleCols.missAtk && (
                         <td className="p-3">
                           {p.missAtk > 0 ? (
-                            <span className="text-red-400 font-bold">
+                            <span className="text-bad-400 font-semibold">
                               {p.missAtk}
                             </span>
                           ) : (
-                            <span className="text-green-400">✓</span>
+                            <span className="text-ok-400">✓</span>
                           )}
                         </td>
                       )}
                       {activePage === "secondary" && visibleCols.missDef && (
                         <td className="p-3">
                           {p.missDef > 0 ? (
-                            <span className="text-orange-400 font-bold">
+                            <span className="text-orange-400 font-semibold">
                               {p.missDef}
                             </span>
                           ) : (
-                            <span className="text-green-400">✓</span>
+                            <span className="text-ok-400">✓</span>
                           )}
                         </td>
                       )}
@@ -144,10 +148,10 @@ const StatsTable = memo(({
                         <td className="p-3">
                           <div className="flex items-center gap-1">
                             <span
-                              className={`font-bold ${
+ className={`font-semibold ${
                                 p.netStars >= 0
-                                  ? "text-green-400"
-                                  : "text-red-400"
+                                  ? "text-ok-400"
+                                  : "text-bad-400"
                               }`}
                             >
                               {p.netStars >= 0 ? "+" : ""}
@@ -155,9 +159,9 @@ const StatsTable = memo(({
                             </span>
                             {p.avgDistance !== 0 && (
                               <span
-                                className={`text-xs ${
+ className={`text-xs ${
                                   p.avgDistance < 0
-                                    ? "text-cyan-400"
+                                    ? "text-azure-400"
                                     : "text-orange-400"
                                 }`}
                                 title={`Avg Distance: ${p.avgDistance.toFixed(1)}`}
@@ -172,8 +176,8 @@ const StatsTable = memo(({
                       {visibleCols.netPercent && (
                         <td className="p-3">
                           <span
-                            className={`font-bold ${
-                              p.netDest >= 0 ? "text-green-400" : "text-red-400"
+ className={`font-semibold ${
+                              p.netDest >= 0 ? "text-ok-400" : "text-bad-400"
                             }`}
                           >
                             {p.netDest >= 0 ? "+" : ""}
@@ -182,30 +186,30 @@ const StatsTable = memo(({
                         </td>
                       )}
                       {visibleCols.threeRate && (
-                        <td className="p-3 text-signal-400 font-semibold">
+                        <td className="p-3 text-accent-400 font-semibold">
                           {p.threeRate.toFixed(1)}%
                         </td>
                       )}
                       {visibleCols.starGain && (
-                        <td className="p-3 text-green-400">{p.offStars}</td>
+                        <td className="p-3 text-ok-400">{p.offStars}</td>
                       )}
                       {visibleCols.percentGain && (
-                        <td className="p-3 text-green-400">
+                        <td className="p-3 text-ok-400">
                           {p.offDest.toFixed(1)}%
                         </td>
                       )}
                       {visibleCols.starGive && (
-                        <td className="p-3 text-red-400">{p.defStars}</td>
+                        <td className="p-3 text-bad-400">{p.defStars}</td>
                       )}
                       {visibleCols.percentGive && (
-                        <td className="p-3 text-red-400">
+                        <td className="p-3 text-bad-400">
                           {p.defDest.toFixed(1)}%
                         </td>
                       )}
                       <td className="p-3">
                         <button
                           onClick={() => onPlayerSelect(p)}
-                          className="text-steel-400 hover:text-steel-300 text-xs"
+ className="text-txt-low hover:text-txt-low text-xs"
                         >
                           View
                         </button>

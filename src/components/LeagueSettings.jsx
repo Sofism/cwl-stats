@@ -17,9 +17,9 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
     calculateBonusSlots({ league, warsWon, warSize: warSize || 15 });
 
   return (
-    <div className="bg-void-800 border border-void-700 rounded-lg p-4 mb-6">
-      <h3 className="font-bold mb-3 flex items-center gap-2">
-        <Trophy className="w-5 h-5 text-yellow-400" />
+    <div className="border border-line rounded-md p-4 mb-6">
+      <h3 className="font-semibold mb-3 flex items-center gap-2">
+        <Trophy className="w-5 h-5 text-amber-400" />
         League Settings
       </h3>
       <div className="space-y-4">
@@ -33,19 +33,19 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
           const clanName = clan === "main" ? clanNames.main : clanNames.secondary;
           
           return (
-            <div key={clan} className="bg-void-950 p-4 rounded-lg">
+            <div key={clan} className="bg-surface-950 p-4 rounded-md">
               <h4
-                className={
+ className={
                   clan === "main"
-                    ? "font-semibold mb-3 text-signal-400"
-                    : "font-semibold mb-3 text-steel-400"
+                    ? "font-semibold mb-3 text-accent-400"
+                    : "font-semibold mb-3 text-txt-low"
                 }
               >
                 {clanName}
               </h4>
               <div className="grid md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm text-ink-400 mb-2">League</label>
+                  <label className="block text-sm text-txt-low mb-2">League</label>
                   <select
                     value={info.league}
                     onChange={(e) => {
@@ -55,7 +55,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                       };
                       updateLeague(newLeagueInfo);
                     }}
-                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
+ className="w-full bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi"
                   >
                     {LEAGUES.map((l) => (
                       <option key={l} value={l}>
@@ -65,7 +65,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-ink-400 mb-2">
+                  <label className="block text-sm text-txt-low mb-2">
                     Final Position (1-8)
                   </label>
                   <input
@@ -83,11 +83,11 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                       };
                       updateLeague(newLeagueInfo);
                     }}
-                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
+ className="w-full bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-ink-400 mb-2">
+                  <label className="block text-sm text-txt-low mb-2">
                     Wars Won (0-7)
                   </label>
                   <input
@@ -105,11 +105,11 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                       };
                       updateLeague(newLeagueInfo);
                     }}
-                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
+ className="w-full bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-ink-400 mb-2">
+                  <label className="block text-sm text-txt-low mb-2">
                     War Size
                   </label>
                   <select
@@ -124,7 +124,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                       };
                       updateLeague(newLeagueInfo);
                     }}
-                    className="w-full bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
+ className="w-full bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi"
                   >
                     {WAR_SIZES.map((size) => (
                       <option key={size} value={size}>
@@ -136,12 +136,12 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
               </div>
               
               {/* Bonus calculation display */}
-              <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm">
-                <p className="text-yellow-400">
-                  <span className="font-bold">{totalBonuses} bonuses available</span>
+              <div className="mt-3 p-3 bg-amber-900/40 border border-amber-400/30 rounded text-sm">
+                <p className="text-amber-400">
+                  <span className="font-semibold">{totalBonuses} bonuses available</span>
                   {' '}({info.warSize || 15}v{info.warSize || 15}, {info.warsWon || 0} wars won)
                 </p>
-                <p className="text-ink-500 text-xs mt-1">
+                <p className="text-txt-hi0 text-xs mt-1">
                   Each medal's value also scales with the final position (
                   {ordinal(info.position || 1)}).
                 </p>

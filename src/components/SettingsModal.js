@@ -12,17 +12,22 @@ const ACCENT_OPTIONS = [
 const SettingsModal = ({ clanNames, onSave, onClose }) => {
   // El acento vive en una variable CSS: cambiarlo se aplica al instante y
   // se recuerda en localStorage, sin necesidad de recompilar ni desplegar.
-  const [accent, setAccentState] = useState(() => {
+  const readRole = (role, fallback) => {
     try {
-      return localStorage.getItem("cwl-accent") || "lime";
+      return localStorage.getItem(`cwl-${role}`) || fallback;
     } catch {
-      return "lime";
+      return fallback;
     }
-  });
+  };
+  const [accent, setAccentState] = useState(() => readRole("accent", "lime"));
+  const [alertColor, setAlertState] = useState(() => readRole("alert", "rust"));
 
-  const pickAccent = (id) => {
-    setAccentState(id);
-    if (typeof window.setAccent === "function") window.setAccent(id);
+  const pickRole = (role, id) => {
+    if (role === "accent") setAccentState(id);
+    else setAlertState(id);
+    if (typeof window.setPaletteRole === "function") {
+      window.setPaletteRole(role, id);
+    }
   };
 
   const [mainName, setMainName] = useState(clanNames.main);
@@ -46,24 +51,24 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-void-800 border border-void-700 rounded-lg p-6 max-w-md w-full">
+      <div className="border border-line rounded-md p-6 max-w-md w-full">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Settings className="w-6 h-6 text-signal-400" />
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <Settings className="w-6 h-6 text-accent-400" />
             Clan Settings
           </h3>
-          <button onClick={onClose} className="text-ink-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-txt-low hover:text-txt-hi transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <p className="text-sm text-ink-400 mb-4">
+        <p className="text-sm text-txt-low mb-4">
           Customize your clan names and tags. Tags are used to sync members automatically.
         </p>
 
         <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-ink-200 mb-2">
+            <label className="block text-sm font-medium text-txt-mid mb-2">
               Main Clan Name
             </label>
             <input
@@ -71,11 +76,11 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               value={mainName}
               onChange={(e) => setMainName(e.target.value)}
               placeholder="e.g., True North"
-              className="w-full bg-void-950 border border-void-700 rounded px-4 py-3 text-white focus:border-signal-500 focus:outline-none"
+ className="w-full bg-surface-950 border border-line rounded px-4 py-3 text-txt-hi focus:border-accent-400 focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-ink-200 mb-2">
+            <label className="block text-sm font-medium text-txt-mid mb-2">
               Main Clan Tag
             </label>
             <input
@@ -83,12 +88,12 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               value={mainTag}
               onChange={(e) => setMainTag(e.target.value)}
               placeholder="e.g., #PQQGGJYQ"
-              className="w-full bg-void-950 border border-void-700 rounded px-4 py-3 text-white focus:border-signal-500 focus:outline-none"
+ className="w-full bg-surface-950 border border-line rounded px-4 py-3 text-txt-hi focus:border-accent-400 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-ink-200 mb-2">
+            <label className="block text-sm font-medium text-txt-mid mb-2">
               Secondary Clan Name
             </label>
             <input
@@ -96,11 +101,11 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               value={secondaryName}
               onChange={(e) => setSecondaryName(e.target.value)}
               placeholder="e.g., DD"
-              className="w-full bg-void-950 border border-void-700 rounded px-4 py-3 text-white focus:border-steel-500 focus:outline-none"
+ className="w-full bg-surface-950 border border-line rounded px-4 py-3 text-txt-hi focus:border-steel-500 focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-ink-200 mb-2">
+            <label className="block text-sm font-medium text-txt-mid mb-2">
               Secondary Clan Tag
             </label>
             <input
@@ -108,47 +113,59 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               value={secondaryTag}
               onChange={(e) => setSecondaryTag(e.target.value)}
               placeholder="e.g., #2LL8C8Y2Q"
-              className="w-full bg-void-950 border border-void-700 rounded px-4 py-3 text-white focus:border-steel-500 focus:outline-none"
+ className="w-full bg-surface-950 border border-line rounded px-4 py-3 text-txt-hi focus:border-steel-500 focus:outline-none"
             />
           </div>
         </div>
 
-        <div className="mb-6">
-          <label className="block text-sm text-ink-400 mb-3">Accent colour</label>
-          <div className="flex flex-wrap gap-2">
-            {ACCENT_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => pickAccent(opt.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
-                  accent === opt.id
-                    ? "border-signal-400 text-white"
-                    : "border-void-600 text-ink-400 hover:text-white"
-                }`}
-              >
-                <span
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: opt.swatch }}
-                />
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-ink-500 mt-2">
-            Applies instantly and is remembered on this device.
-          </p>
+        <div className="mb-6 space-y-4">
+          {[
+            { role: "accent", label: "Primary colour", value: accent,
+              hint: "Buttons, links and interactive elements." },
+            { role: "alert", label: "Alert colour", value: alertColor,
+              hint: "Missing attacks and pending threats." },
+          ].map((row) => (
+            <div key={row.role}>
+              <label className="block text-sm text-txt-low mb-1">{row.label}</label>
+              <p className="text-xs text-txt-hi0 mb-2">{row.hint}</p>
+              <div className="flex flex-wrap gap-2">
+                {ACCENT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => pickRole(row.role, opt.id)}
+ className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors ${
+                      row.value === opt.id
+                        ? "border-accent-400 text-txt-hi"
+                        : "border-line-strong text-txt-low hover:text-txt-hi"
+                    }`}
+                  >
+                    <span
+ className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: opt.swatch }}
+                    />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {accent === alertColor && (
+            <p className="text-xs text-amber-400">
+              Both roles use the same colour — alerts will not stand out.
+            </p>
+          )}
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={handleSave}
-            className="flex-1 bg-signal-500 hover:bg-signal-600 text-white font-bold py-3 rounded-lg transition-colors"
+ className="flex-1 border border-accent-400 text-accent-400 hover:bg-accent-900 text-txt-hi font-semibold py-3 rounded-md transition-colors"
           >
             Save Settings
           </button>
           <button
             onClick={onClose}
-            className="flex-1 bg-void-700 hover:bg-void-600 text-white font-bold py-3 rounded-lg transition-colors"
+ className="flex-1 bg-surface-700 hover:bg-surface-700 text-txt-hi font-semibold py-3 rounded-md transition-colors"
           >
             Cancel
           </button>

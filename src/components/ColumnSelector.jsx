@@ -3,6 +3,7 @@ import React from "react";
 const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowColSelector }) => {
   const columns = [
     { key: "th", label: "TH" },
+    { key: "wars", label: "Wars" },
     { key: "missAtk", label: "Miss Atk" },
     { key: "missDef", label: "Miss Def" },
     { key: "netStars", label: "Net ★" },
@@ -15,20 +16,20 @@ const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowC
   ];
 
   return (
-    <div className="mb-4 bg-void-800 border border-void-700 rounded-lg p-4">
+    <div className="mb-4 border border-line rounded-md p-4">
       <button
         onClick={() => setShowColSelector(!showColSelector)}
-        className="flex items-center justify-between w-full text-sm font-semibold"
+ className="flex items-center justify-between w-full text-sm font-semibold"
       >
         <span>Column Visibility</span>
-        <span className="text-ink-400">{showColSelector ? "▼" : "▶"}</span>
+        <span className="text-txt-low">{showColSelector ? "▼" : "▶"}</span>
       </button>
       {showColSelector && (
         <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2">
           {columns.map(({ key, label }) => (
             <label
               key={key}
-              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-void-700/30 p-2 rounded"
+ className="flex items-center gap-2 text-sm cursor-pointer hover:bg-surface-700/30 p-2 rounded"
             >
               <input
                 type="checkbox"
@@ -36,9 +37,9 @@ const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowC
                 onChange={(e) =>
                   setVisibleCols({ ...visibleCols, [key]: e.target.checked })
                 }
-                className="rounded"
+ className="rounded"
               />
-              <span className="text-ink-200">{label}</span>
+              <span className="text-txt-mid">{label}</span>
             </label>
           ))}
         </div>

@@ -7,13 +7,13 @@ const StatsCards = ({ data, leagueInfo, activePage, bonusCount }) => {
       icon: Target,
       value: data.length,
       label: "Total Players",
-      colorClass: "text-green-400",
+      colorClass: "text-ok-400",
     },
     {
       icon: Shield,
       value: data.filter((p) => p.missAtk > 0).length,
       label: "Missed Attacks",
-      colorClass: "text-red-400",
+      colorClass: "text-bad-400",
     },
     {
       icon: Trophy,
@@ -23,13 +23,13 @@ const StatsCards = ({ data, leagueInfo, activePage, bonusCount }) => {
           : 0
       }%`,
       label: "Avg 3★ Rate",
-      colorClass: "text-signal-400",
+      colorClass: "text-accent-400",
     },
     {
       icon: Award,
       value: bonusCount, // ← Usa el prop directamente
       label: "Bonus Recipients",
-      colorClass: "text-yellow-400",
+      colorClass: "text-amber-400",
     },
   ];
 
@@ -38,11 +38,11 @@ const StatsCards = ({ data, leagueInfo, activePage, bonusCount }) => {
       {cards.map(({ icon: Icon, value, label, colorClass }, i) => (
         <div
           key={i}
-          className="bg-void-800 border border-void-700 rounded-lg p-6 text-center"
+ className="border border-line rounded-md p-6 text-center"
         >
           <Icon className={`w-8 h-8 ${colorClass} mx-auto mb-3`} />
-          <p className={`text-3xl font-bold mb-1 ${colorClass}`}>{value}</p>
-          <p className="text-sm text-ink-400">{label}</p>
+          <p className={`text-3xl font-semibold mb-1 ${colorClass}`}>{value}</p>
+          <p className="text-sm text-txt-low">{label}</p>
         </div>
       ))}
     </div>

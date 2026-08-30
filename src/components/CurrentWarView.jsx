@@ -25,9 +25,9 @@ const formatCountdown = (ms) => {
 };
 
 const StarRow = ({ stars }) => (
-  <span className="text-yellow-400 tracking-tight">
+  <span className="text-amber-400 tracking-tight">
     {"★".repeat(stars)}
-    <span className="text-ink-600">{"★".repeat(3 - stars)}</span>
+    <span className="text-txt-dim">{"★".repeat(3 - stars)}</span>
   </span>
 );
 
@@ -75,44 +75,44 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
       (war.us.stars === war.them.stars && war.us.destruction > war.them.destruction));
 
   return (
-    <div className="fixed inset-0 bg-void-950/95 z-50 overflow-y-auto p-4 md:p-6">
+    <div className="fixed inset-0 bg-surface-950/95 z-50 overflow-y-auto p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
-            <Swords className="w-6 h-6 text-signal-400" />
+          <h2 className="text-2xl font-semibold flex items-center gap-2 text-txt-hi">
+            <Swords className="w-6 h-6 text-accent-400" />
             Current War
           </h2>
           <div className="flex gap-2">
             <button
               onClick={load}
               disabled={loading}
-              className="px-3 py-2 bg-signal-700 border border-signal-500 rounded-lg hover:bg-signal-600 disabled:opacity-50 flex items-center gap-2 text-sm text-white"
+ className="px-3 py-2 border border-line-strong rounded-md hover:border-accent-400 disabled:opacity-50 flex items-center gap-2 text-sm text-txt-hi"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </button>
             <button
               onClick={onClose}
-              className="px-3 py-2 bg-void-700 rounded-lg hover:bg-void-600 text-white"
+ className="px-3 py-2 bg-surface-700 rounded-md hover:bg-surface-700 text-txt-hi"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        <p className="text-xs text-ink-500 mb-4">
+        <p className="text-xs text-txt-hi0 mb-4">
           Live view only — these numbers do not affect season stats until the
           round ends.
         </p>
 
         {loading && !war && (
-          <div className="bg-void-800 border border-void-700 rounded-lg p-8 text-center text-ink-400">
+          <div className="border border-line rounded-md p-8 text-center text-txt-low">
             Loading current round…
           </div>
         )}
 
         {error && !loading && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-yellow-200 text-sm">
+          <div className="bg-amber-900/40 border border-amber-400/30 rounded-md p-4 text-yellow-200 text-sm">
             {error}
           </div>
         )}
@@ -120,19 +120,19 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
         {war && (
           <>
             {/* Marcador */}
-            <div className="bg-void-800 border border-void-700 rounded-lg p-6 mb-6">
+            <div className="border border-line rounded-md p-6 mb-6">
               <div className="flex items-center justify-between mb-4 text-sm">
                 <span
-                  className={`px-2 py-1 rounded ${
+ className={`px-2 py-1 rounded ${
                     isPrep
-                      ? "bg-steel-500/20 text-steel-200"
-                      : "bg-green-500/20 text-green-300"
+                      ? "bg-surface-700 text-txt-mid"
+                      : "bg-ok-900/50 text-ok-400"
                   }`}
                 >
                   {isPrep ? "Preparation" : "Battle day"} · {war.teamSize}v{war.teamSize}
                 </span>
                 {target && (
-                  <span className="flex items-center gap-1 text-ink-400">
+                  <span className="flex items-center gap-1 text-txt-low">
                     <Clock className="w-4 h-4" />
                     {isPrep ? "Starts in " : "Ends in "}
                     {formatCountdown(target.getTime() - now)}
@@ -142,29 +142,29 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
 
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-right">
-                  <p className="font-semibold text-signal-300 truncate">
+                  <p className="font-semibold text-accent-300 truncate">
                     {war.us.name || clanName}
                   </p>
-                  <p className="text-3xl font-bold text-white">{war.us.stars}★</p>
-                  <p className="text-sm text-ink-400">
+                  <p className="text-3xl font-semibold text-txt-hi">{war.us.stars}★</p>
+                  <p className="text-sm text-txt-low">
                     {war.us.destruction.toFixed(1)}% · {war.us.attacksUsed}/{war.teamSize} atk
                   </p>
                 </div>
                 <div className="text-center">
                   <span
-                    className={`text-xs px-2 py-1 rounded ${
+ className={`text-xs px-2 py-1 rounded ${
                       winning
-                        ? "bg-green-500/20 text-green-300"
-                        : "bg-red-500/20 text-red-300"
+                        ? "bg-ok-900/50 text-ok-400"
+                        : "bg-bad-900/50 text-bad-400"
                     }`}
                   >
                     {winning ? "Ahead" : "Behind"}
                   </span>
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-ink-200 truncate">{war.them.name}</p>
-                  <p className="text-3xl font-bold text-white">{war.them.stars}★</p>
-                  <p className="text-sm text-ink-400">
+                  <p className="font-semibold text-txt-mid truncate">{war.them.name}</p>
+                  <p className="text-3xl font-semibold text-txt-hi">{war.them.stars}★</p>
+                  <p className="text-sm text-txt-low">
                     {war.them.destruction.toFixed(1)}% · {war.them.attacksUsed}/{war.teamSize} atk
                   </p>
                 </div>
@@ -172,9 +172,9 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
             </div>
 
             {/* Roster */}
-            <div className="bg-void-800 border border-void-700 rounded-lg overflow-hidden">
+            <div className="border border-line rounded-md overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-void-950 text-ink-400">
+                <thead className="bg-surface-950 text-txt-low">
                   <tr>
                     <th className="p-3 text-left">#</th>
                     <th className="p-3 text-left">Player</th>
@@ -183,25 +183,25 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
                     <th className="p-3 text-left">Defense taken</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-void-700">
+                <tbody className="divide-y divide-line">
                   {war.roster.map((p) => (
                     <tr
                       key={p.tag}
-                      className={p.hasAttacked ? "" : "bg-red-500/5"}
+ className={p.hasAttacked ? "" : "bg-red-500/5"}
                     >
-                      <td className="p-3 text-ink-500">{p.position}</td>
-                      <td className="p-3 text-white">{p.name}</td>
-                      <td className="p-3 text-center text-ink-400">{p.th || "—"}</td>
+                      <td className="p-3 text-txt-hi0">{p.position}</td>
+                      <td className="p-3 text-txt-hi">{p.name}</td>
+                      <td className="p-3 text-center text-txt-low">{p.th || "—"}</td>
                       <td className="p-3">
                         {p.attacks.length === 0 ? (
-                          <span className="text-red-300 text-xs">
+                          <span className="text-bad-400 text-xs">
                             {isPrep ? "—" : "not used"}
                           </span>
                         ) : (
                           p.attacks.map((a, i) => (
                             <div key={i} className="flex items-center gap-2">
                               <StarRow stars={a.stars} />
-                              <span className="text-ink-400 text-xs">
+                              <span className="text-txt-low text-xs">
                                 {a.destruction}%
                                 {a.defenderPosition ? ` → #${a.defenderPosition}` : ""}
                               </span>
@@ -213,12 +213,12 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
                         {p.defense ? (
                           <div className="flex items-center gap-2">
                             <StarRow stars={p.defense.stars} />
-                            <span className="text-ink-400 text-xs">
+                            <span className="text-txt-low text-xs">
                               {p.defense.destruction}%
                             </span>
                           </div>
                         ) : (
-                          <span className="text-ink-600 text-xs">not attacked</span>
+                          <span className="text-txt-dim text-xs">not attacked</span>
                         )}
                       </td>
                     </tr>

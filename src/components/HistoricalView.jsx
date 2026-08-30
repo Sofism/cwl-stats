@@ -224,10 +224,10 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
 
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-semibold text-txt-hi">
               Historical Stats
             </h2>
-            <button onClick={onClose} className="text-ink-400 hover:text-white text-3xl leading-none">
+            <button onClick={onClose} className="text-txt-low hover:text-txt-hi text-3xl leading-none">
               &times;
             </button>
           </div>
@@ -242,14 +242,14 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               <button
                 key={key}
                 onClick={() => { setHistoricalClan(key); setSelectedPlayer(null); }}
-                className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-colors ${
+ className={`flex-1 py-3 px-4 rounded-md font-semibold text-sm transition-colors ${
                   historicalClan === key
                     ? key === "unified"
-                      ? "bg-yellow-500/30 border-2 border-yellow-500 text-yellow-300"
+                      ? "bg-amber-900/50 border-2 border-amber-400/40 text-amber-400"
                       : key === "main"
-                      ? "bg-signal-500/30 border-2 border-signal-500"
-                      : "bg-steel-500/30 border-2 border-steel-500"
-                    : "bg-void-800 border-2 border-void-700 hover:bg-void-700"
+                      ? "bg-accent-900/50 border-2 border-accent-400"
+                      : "bg-surface-700 border-2 border-steel-500"
+                    : "bg-surface-800 border-2 border-line hover:bg-surface-700"
                 }`}
               >
                 {label}
@@ -262,20 +262,20 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
             <button
               onClick={() => setShowOnlyActive(!showOnlyActive)}
               disabled={!rosterReady}
-              className={`flex-1 min-w-[240px] py-4 px-5 rounded-lg font-semibold text-base border-2 transition-colors flex items-center justify-center gap-3 ${
+ className={`flex-1 min-w-[240px] py-4 px-5 rounded-md font-semibold text-base border-2 transition-colors flex items-center justify-center gap-3 ${
                 activeFilterOn
-                  ? "bg-green-500/20 border-green-500 text-green-300 hover:bg-green-500/30"
-                  : "bg-void-800 border-void-600 text-ink-200 hover:bg-void-700"
+                  ? "bg-ok-900/50 border-ok-400/40 text-ok-400 hover:bg-ok-900/50"
+                  : "bg-surface-800 border-line-strong text-txt-mid hover:bg-surface-700"
               } ${!rosterReady ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <span className="text-xl">{activeFilterOn ? "🟢" : "👥"}</span>
               {activeFilterOn ? "Current members only" : "All players (including former)"}
-              <span className="text-sm font-normal bg-void-950/60 px-3 py-1 rounded-full">
+              <span className="text-sm font-normal bg-surface-950/60 px-3 py-1 rounded-full">
                 {sortedData.length}
               </span>
             </button>
             {!rosterReady && (
-              <p className="text-xs text-ink-500 basis-full">
+              <p className="text-xs text-txt-hi0 basis-full">
                 {loadingActive
                   ? "Checking who is currently in the clan…"
                   : "Showing everyone — add clan tags in Settings to filter by current members."}
@@ -284,32 +284,32 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
           </div>
 
           {/* Filters Panel */}
-          <div className="bg-signal-900/40 border-2 border-signal-500 rounded-lg mb-6">
+          <div className="bg-accent-900/50 border-2 border-accent-400 rounded-md mb-6">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="w-full flex items-center justify-between p-5 font-bold text-signal-300 hover:text-white transition-colors"
+ className="w-full flex items-center justify-between p-5 font-semibold text-accent-300 hover:text-txt-hi transition-colors"
             >
               <span className="flex items-center gap-3 text-lg flex-wrap">
-                <Filter className="w-6 h-6 text-signal-400" />
+                <Filter className="w-6 h-6 text-accent-400" />
                 Filters & Columns
-                <span className="text-sm font-normal bg-signal-500/40 text-signal-200 px-3 py-1 rounded-full">
+                <span className="text-sm font-normal bg-accent-900/50 text-accent-300 px-3 py-1 rounded-full">
                   {filteredSeasons.length} of {seasons.length} seasons
                 </span>
                 {showOnlyActive && (
-                  <span className="text-sm font-normal bg-green-500/40 text-green-200 px-3 py-1 rounded-full">
+                  <span className="text-sm font-normal bg-ok-900/50 text-ok-400 px-3 py-1 rounded-full">
                     Active only
                   </span>
                 )}
               </span>
-              <span className="text-signal-400 text-xl">{showFilters ? "▼" : "▶"}</span>
+              <span className="text-accent-400 text-xl">{showFilters ? "▼" : "▶"}</span>
             </button>
 
             {showFilters && (
-              <div className="px-4 pb-4 space-y-5 border-t border-void-700 pt-4">
+              <div className="px-4 pb-4 space-y-5 border-t border-line pt-4">
 
                 {/* Season Range */}
                 <div>
-                  <p className="text-sm font-semibold text-ink-200 mb-2">Season Range</p>
+                  <p className="text-sm font-semibold text-txt-mid mb-2">Season Range</p>
                   <div className="flex flex-wrap gap-2">
                     {[
                       { value: "all", label: `All (${seasons.length})` },
@@ -320,8 +320,8 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                       <button
                         key={value}
                         onClick={() => setSeasonFilter(value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                          seasonFilter === value ? "bg-signal-500 text-white" : "bg-void-700 text-ink-200 hover:bg-void-600"
+ className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+                          seasonFilter === value ? "bg-signal-500 text-txt-hi" : "bg-surface-700 text-txt-mid hover:bg-surface-700"
                         }`}
                       >
                         {label}
@@ -332,12 +332,12 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
 
                 {seasonFilter === "manual" && (
                   <div>
-                    <p className="text-sm font-semibold text-ink-200 mb-2">Select Seasons</p>
+                    <p className="text-sm font-semibold text-txt-mid mb-2">Select Seasons</p>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {seasons.map((s) => (
-                        <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer bg-void-950 p-2 rounded hover:bg-void-700">
+                        <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer bg-surface-950 p-2 rounded hover:bg-surface-700">
                           <input type="checkbox" checked={selectedSeasons.includes(s.id)} onChange={() => toggleSeasonSelection(s.id)} />
-                          <span className="text-ink-200">{s.name}</span>
+                          <span className="text-txt-mid">{s.name}</span>
                         </label>
                       ))}
                     </div>
@@ -345,11 +345,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                 )}
 
                 {/* Active Members — se comprueba en vivo contra la API, ya no hay lista manual */}
-                <div className="border border-void-700 rounded-lg p-3">
+                <div className="border border-line rounded-md p-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-ink-200">
+                    <p className="text-sm font-semibold text-txt-mid">
                       🟢 Active Members
-                      <span className="ml-2 text-xs bg-green-500/30 text-green-300 px-2 py-0.5 rounded-full">
+                      <span className="ml-2 text-xs bg-ok-900/50 text-ok-400 px-2 py-0.5 rounded-full">
                         {loadingActive
                           ? "checking..."
                           : `${rosters.main.length} + ${rosters.secondary.length} across both clans`}
@@ -358,12 +358,12 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
 
                   </div>
                   {activeError && (
-                    <p className="text-xs text-red-300 mt-2">
+                    <p className="text-xs text-bad-400 mt-2">
                       ⚠ {activeError}
                     </p>
                   )}
                   {!activeError && activeTags.size === 0 && !loadingActive && (
-                    <p className="text-xs text-ink-500 mt-2">
+                    <p className="text-xs text-txt-hi0 mt-2">
                       Add your clan tags in Settings to track who is still in the clan.
                     </p>
                   )}
@@ -371,16 +371,16 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
 
                 {/* Column Visibility */}
                 <div>
-                  <p className="text-sm font-semibold text-ink-200 mb-2">Visible Columns</p>
+                  <p className="text-sm font-semibold text-txt-mid mb-2">Visible Columns</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {COLUMNS.map(({ key, label }) => (
-                      <label key={key} className="flex items-center gap-2 text-sm cursor-pointer bg-void-950 p-2 rounded hover:bg-void-700">
+                      <label key={key} className="flex items-center gap-2 text-sm cursor-pointer bg-surface-950 p-2 rounded hover:bg-surface-700">
                         <input
                           type="checkbox"
                           checked={visibleCols[key]}
                           onChange={() => setVisibleCols((prev) => ({ ...prev, [key]: !prev[key] }))}
                         />
-                        <span className="text-ink-200">{label}</span>
+                        <span className="text-txt-mid">{label}</span>
                       </label>
                     ))}
                   </div>
@@ -391,31 +391,31 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
           </div>
 
           {filteredSeasons.length < 1 ? (
-            <div className="bg-void-800 border border-void-700 rounded-lg p-8 text-center">
-              <Trophy className="w-16 h-16 text-ink-600 mx-auto mb-4" />
-              <p className="text-ink-400 text-lg">Select at least one season to see historical data.</p>
+            <div className="border border-line rounded-md p-8 text-center">
+              <Trophy className="w-16 h-16 text-txt-dim mx-auto mb-4" />
+              <p className="text-txt-low text-lg">Select at least one season to see historical data.</p>
             </div>
           ) : !selectedPlayer ? (
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[
-                  { label: "Seasons", value: filteredSeasons.length, color: "text-signal-400" },
-                  { label: "Players", value: historicalData.length, color: "text-green-400" },
+                  { label: "Seasons", value: filteredSeasons.length, color: "text-accent-400" },
+                  { label: "Players", value: historicalData.length, color: "text-ok-400" },
                   {
                     label: "Avg 3★ Rate",
                     value: `${(historicalData.reduce((s, p) => s + p.threeRate, 0) / (historicalData.length || 1)).toFixed(1)}%`,
-                    color: "text-yellow-400",
+                    color: "text-amber-400",
                   },
                   {
                     label: "Total Wars",
                     value: historicalData.reduce((s, p) => s + p.totalWars, 0),
-                    color: "text-steel-400",
+                    color: "text-txt-low",
                   },
                 ].map(({ label, value, color }, i) => (
-                  <div key={i} className="bg-void-800 border border-void-700 rounded-lg p-4 text-center">
-                    <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                    <p className="text-sm text-ink-400 mt-1">{label}</p>
+                  <div key={i} className="border border-line rounded-md p-4 text-center">
+                    <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+                    <p className="text-sm text-txt-low mt-1">{label}</p>
                   </div>
                 ))}
               </div>
@@ -423,16 +423,16 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               <PlayerBarChart data={sortedData} />
 
               {/* Cumulative Rankings Table */}
-              <div className="bg-void-800 border border-void-700 rounded-lg overflow-hidden mb-6">
-                <div className="p-4 border-b border-void-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="border border-line rounded-md overflow-hidden mb-6">
+                <div className="p-4 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-bold text-lg">Cumulative Rankings</h3>
-                    <p className="text-sm text-ink-400">Click on a player to see their evolution</p>
+                    <h3 className="font-semibold text-lg">Cumulative Rankings</h3>
+                    <p className="text-sm text-txt-low">Click on a player to see their evolution</p>
                   </div>
                   <select
                     value={sortByHistorical}
                     onChange={(e) => setSortByHistorical(e.target.value)}
-                    className="bg-void-700 border border-void-600 rounded px-3 py-2 text-sm text-white"
+ className="bg-surface-700 border border-line-strong rounded px-3 py-2 text-sm text-txt-hi"
                   >
                     <option value="default">Default Sort</option>
                     <option value="netStars">Net ★</option>
@@ -446,8 +446,8 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                 </div>
                 <div className="overflow-x-auto" style={{ maxHeight: "400px", overflowY: "auto" }}>
                   <table className="w-full text-sm">
-                    <thead className="bg-void-950 sticky top-0">
-                      <tr className="text-left text-xs text-ink-400">
+                    <thead className="bg-surface-950 sticky top-0">
+                      <tr className="text-left text-xs text-txt-low">
                         <th className="p-3">Rank</th>
                         <th className="p-3">Player</th>
                         <th className="p-3">TH</th>
@@ -461,13 +461,13 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                         <tr
                           key={i}
                           onClick={() => setSelectedPlayer(p)}
-                          className={`border-t border-void-700 hover:bg-void-700/50 cursor-pointer ${p.isActive ? "bg-green-500/5" : ""}`}
+ className={`border-t border-line hover:bg-surface-700/50 cursor-pointer ${p.isActive ? "bg-ok-900/30" : ""}`}
                         >
                           <td className="p-3">
-                            <span className={`font-bold ${i < 3 ? "text-yellow-400" : "text-ink-400"}`}>#{i + 1}</span>
+                            <span className={`font-semibold ${i < 3 ? "text-amber-400" : "text-txt-low"}`}>#{i + 1}</span>
                           </td>
                           <td className="p-3 font-semibold">
-                            <span className="text-steel-400">{p.name}</span>
+                            <span className="text-txt-low">{p.name}</span>
                             {p.isActive && <span className="ml-1 text-xs">🟢</span>}
                           </td>
                           <td className="p-3">{p.th}</td>
@@ -475,30 +475,30 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                           {visibleCols.missAtk && (
                             <td className="p-3">
                               {p.totalMissAtk > 0
-                                ? <span className="text-red-400 font-bold">{p.totalMissAtk}</span>
-                                : <span className="text-green-400">✓</span>}
+                                ? <span className="text-bad-400 font-semibold">{p.totalMissAtk}</span>
+                                : <span className="text-ok-400">✓</span>}
                             </td>
                           )}
                           {visibleCols.netStars && (
                             <td className="p-3">
-                              <span className={`font-bold ${p.netStars >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              <span className={`font-semibold ${p.netStars >= 0 ? "text-ok-400" : "text-bad-400"}`}>
                                 {p.netStars >= 0 ? "+" : ""}{p.netStars}
                               </span>
                             </td>
                           )}
                           {visibleCols.netDest && (
                             <td className="p-3">
-                              <span className={`font-bold ${p.netDest >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              <span className={`font-semibold ${p.netDest >= 0 ? "text-ok-400" : "text-bad-400"}`}>
                                 {p.netDest >= 0 ? "+" : ""}{p.netDest.toFixed(1)}%
                               </span>
                             </td>
                           )}
                           {visibleCols.threeRate && (
-                            <td className="p-3 text-signal-400 font-semibold">{p.threeRate.toFixed(1)}%</td>
+                            <td className="p-3 text-accent-400 font-semibold">{p.threeRate.toFixed(1)}%</td>
                           )}
-                          {visibleCols.offStars && <td className="p-3 text-green-400">{p.totalOffStars}</td>}
-                          {visibleCols.defStars && <td className="p-3 text-red-400">{p.totalDefStars}</td>}
-                          {visibleCols.seasonsCount && <td className="p-3 text-signal-400">{p.seasonsCount}</td>}
+                          {visibleCols.offStars && <td className="p-3 text-ok-400">{p.totalOffStars}</td>}
+                          {visibleCols.defStars && <td className="p-3 text-bad-400">{p.totalDefStars}</td>}
+                          {visibleCols.seasonsCount && <td className="p-3 text-accent-400">{p.seasonsCount}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -507,14 +507,14 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               </div>
 
               {/* Season by Season Overview */}
-              <div className="bg-void-800 border border-void-700 rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-void-700">
-                  <h3 className="font-bold text-lg">Season by Season Overview</h3>
+              <div className="border border-line rounded-md overflow-hidden">
+                <div className="p-4 border-b border-line">
+                  <h3 className="font-semibold text-lg">Season by Season Overview</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-void-950">
-                      <tr className="text-left text-xs text-ink-400">
+                    <thead className="bg-surface-950">
+                      <tr className="text-left text-xs text-txt-low">
                         <th className="p-3">Season</th>
                         <th className="p-3">Players</th>
                         <th className="p-3">Avg 3★%</th>
@@ -533,19 +533,19 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                         const avgNetStars = combined.reduce((s, p) => s + p.netStars, 0) / combined.length;
                         const totalMissAtk = combined.reduce((s, p) => s + p.missAtk, 0);
                         return (
-                          <tr key={i} className="border-t border-void-700 hover:bg-void-700/30">
-                            <td className="p-3 font-semibold text-signal-400">{season.name}</td>
+                          <tr key={i} className="border-t border-line hover:bg-surface-700/30">
+                            <td className="p-3 font-semibold text-accent-400">{season.name}</td>
                             <td className="p-3">{combined.length}</td>
-                            <td className="p-3 text-yellow-400">{avgThreeRate.toFixed(1)}%</td>
+                            <td className="p-3 text-amber-400">{avgThreeRate.toFixed(1)}%</td>
                             <td className="p-3">
-                              <span className={avgNetStars >= 0 ? "text-green-400" : "text-red-400"}>
+                              <span className={avgNetStars >= 0 ? "text-ok-400" : "text-bad-400"}>
                                 {avgNetStars >= 0 ? "+" : ""}{avgNetStars.toFixed(1)}
                               </span>
                             </td>
                             <td className="p-3">
                               {totalMissAtk > 0
-                                ? <span className="text-red-400 font-bold">{totalMissAtk}</span>
-                                : <span className="text-green-400">✓ None</span>}
+                                ? <span className="text-bad-400 font-semibold">{totalMissAtk}</span>
+                                : <span className="text-ok-400">✓ None</span>}
                             </td>
                           </tr>
                         );
@@ -559,33 +559,33 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
             <div>
               <button
                 onClick={() => setSelectedPlayer(null)}
-                className="mb-4 text-signal-400 hover:text-signal-300 flex items-center gap-2"
+ className="mb-4 text-accent-400 hover:text-accent-300 flex items-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to rankings
               </button>
 
-              <div className="bg-void-800 border border-void-700 rounded-lg p-6 mb-6">
-                <h3 className="text-2xl font-bold text-white mb-1">
+              <div className="border border-line rounded-md p-6 mb-6">
+                <h3 className="text-2xl font-semibold text-txt-hi mb-1">
                   {selectedPlayer.name}
                   {selectedPlayer.isActive && <span className="ml-2 text-base">🟢 Active</span>}
                 </h3>
-                <p className="text-ink-400 mb-6">TH{selectedPlayer.th} • {selectedPlayer.seasonsCount} seasons</p>
+                <p className="text-txt-low mb-6">TH{selectedPlayer.th} • {selectedPlayer.seasonsCount} seasons</p>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {[
-                    { label: "Stars Gained", value: selectedPlayer.totalOffStars, color: "text-green-400" },
-                    { label: "Stars Given", value: selectedPlayer.totalDefStars, color: "text-red-400" },
-                    { label: "Net Stars", value: `${selectedPlayer.netStars >= 0 ? "+" : ""}${selectedPlayer.netStars}`, color: selectedPlayer.netStars >= 0 ? "text-green-400" : "text-red-400" },
-                    { label: "Avg 3★ Rate", value: `${selectedPlayer.threeRate.toFixed(1)}%`, color: "text-signal-400" },
-                    { label: "Total Wars", value: selectedPlayer.totalWars, color: "text-steel-400" },
-                    { label: "Missed Attacks", value: selectedPlayer.totalMissAtk, color: selectedPlayer.totalMissAtk > 0 ? "text-red-400" : "text-green-400" },
-                    { label: "Net Destruction", value: `${selectedPlayer.netDest >= 0 ? "+" : ""}${selectedPlayer.netDest.toFixed(1)}%`, color: selectedPlayer.netDest >= 0 ? "text-green-400" : "text-red-400" },
-                    { label: "Seasons Played", value: selectedPlayer.seasonsCount, color: "text-yellow-400" },
+                    { label: "Stars Gained", value: selectedPlayer.totalOffStars, color: "text-ok-400" },
+                    { label: "Stars Given", value: selectedPlayer.totalDefStars, color: "text-bad-400" },
+                    { label: "Net Stars", value: `${selectedPlayer.netStars >= 0 ? "+" : ""}${selectedPlayer.netStars}`, color: selectedPlayer.netStars >= 0 ? "text-ok-400" : "text-bad-400" },
+                    { label: "Avg 3★ Rate", value: `${selectedPlayer.threeRate.toFixed(1)}%`, color: "text-accent-400" },
+                    { label: "Total Wars", value: selectedPlayer.totalWars, color: "text-txt-low" },
+                    { label: "Missed Attacks", value: selectedPlayer.totalMissAtk, color: selectedPlayer.totalMissAtk > 0 ? "text-bad-400" : "text-ok-400" },
+                    { label: "Net Destruction", value: `${selectedPlayer.netDest >= 0 ? "+" : ""}${selectedPlayer.netDest.toFixed(1)}%`, color: selectedPlayer.netDest >= 0 ? "text-ok-400" : "text-bad-400" },
+                    { label: "Seasons Played", value: selectedPlayer.seasonsCount, color: "text-amber-400" },
                   ].map(({ label, value, color }, i) => (
-                    <div key={i} className="bg-void-950 p-4 rounded-lg text-center">
-                      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-ink-400 mt-1">{label}</p>
+                    <div key={i} className="bg-surface-950 p-4 rounded-md text-center">
+                      <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+                      <p className="text-xs text-txt-low mt-1">{label}</p>
                     </div>
                   ))}
                 </div>
@@ -595,11 +595,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   playerName={selectedPlayer.name}
                 />
 
-                <h4 className="font-bold text-lg mb-4 text-yellow-400">Season by Season Evolution</h4>
+                <h4 className="font-semibold text-lg mb-4 text-amber-400">Season by Season Evolution</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-void-950">
-                      <tr className="text-left text-xs text-ink-400">
+                    <thead className="bg-surface-950">
+                      <tr className="text-left text-xs text-txt-low">
                         <th className="p-3">Season</th>
                         <th className="p-3">Wars</th>
                         <th className="p-3">Miss Atk</th>
@@ -612,27 +612,27 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     </thead>
                     <tbody>
                       {getPlayerEvolution(selectedPlayer.key).map((s, i) => (
-                        <tr key={i} className="border-t border-void-700 hover:bg-void-700/30">
-                          <td className="p-3 font-semibold text-signal-400">{s.season}</td>
+                        <tr key={i} className="border-t border-line hover:bg-surface-700/30">
+                          <td className="p-3 font-semibold text-accent-400">{s.season}</td>
                           <td className="p-3">{s.wars}</td>
                           <td className="p-3">
                             {s.missAtk > 0
-                              ? <span className="text-red-400 font-bold">{s.missAtk}</span>
-                              : <span className="text-green-400">✓</span>}
+                              ? <span className="text-bad-400 font-semibold">{s.missAtk}</span>
+                              : <span className="text-ok-400">✓</span>}
                           </td>
                           <td className="p-3">
-                            <span className={`font-bold ${s.netStars >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            <span className={`font-semibold ${s.netStars >= 0 ? "text-ok-400" : "text-bad-400"}`}>
                               {s.netStars >= 0 ? "+" : ""}{s.netStars}
                             </span>
                           </td>
                           <td className="p-3">
-                            <span className={`font-bold ${s.netDest >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            <span className={`font-semibold ${s.netDest >= 0 ? "text-ok-400" : "text-bad-400"}`}>
                               {s.netDest >= 0 ? "+" : ""}{s.netDest.toFixed(1)}%
                             </span>
                           </td>
-                          <td className="p-3 text-signal-400">{s.threeRate.toFixed(1)}%</td>
-                          <td className="p-3 text-green-400">{s.offStars}</td>
-                          <td className="p-3 text-red-400">{s.defStars}</td>
+                          <td className="p-3 text-accent-400">{s.threeRate.toFixed(1)}%</td>
+                          <td className="p-3 text-ok-400">{s.offStars}</td>
+                          <td className="p-3 text-bad-400">{s.defStars}</td>
                         </tr>
                       ))}
                     </tbody>

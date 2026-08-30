@@ -139,3 +139,20 @@ export const getCurrentWar = async (clanTag) => {
     return null;
   }
 };
+
+/**
+ * Perfil de un jugador. Lo relevante aqui es warPreference ("in" | "out"),
+ * que NO viene en el listado de miembros del clan: hay que pedir el perfil
+ * de cada jugador por separado.
+ */
+export const getPlayer = async (playerTag) => {
+  try {
+    const encodedTag = encodeURIComponent(normalizeTag(playerTag));
+    const response = await proxyFetch(`players/${encodedTag}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error("Error fetching player:", err);
+    return null;
+  }
+};

@@ -4,6 +4,17 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine
 } from "recharts";
 
+// El acento vive en una variable CSS (--accent-400) para poder cambiarlo
+// desde Ajustes. Recharts necesita un color literal, asi que se lee del
+// documento en tiempo de render.
+const cssVar = (name, fallback) => {
+  if (typeof window === "undefined") return fallback;
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue(`--${name}`)
+    .trim();
+  return v ? `rgb(${v})` : fallback;
+};
+
 const METRICS = [
   { key: "threeRate", label: "3★%", format: (v) => `${v.toFixed(1)}%` },
   { key: "netStars", label: "Net ★", format: (v) => `${v >= 0 ? "+" : ""}${v}` },
@@ -16,9 +27,9 @@ const CustomTooltip = ({ active, payload, label, metric }) => {
   if (!active || !payload?.length) return null;
   const m = METRICS.find(m => m.key === metric);
   return (
-    <div className="bg-void-950 border border-void-700 rounded-lg p-3 text-sm">
-      <p className="font-bold text-signal-400 mb-1">{label}</p>
-      <p className="text-ink-200">{m?.label}: <span className="text-white font-semibold">{m?.format(payload[0].value)}</span></p>
+    <div className="bg-surface-950 border border-line rounded-md p-3 text-sm">
+      <p className="font-semibold text-accent-400 mb-1">{label}</p>
+      <p className="text-txt-mid">{m?.label}: <span className="text-txt-hi font-semibold">{m?.format(payload[0].value)}</span></p>
     </div>
   );
 };
@@ -29,7 +40,7 @@ const PlayerLineChart = ({ evolution, playerName }) => {
 
   if (!evolution || evolution.length < 2) {
     return (
-      <div className="bg-void-800 border border-void-700 rounded-lg p-6 text-center text-ink-400 mb-6">
+      <div className="border border-line rounded-md p-6 text-center text-txt-low mb-6">
         Need at least 2 seasons to show evolution chart.
       </div>
     );
@@ -44,16 +55,16 @@ const PlayerLineChart = ({ evolution, playerName }) => {
   const avg = chartData.reduce((s, d) => s + d[metric], 0) / chartData.length;
 
   return (
-    <div className="bg-void-800 border border-void-700 rounded-lg p-4 mb-6">
+    <div className="border border-line rounded-md p-4 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h3 className="font-bold text-lg">Evolution Chart</h3>
-          <p className="text-sm text-ink-400">{playerName}</p>
+          <h3 className="font-semibold text-lg">Evolution Chart</h3>
+          <p className="text-sm text-txt-low">{playerName}</p>
         </div>
         <select
           value={metric}
           onChange={(e) => setMetric(e.target.value)}
-          className="bg-void-700 border border-void-600 rounded px-3 py-2 text-sm text-white"
+ className="bg-surface-700 border border-line-strong rounded px-3 py-2 text-sm text-txt-hi"
         >
           {METRICS.map(m => (
             <option key={m.key} value={m.key}>{m.label}</option>
@@ -63,32 +74,32 @@ const PlayerLineChart = ({ evolution, playerName }) => {
 
       <ResponsiveContainer width="100%" height={250}>
         <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e1f22" />
           <XAxis
             dataKey="season"
-            tick={{ fill: "#9ca3af", fontSize: 11 }}
+            tick={{ fill: "#6e7075", fontSize: 11 }}
             angle={-35}
             textAnchor="end"
             interval={0}
           />
           <YAxis
-            tick={{ fill: "#9ca3af", fontSize: 11 }}
+            tick={{ fill: "#6e7075", fontSize: 11 }}
             tickFormatter={currentMetric?.format}
           />
           <Tooltip content={<CustomTooltip metric={metric} />} />
           <ReferenceLine
             y={avg}
-            stroke="#6366f1"
+            stroke={cssVar("accent-600", "#71882c")}
             strokeDasharray="4 4"
-            label={{ value: `Avg: ${currentMetric?.format(avg)}`, fill: "#818cf8", fontSize: 11, position: "insideTopRight" }}
+            label={{ value: `Avg: ${currentMetric?.format(avg)}`, fill: cssVar("accent-400", "#a8c74e"), fontSize: 11, position: "insideTopRight" }}
           />
           <Line
             type="monotone"
             dataKey={metric}
-            stroke="#a855f7"
+            stroke={cssVar("accent-400", "#a8c74e")}
             strokeWidth={2}
-            dot={{ fill: "#a855f7", r: 4 }}
-            activeDot={{ r: 6, fill: "#d946ef" }}
+            dot={{ fill: cssVar("accent-400", "#a8c74e"), r: 4 }}
+            activeDot={{ r: 6, fill: cssVar("accent-300", "#c3dd74") }}
           />
         </LineChart>
       </ResponsiveContainer>

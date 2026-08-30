@@ -12,19 +12,19 @@ const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo, clanNa
           <button
             key={page}
             onClick={() => setActivePage(page)}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold ${
+ className={`flex-1 py-3 px-4 rounded-md font-semibold ${
               isActive
                 ? isPurple
-                  ? "bg-signal-500/30 border-2 border-signal-500"
-                  : "bg-steel-500/30 border-2 border-steel-500"
-                : "bg-void-800 border-2 border-void-700"
+                  ? "bg-accent-900/50 border-2 border-accent-400"
+                  : "bg-surface-700 border-2 border-steel-500"
+                : "bg-surface-800 border-2 border-line"
             }`}
           >
             <div>
               {clanName} (
               {currentSeason[page === "main" ? "mainClan" : "secondaryClan"].length})
             </div>
-            <div className="text-xs text-ink-400 mt-1">
+            <div className="text-xs text-txt-low mt-1">
               {leagueInfo[page].league} - Pos {leagueInfo[page].position}
             </div>
           </button>

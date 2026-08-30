@@ -150,13 +150,13 @@ const ImportView = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-void-950 via-signal-900 to-void-950 text-white p-6">
+    <div className="min-h-screen bg-surface-950 text-txt-mid p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         {seasons.length > 0 && (
           <button
             onClick={onBackToSelector}
-            className="mb-4 flex items-center gap-2 text-ink-400 hover:text-white transition-colors"
+ className="mb-4 flex items-center gap-2 text-txt-low hover:text-txt-hi transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to Seasons
@@ -164,14 +164,14 @@ const ImportView = ({
         )}
         
         <div className="text-center mb-8">
-          <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent">
+          <Trophy className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+          <h1 className="text-4xl font-semibold tracking-wide text-txt-hi">
             CWL Stats Tracker
           </h1>
         </div>
 
         {saveStatus && (
-          <div className="mb-4 p-3 rounded-lg bg-green-500/20 border border-green-500 text-green-300">
+          <div className="mb-4 p-3 rounded-md bg-ok-900/50 border border-ok-400/40 text-ok-400">
             {saveStatus}
           </div>
         )}
@@ -190,12 +190,12 @@ const ImportView = ({
         )}
 
         {!currentSeason ? (
-          <div className="bg-void-800 border border-void-700 rounded-lg p-8 text-center">
-            <Calendar className="w-16 h-16 text-signal-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-4">No Season Selected</h2>
+          <div className="border border-line rounded-md p-8 text-center">
+            <Calendar className="w-16 h-16 text-accent-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold mb-4">No Season Selected</h2>
             <button
               onClick={() => setShowModal(true)}
-              className="bg-signal-500 text-white font-bold py-3 px-6 rounded-lg inline-flex items-center gap-2 hover:bg-signal-600"
+ className="bg-signal-500 text-txt-hi font-semibold py-3 px-6 rounded-md inline-flex items-center gap-2 hover:bg-accent-900"
             >
               <Plus className="w-5 h-5" />
               Create New Season
@@ -210,39 +210,39 @@ const ImportView = ({
             />
 
             {/* Sincronización automática desde la API del juego */}
-            <div className="bg-void-800 border border-void-700 rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-                <RefreshCw className={`w-6 h-6 text-signal-400 ${syncing ? "animate-spin" : ""}`} />
+            <div className="border border-line rounded-md p-6 mb-6">
+              <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+                <RefreshCw className={`w-6 h-6 text-accent-400 ${syncing ? "animate-spin" : ""}`} />
                 Sync from Clash of Clans
               </h2>
 
               {!hasTags ? (
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-sm text-yellow-200">
+                <div className="bg-amber-900/40 border border-amber-400/30 rounded-md p-4 text-sm text-yellow-200">
                   Add both clan tags in Settings (⚙) to enable automatic syncing.
                 </div>
               ) : (
                 <>
-                  <p className="text-ink-400 text-sm mb-4">
+                  <p className="text-txt-low text-sm mb-4">
                     Pulls league, final position, wars won and every player’s stats straight from
                     the game API. No more pasting data by hand.
                   </p>
                   <button
                     onClick={handleSync}
                     disabled={syncing}
-                    className="w-full bg-gradient-to-b from-signal-500 to-signal-700 hover:from-signal-400 hover:to-signal-600 border border-signal-400/40 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-signal-900/30 flex items-center justify-center gap-2"
+ className="w-full border border-accent-400 text-accent-400 hover:bg-accent-900 disabled:opacity-50 text-txt-hi font-semibold py-3 rounded-md transition-all  flex items-center justify-center gap-2"
                   >
                     <RefreshCw className={`w-5 h-5 ${syncing ? "animate-spin" : ""}`} />
                     {syncing ? "Syncing..." : "Sync now"}
                   </button>
                   {syncProgress && (
-                    <div className="mt-3 p-3 rounded border border-signal-500/30 bg-signal-500/10 text-sm">
-                      <p className="text-signal-200 font-semibold">
+                    <div className="mt-3 p-3 rounded border border-accent-400/30 bg-accent-900/40 text-sm">
+                      <p className="text-accent-300 font-semibold">
                         {syncProgress.season ? `Season ${syncProgress.season} — ` : ""}
                         Round {syncProgress.roundsCompleted}
                         {syncProgress.roundsTotal ? ` of ${syncProgress.roundsTotal}` : ""}
                         {syncProgress.live ? " · next round in progress" : ""}
                       </p>
-                      <p className="text-ink-400 text-xs mt-1">
+                      <p className="text-txt-low text-xs mt-1">
                         {syncProgress.live
                           ? "The ongoing round is not counted yet. Sync again once it ends."
                           : !syncProgress.isComplete
@@ -254,7 +254,7 @@ const ImportView = ({
                   {syncMessages.length > 0 && (
                     <div className="mt-3 space-y-1 text-sm">
                       {syncMessages.map((m, i) => (
-                        <p key={i} className="text-ink-200">{m}</p>
+                        <p key={i} className="text-txt-mid">{m}</p>
                       ))}
                     </div>
                   )}
@@ -264,7 +264,7 @@ const ImportView = ({
               <div className="mt-4">
                 <button
                   onClick={() => setShowManualImport(!showManualImport)}
-                  className="text-xs text-ink-500 hover:text-ink-200 flex items-center gap-1"
+ className="text-xs text-txt-hi0 hover:text-txt-mid flex items-center gap-1"
                 >
                   <ChevronDown className={`w-3 h-3 transition-transform ${showManualImport ? "rotate-180" : ""}`} />
                   {showManualImport ? "Hide manual import" : "Paste data manually (fallback)"}
@@ -274,35 +274,35 @@ const ImportView = ({
 
             {showManualImport && (
               <div className="grid md:grid-cols-2 gap-6 mb-6">
-                <div className="bg-void-800 border border-void-700 rounded-lg p-6">
-                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Trophy className="w-6 h-6 text-signal-400" />
+                <div className="border border-line rounded-md p-6">
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <Trophy className="w-6 h-6 text-accent-400" />
                     {clanNames.main}
                   </h2>
                   <textarea
-                    className="w-full h-64 bg-void-950 border border-void-700 rounded p-3 text-sm font-mono text-white"
+ className="w-full h-64 bg-surface-950 border border-line rounded p-3 text-sm font-mono text-txt-hi"
                     placeholder="Paste spreadsheet data here..."
                     onChange={(e) => handleImport(e.target.value, true)}
                   />
                   {currentSeason.mainClan.length > 0 && (
-                    <div className="mt-3 text-green-400 text-sm">
+                    <div className="mt-3 text-ok-400 text-sm">
                       ✓ {currentSeason.mainClan.length} players loaded
                     </div>
                   )}
                 </div>
 
-                <div className="bg-void-800 border border-void-700 rounded-lg p-6">
-                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Users className="w-6 h-6 text-steel-400" />
+                <div className="border border-line rounded-md p-6">
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <Users className="w-6 h-6 text-txt-low" />
                     {clanNames.secondary}
                   </h2>
                   <textarea
-                    className="w-full h-64 bg-void-950 border border-void-700 rounded p-3 text-sm font-mono text-white"
+ className="w-full h-64 bg-surface-950 border border-line rounded p-3 text-sm font-mono text-txt-hi"
                     placeholder="Paste spreadsheet data here..."
                     onChange={(e) => handleImport(e.target.value, false)}
                   />
                   {currentSeason.secondaryClan.length > 0 && (
-                    <div className="mt-3 text-green-400 text-sm">
+                    <div className="mt-3 text-ok-400 text-sm">
                       ✓ {currentSeason.secondaryClan.length} players loaded
                     </div>
                   )}
@@ -311,9 +311,9 @@ const ImportView = ({
             )}
 
             {!hasTags && (
-              <div className="bg-signal-500/10 border border-signal-500/30 rounded-lg p-4 mb-6">
-                <AlertCircle className="w-5 h-5 text-signal-400 inline mr-2" />
-                <span className="text-sm text-signal-200">
+              <div className="bg-accent-900/40 border border-accent-400/30 rounded-md p-4 mb-6">
+                <AlertCircle className="w-5 h-5 text-accent-400 inline mr-2" />
+                <span className="text-sm text-accent-300">
                   Copy data from Excel/Google Sheets and paste here. Data saves automatically!
                 </span>
               </div>
@@ -322,7 +322,7 @@ const ImportView = ({
             {(currentSeason.mainClan.length > 0 || currentSeason.secondaryClan.length > 0) && (
               <button
                 onClick={onClose}
-                className="w-full bg-gradient-to-b from-signal-500 to-signal-700 hover:from-signal-400 hover:to-signal-600 border border-signal-400/40 text-white font-semibold py-4 rounded-lg transition-all shadow-lg shadow-signal-900/30"
+ className="w-full border border-accent-400 text-accent-400 hover:bg-accent-900 text-txt-hi font-semibold py-4 rounded-md transition-all "
               >
                 View Dashboard →
               </button>

@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from "react";
 import {
   Calendar, Plus, Play, Settings, Trash2, Swords, History,
-  RefreshCw, UserPlus, UserMinus, ChevronRight,
+  RefreshCw, UserPlus, UserMinus, ChevronRight, ShieldOff,
 } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SettingsModal from "./SettingsModal";
 import HistoricalView from "./HistoricalView";
 import CurrentWarView from "./CurrentWarView";
-import { getHomeStatus } from "../utils/homeStatus";
+import {
+  getHomeStatus,
+  getCachedOptOuts,
+  captureOptOutsForWar,
+} from "../utils/homeStatus";
 
 const parseApiDate = (raw) => {
   if (!raw) return null;
@@ -36,7 +40,7 @@ const Label = ({ children }) => (
 );
 
 /** Panel de una guerra (CWL o normal). Misma forma para las dos. */
-const WarPanel = ({ title, war, onOpen }) => {
+const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts }) => {
   const [showPending, setShowPending] = useState(false);
   const isPrep = war.state === "preparation";
   const target = parseApiDate(isPrep ? war.startTime : war.endTime);
@@ -150,6 +154,34 @@ const WarPanel = ({ title, war, onOpen }) => {
         </div>
       )}
 
+      {(optOuts || loadingOptOuts) && (
+        <div className="pt-3 mt-3 border-t border-line">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldOff className="w-3.5 h-3.5 text-txt-dim" />
+            <span className="font-mono text-[11px] tracking-wider text-txt-dim uppercase">
+              {loadingOptOuts
+                ? "Checking war preferences…"
+                : `Opted out at war start · ${optOuts.players.length} of ${optOuts.total}`}
+            </span>
+          </div>
+          {optOuts && optOuts.players.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {optOuts.players.map((p) => (
+                <span
+                  key={p.tag}
+                  className="text-sm text-txt-low bg-surface-800 border border-line rounded px-2 py-0.5"
+                >
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          )}
+          {optOuts && optOuts.players.length === 0 && (
+            <p className="text-sm text-txt-dim">Everyone had war turned on.</p>
+          )}
+        </div>
+      )}
+
       {onOpen && (
         <button
           onClick={onOpen}
@@ -181,6 +213,8 @@ const SeasonSelector = ({
 
   const [status, setStatus] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
+  const [optOuts, setOptOuts] = useState(null);
+  const [loadingOptOuts, setLoadingOptOuts] = useState(false);
 
   const seasonsByYear = getSeasonsByYear();
   const years = Object.keys(seasonsByYear).sort((a, b) => b - a);
@@ -196,6 +230,26 @@ const SeasonSelector = ({
   useEffect(() => {
     loadStatus();
   }, [loadStatus]);
+
+  // La lista de "war opted out" se congela por guerra: si ya hay foto de
+  // esta guerra se reutiliza; si es una guerra nueva se calcula una vez.
+  // Va en segundo plano para no bloquear la carga del home.
+  const warKey = status?.regularWar?.warKey;
+  useEffect(() => {
+    if (!warKey || !clanNames?.mainTag) {
+      setOptOuts(null);
+      return;
+    }
+    const cached = getCachedOptOuts(warKey);
+    if (cached) {
+      setOptOuts(cached);
+      return;
+    }
+    setLoadingOptOuts(true);
+    captureOptOutsForWar(clanNames.mainTag, warKey)
+      .then(setOptOuts)
+      .finally(() => setLoadingOptOuts(false));
+  }, [warKey, clanNames?.mainTag]);
 
   const handleDeleteConfirm = () => {
     if (deleteConfirm) onDeleteSeason(deleteConfirm);
@@ -256,7 +310,12 @@ const SeasonSelector = ({
               />
             )}
             {status?.regularWar && (
-              <WarPanel title="Clan war" war={status.regularWar} />
+              <WarPanel
+                title="Clan war"
+                war={status.regularWar}
+                optOuts={optOuts}
+                loadingOptOuts={loadingOptOuts}
+              />
             )}
             {!hasAnyWar && (
               <div className="border border-line rounded-md p-6 text-center">

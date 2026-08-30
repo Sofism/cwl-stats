@@ -64,14 +64,15 @@ export const MEDAL_VALUES = {
 };
 
 export const DEFAULT_VISIBLE_COLS = {
-  th: true,
+  th: false,
+  wars: true,
   missAtk: true,
   missDef: false,
   netStars: true,
   netPercent: false,
   threeRate: true,
-  starGain: false,
+  starGain: true,
   percentGain: false,
-  starGive: false,
+  starGive: true,
   percentGive: false,
 };

@@ -53,7 +53,17 @@
               // series de graficos). Nunca en superficies grandes ni en
               // botones primarios.
               amber: { 400: "#d9a441", 900: "#2a2110" },
-              rust: { 400: "#e0754a", 900: "#2a1710" },
+              // Color de alerta, tambien ajustable desde Ajustes.
+              rust: {
+                300: "rgb(var(--alert-300) / <alpha-value>)",
+                400: "rgb(var(--alert-400) / <alpha-value>)",
+                900: "rgb(var(--alert-900) / <alpha-value>)",
+              },
+              alert: {
+                300: "rgb(var(--alert-300) / <alpha-value>)",
+                400: "rgb(var(--alert-400) / <alpha-value>)",
+                900: "rgb(var(--alert-900) / <alpha-value>)",
+              },
               azure: { 400: "#5b9dd9", 900: "#101d2a" },
               lime: { 400: "#9db843", 900: "#1c2410" },
               // SEMANTICOS: exclusivamente bien / mal.
@@ -103,18 +113,27 @@
         rust:  { 300: "235 148 112", 400: "224 117 74",  500: "207 98 54",   600: "176 79 40",  900: "42 23 16" },
         violet:{ 300: "184 168 236", 400: "146 125 214", 500: "121 100 190", 600: "95 78 152",  900: "26 22 42" },
       };
-      window.setAccent = function (name) {
-        var a = window.ACCENTS[name] || window.ACCENTS.lime;
+      // "accent" = color principal de la interfaz.
+      // "alert"  = color de aviso (ataques que faltan, amenaza pendiente).
+      window.setPaletteRole = function (role, name) {
+        var a = window.ACCENTS[name];
+        if (!a) return;
         Object.keys(a).forEach(function (k) {
-          document.documentElement.style.setProperty("--accent-" + k, a[k]);
+          document.documentElement.style.setProperty("--" + role + "-" + k, a[k]);
         });
-        try { localStorage.setItem("cwl-accent", name); } catch (e) {}
+        try { localStorage.setItem("cwl-" + role, name); } catch (e) {}
       };
-      // Se aplica antes de pintar para evitar un parpadeo de color.
+      window.setAccent = function (name) { window.setPaletteRole("accent", name); };
+      window.setAlert = function (name) { window.setPaletteRole("alert", name); };
+      // Se aplican antes de pintar para evitar un parpadeo de color.
       (function () {
-        var saved = "lime";
-        try { saved = localStorage.getItem("cwl-accent") || "lime"; } catch (e) {}
-        window.setAccent(saved);
+        var accent = "lime", alert = "rust";
+        try {
+          accent = localStorage.getItem("cwl-accent") || "lime";
+          alert = localStorage.getItem("cwl-alert") || "rust";
+        } catch (e) {}
+        window.setAccent(accent);
+        window.setAlert(alert);
       })();
     </script>
   </head>

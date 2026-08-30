@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import StatsCards from "./StatsCards";
 import StatsTable from "./StatsTable";
 import ColumnSelector from "./ColumnSelector";
@@ -26,7 +26,27 @@ const Dashboard = ({
 }) => {
   const [activePage, setActivePage] = useState("main");
   const [sortBy, setSortBy] = useState("default");
-  const [visibleCols, setVisibleCols] = useState(DEFAULT_VISIBLE_COLS);
+  // Las columnas elegidas se recuerdan entre sesiones. Se fusiona con los
+  // valores por defecto para que las columnas nuevas aparezcan aunque haya
+  // una preferencia guardada de antes.
+  const [visibleCols, setVisibleCols] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cwl-visible-cols");
+      return saved
+        ? { ...DEFAULT_VISIBLE_COLS, ...JSON.parse(saved) }
+        : DEFAULT_VISIBLE_COLS;
+    } catch {
+      return DEFAULT_VISIBLE_COLS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("cwl-visible-cols", JSON.stringify(visibleCols));
+    } catch {
+      // sin localStorage: simplemente no se recuerda
+    }
+  }, [visibleCols]);
   const [showColSelector, setShowColSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showHistorical, setShowHistorical] = useState(false);
@@ -111,12 +131,12 @@ const Dashboard = ({
   const bonusCount = getBonusCount();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-void-950 via-signal-900 to-void-950 text-white p-6">
+    <div className="min-h-screen bg-surface-950 text-txt-mid p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Back Button */}
         <button
           onClick={onBackToSelector}
-          className="mb-4 flex items-center gap-2 text-ink-400 hover:text-white transition-colors"
+ className="mb-4 flex items-center gap-2 text-txt-low hover:text-txt-hi transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Seasons
@@ -124,7 +144,7 @@ const Dashboard = ({
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-4xl font-bold tracking-wide bg-gradient-to-r from-signal-400 to-steel-300 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-semibold tracking-wide text-txt-hi">
               CWL Performance
             </h1>
             <select
@@ -135,7 +155,7 @@ const Dashboard = ({
                 if (s && s.leagueInfo) setLeagueInfo(s.leagueInfo);
                 if (s && s.bonuses) setSelectedBonuses(s.bonuses);
               }}
-              className="mt-2 bg-void-800 border border-void-700 rounded px-3 py-1 text-sm text-white"
+ className="mt-2 bg-surface-800 border border-line rounded px-3 py-1 text-sm text-txt-hi"
             >
               {seasons.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -147,14 +167,14 @@ const Dashboard = ({
           <div className="flex gap-2">
   <button
     onClick={() => setShowCurrentWar(true)}
-    className="px-4 py-2 bg-void-700 border border-signal-500/40 rounded-lg hover:bg-void-600 transition-colors flex items-center gap-2"
+ className="px-4 py-2 bg-surface-700 border border-accent-400/40 rounded-md hover:bg-surface-700 transition-colors flex items-center gap-2"
   >
-    <Swords className="w-4 h-4 text-signal-400" />
+    <Swords className="w-4 h-4 text-accent-400" />
     Current War
   </button>
   <button
     onClick={() => setShowHistorical(true)}
-    className="px-4 py-2 bg-gradient-to-b from-void-700 to-void-800 border border-signal-500/40 rounded-lg hover:from-void-600 hover:to-void-700 transition-all flex items-center gap-2"
+ className="px-4 py-2 border border-line-strong rounded-md hover:border-accent-400 transition-all flex items-center gap-2"
   >
     <Trophy className="w-4 h-4" />
     Historical
@@ -162,13 +182,13 @@ const Dashboard = ({
 
   <button
     onClick={onOpenImport}
-    className="px-4 py-2 bg-void-800 border border-void-700 rounded-lg hover:bg-void-700 transition-colors"
+ className="px-4 py-2 border border-line rounded-md hover:bg-surface-700 transition-colors"
   >
     Update
   </button>
   <button
     onClick={() => setDeleteConfirm("ALL")}
-    className="px-4 py-2 bg-red-600/20 border border-red-600 rounded-lg hover:bg-red-600/30 transition-colors"
+ className="px-4 py-2 bg-bad-900/50 border border-bad-400/40 rounded-md hover:bg-bad-900/60 transition-colors"
   >
     <Trash2 className="w-4 h-4" />
   </button>
@@ -176,7 +196,7 @@ const Dashboard = ({
         </div>
 
         {saveStatus && (
-          <div className="mb-4 p-3 rounded-lg bg-green-500/20 border border-green-500 text-green-300">
+          <div className="mb-4 p-3 rounded-md bg-ok-900/50 border border-ok-400/40 text-ok-400">
             {saveStatus}
           </div>
         )}
@@ -184,7 +204,7 @@ const Dashboard = ({
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="w-full mb-4 bg-void-800 border border-void-700 rounded px-3 py-2 text-white"
+ className="w-full mb-4 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi"
         >
           <option value="default">Default Sort</option>
           <option value="netStars">Net Stars</option>
