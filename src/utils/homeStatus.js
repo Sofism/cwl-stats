@@ -24,11 +24,32 @@ const summarizeWar = (war, clanTag) => {
     .filter((m) => m.left > 0)
     .sort((a, b) => a.position - b.position);
 
+  const totalAttacks = war.teamSize * attacksPerMember;
+  const usAttacksUsed = (us.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
+  const themAttacksUsed = (them.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
+  // Defensas: cuantas de nuestras aldeas recibieron ataque y cuantas
+  // aguantaron sin conceder ni una estrella.
+  const enemyAttacks = (them.members || []).flatMap((m) => m.attacks || []);
+  const attackedTags = new Set(enemyAttacks.map((a) => a.defenderTag));
+  const perfectDefenses = (us.members || []).filter((m) => {
+    const taken = enemyAttacks.filter((a) => a.defenderTag === m.tag);
+    return taken.length > 0 && taken.every((a) => a.stars === 0);
+  }).length;
+
   return {
     state: war.state,
     teamSize: war.teamSize,
     endTime: war.endTime,
     startTime: war.startTime,
+    attacksPerMember,
+    usAttacksUsed,
+    usAttacksLeft: totalAttacks - usAttacksUsed,
+    themAttacksUsed,
+    themAttacksLeft: totalAttacks - themAttacksUsed,
+    ourBasesAttacked: attackedTags.size,
+    ourBasesUntouched: war.teamSize - attackedTags.size,
+    perfectDefenses,
+    starsLeft: war.teamSize * 3 - (us.stars || 0),
     us: {
       name: us.name,
       stars: us.stars || 0,
@@ -116,6 +137,15 @@ export const getHomeStatus = async (clanTag) => {
           .filter((p) => !p.hasAttacked)
           .map((p) => ({ name: p.name, position: p.position, left: 1 })),
         pendingAttacks: cwlWar.roster.filter((p) => !p.hasAttacked).length,
+        attacksPerMember: cwlWar.attacksPerMember,
+        usAttacksUsed: cwlWar.usAttacksUsed,
+        usAttacksLeft: cwlWar.usAttacksLeft,
+        themAttacksUsed: cwlWar.themAttacksUsed,
+        themAttacksLeft: cwlWar.themAttacksLeft,
+        ourBasesAttacked: cwlWar.ourBasesAttacked,
+        ourBasesUntouched: cwlWar.ourBasesUntouched,
+        perfectDefenses: cwlWar.perfectDefenses,
+        starsLeft: cwlWar.starsLeft,
       }
     : null;
 

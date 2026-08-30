@@ -351,9 +351,27 @@ export const getCurrentCwlWar = async (clanTag) => {
       };
     });
 
+  // Metricas de contexto para el panel de guerra.
+  const attacksPerMember = raw.attacksPerMember || 1; // CWL = 1 ataque
+  const totalAttacks = raw.teamSize * attacksPerMember;
+  const usAttacksUsed = (us.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
+  const themAttacksUsed = (them.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
+  // Cuantas de NUESTRAS aldeas han sido atacadas y cuantas aguantaron a 0.
+  const ourBasesAttacked = roster.filter((p) => p.defense).length;
+  const perfectDefenses = roster.filter((p) => p.defense && p.defense.stars === 0).length;
+
   return {
     state: raw.state, // "preparation" | "inWar"
     teamSize: raw.teamSize,
+    attacksPerMember,
+    usAttacksUsed,
+    usAttacksLeft: totalAttacks - usAttacksUsed,
+    themAttacksUsed,
+    themAttacksLeft: totalAttacks - themAttacksUsed,
+    ourBasesAttacked,
+    ourBasesUntouched: raw.teamSize - ourBasesAttacked,
+    perfectDefenses,
+    starsLeft: raw.teamSize * 3 - (us.stars || 0),
     startTime: raw.startTime,
     endTime: raw.endTime,
     us: {

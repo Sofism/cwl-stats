@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Calendar, Plus, Play, Settings, Trash2, Swords, History,
-  RefreshCw, UserPlus, UserMinus, AlertTriangle,
+  RefreshCw, UserPlus, UserMinus, ChevronRight,
 } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -30,84 +30,130 @@ const countdown = (date) => {
 };
 
 const Label = ({ children }) => (
-  <div className="font-mono text-[10px] tracking-[0.12em] text-txt-dim uppercase">
+  <div className="font-mono text-[11px] tracking-[0.12em] text-txt-dim uppercase">
     {children}
   </div>
 );
 
 /** Panel de una guerra (CWL o normal). Misma forma para las dos. */
 const WarPanel = ({ title, war, onOpen }) => {
+  const [showPending, setShowPending] = useState(false);
   const isPrep = war.state === "preparation";
   const target = parseApiDate(isPrep ? war.startTime : war.endTime);
   const ahead =
     war.us.stars > war.them.stars ||
     (war.us.stars === war.them.stars && war.us.destruction > war.them.destruction);
 
+  const Metric = ({ label, value, tone }) => (
+    <div>
+      <div className={`font-mono text-lg ${tone || "text-txt-hi"}`}>{value}</div>
+      <div className="font-mono text-[10px] tracking-wider text-txt-dim uppercase mt-0.5">
+        {label}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="border border-line rounded-md p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="border border-line rounded-md p-5">
+      <div className="flex items-center justify-between mb-4">
         <Label>{title}</Label>
-        <span className="font-mono text-[10px] text-txt-dim">
+        <span className="font-mono text-[11px] text-txt-dim">
           {isPrep ? "PREP" : "BATTLE"} · {war.teamSize}v{war.teamSize}
           {target ? ` · ${countdown(target)}` : ""}
         </span>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex-1">
-          <div className="text-xs text-txt-low truncate">{war.us.name}</div>
-          <div className="font-mono text-2xl text-txt-hi">{war.us.stars}</div>
-          <div className="font-mono text-[10px] text-txt-dim">
+          <div className="text-sm text-txt-low truncate">{war.us.name}</div>
+          <div className="font-mono text-3xl text-txt-hi">{war.us.stars}</div>
+          <div className="font-mono text-xs text-txt-dim">
             {war.us.destruction.toFixed(1)}%
           </div>
         </div>
         <div
-          className={`font-mono text-[10px] px-2 ${
+          className={`font-mono text-[11px] px-3 ${
             ahead ? "text-ok-400" : "text-bad-400"
           }`}
         >
           {ahead ? "AHEAD" : "BEHIND"}
         </div>
         <div className="flex-1 text-right">
-          <div className="text-xs text-txt-low truncate">{war.them.name}</div>
-          <div className="font-mono text-2xl text-txt-hi">{war.them.stars}</div>
-          <div className="font-mono text-[10px] text-txt-dim">
+          <div className="text-sm text-txt-low truncate">{war.them.name}</div>
+          <div className="font-mono text-3xl text-txt-hi">{war.them.stars}</div>
+          <div className="font-mono text-xs text-txt-dim">
             {war.them.destruction.toFixed(1)}%
           </div>
         </div>
       </div>
 
-      {war.pendingAttacks > 0 && war.state !== "preparation" && (
-        <div className="mt-3 pt-3 border-t border-line">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-3 h-3 text-accent-400" />
-            <span className="font-mono text-[10px] text-accent-400 tracking-wider">
+      {!isPrep && (
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-3 py-4 border-t border-line">
+          <Metric
+            label="Our attacks"
+            value={`${war.usAttacksUsed}/${war.usAttacksUsed + war.usAttacksLeft}`}
+          />
+          <Metric
+            label="Enemy left"
+            value={war.themAttacksLeft}
+            tone={war.themAttacksLeft > 0 ? "text-rust-400" : "text-txt-hi"}
+          />
+          <Metric label="Untouched" value={war.ourBasesUntouched} />
+          <Metric
+            label="Held at 0★"
+            value={war.perfectDefenses}
+            tone={war.perfectDefenses > 0 ? "text-ok-400" : "text-txt-hi"}
+          />
+          <Metric label="Stars left" value={war.starsLeft} />
+        </div>
+      )}
+
+      {war.pendingAttacks > 0 && !isPrep && (
+        <div className="pt-3 border-t border-line">
+          <button
+            onClick={() => setShowPending(!showPending)}
+            className="w-full flex items-center gap-2 text-left hover:text-accent-300 transition-colors"
+          >
+            <ChevronRight
+              className={`w-4 h-4 text-accent-400 transition-transform ${
+                showPending ? "rotate-90" : ""
+              }`}
+            />
+            <span className="font-mono text-xs text-accent-400 tracking-wider">
               {war.pendingAttacks} ATTACK{war.pendingAttacks !== 1 ? "S" : ""} PENDING
             </span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {war.pending.slice(0, 10).map((p) => (
-              <span
-                key={p.name}
-                className="text-[11px] text-txt-mid bg-surface-800 border border-line rounded px-2 py-0.5"
-              >
-                {p.name}
-                {p.left > 1 ? ` ×${p.left}` : ""}
-              </span>
-            ))}
-            {war.pending.length > 10 && (
-              <span className="text-[11px] text-txt-dim px-1">
-                +{war.pending.length - 10}
-              </span>
-            )}
-          </div>
+            <span className="font-mono text-[11px] text-txt-dim ml-auto">
+              {war.pending.length} player{war.pending.length !== 1 ? "s" : ""}
+            </span>
+          </button>
+
+          {showPending && (
+            <div className="mt-3 space-y-1">
+              {war.pending.map((p) => (
+                <div
+                  key={p.name}
+                  className="flex items-center justify-between text-sm border-b border-line/60 py-1.5"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="font-mono text-xs text-txt-dim w-6">
+                      {p.position}
+                    </span>
+                    <span className="text-txt-mid">{p.name}</span>
+                  </span>
+                  <span className="font-mono text-xs text-rust-400">
+                    {p.left} left
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {onOpen && (
         <button
           onClick={onOpen}
-          className="mt-3 w-full border border-line-strong hover:border-accent-400 hover:text-accent-400 text-txt-mid rounded px-3 py-2 text-xs transition-colors"
+          className="mt-4 w-full border border-line-strong hover:border-accent-400 hover:text-accent-400 text-txt-mid rounded px-3 py-2.5 text-sm transition-colors"
         >
           Open live view
         </button>
@@ -165,8 +211,8 @@ const SeasonSelector = ({
         {/* Cabecera */}
         <div className="flex items-start justify-between pb-4 border-b border-line mb-6">
           <div>
-            <h1 className="text-lg font-semibold text-txt-hi">CWL Stats Tracker</h1>
-            <div className="font-mono text-[10px] tracking-[0.1em] text-txt-dim uppercase mt-1">
+            <h1 className="text-2xl font-semibold text-txt-hi">CWL Stats Tracker</h1>
+            <div className="font-mono text-xs tracking-[0.1em] text-txt-dim uppercase mt-1">
               {clanNames?.main || "Main"} · {clanNames?.secondary || "Secondary"}
             </div>
           </div>
@@ -174,14 +220,14 @@ const SeasonSelector = ({
             <button
               onClick={loadStatus}
               disabled={loadingStatus}
-              className="border border-line-strong rounded px-3 py-2 text-xs text-txt-low hover:text-txt-hi transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="border border-line-strong rounded px-3 py-2 text-sm text-txt-low hover:text-txt-hi transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               <RefreshCw className={`w-3 h-3 ${loadingStatus ? "animate-spin" : ""}`} />
               Refresh
             </button>
             <button
               onClick={() => setShowSettings(true)}
-              className="border border-line-strong rounded px-3 py-2 text-xs text-txt-low hover:text-txt-hi transition-colors flex items-center gap-2"
+              className="border border-line-strong rounded px-3 py-2 text-sm text-txt-low hover:text-txt-hi transition-colors flex items-center gap-2"
             >
               <Settings className="w-3 h-3" />
               Settings
@@ -215,7 +261,7 @@ const SeasonSelector = ({
             {!hasAnyWar && (
               <div className="border border-line rounded-md p-6 text-center">
                 <Label>No war in progress</Label>
-                <p className="text-xs text-txt-dim mt-2">
+                <p className="text-sm text-txt-dim mt-2">
                   Nothing running right now. Clan war status needs a public war log.
                 </p>
               </div>
@@ -229,12 +275,12 @@ const SeasonSelector = ({
             <Label>Roster changes</Label>
             <div className="flex flex-wrap gap-2 mt-3">
               {status.roster.joined.map((p) => (
-                <span key={p.tag} className="text-[11px] text-ok-400 border border-ok-400/30 bg-ok-900/40 rounded px-2 py-0.5 flex items-center gap-1">
+                <span key={p.tag} className="text-sm text-ok-400 border border-ok-400/30 bg-ok-900/40 rounded px-2 py-0.5 flex items-center gap-1">
                   <UserPlus className="w-3 h-3" />{p.name}
                 </span>
               ))}
               {status.roster.left.map((p) => (
-                <span key={p.tag} className="text-[11px] text-bad-400 border border-bad-400/30 bg-bad-900/40 rounded px-2 py-0.5 flex items-center gap-1">
+                <span key={p.tag} className="text-sm text-bad-400 border border-bad-400/30 bg-bad-900/40 rounded px-2 py-0.5 flex items-center gap-1">
                   <UserMinus className="w-3 h-3" />{p.name}
                 </span>
               ))}
@@ -249,16 +295,16 @@ const SeasonSelector = ({
             className="border border-line hover:border-line-strong rounded-md p-4 text-left transition-colors"
           >
             <Swords className="w-4 h-4 text-txt-low mb-2" />
-            <div className="text-sm text-txt-hi">Live war</div>
-            <div className="font-mono text-[10px] text-txt-dim mt-1">CWL ROUND DETAIL</div>
+            <div className="text-base text-txt-hi">Live war</div>
+            <div className="font-mono text-xs text-txt-dim mt-1">CWL ROUND DETAIL</div>
           </button>
           <button
             onClick={() => setShowHistorical(true)}
             className="border border-line hover:border-line-strong rounded-md p-4 text-left transition-colors"
           >
             <History className="w-4 h-4 text-txt-low mb-2" />
-            <div className="text-sm text-txt-hi">Historical</div>
-            <div className="font-mono text-[10px] text-txt-dim mt-1">
+            <div className="text-base text-txt-hi">Historical</div>
+            <div className="font-mono text-xs text-txt-dim mt-1">
               {seasons.length} SEASON{seasons.length !== 1 ? "S" : ""}
             </div>
           </button>
@@ -270,7 +316,7 @@ const SeasonSelector = ({
             <Label>Seasons</Label>
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs text-txt-low hover:text-accent-400 flex items-center gap-1 transition-colors"
+              className="text-sm text-txt-low hover:text-accent-400 flex items-center gap-1 transition-colors"
             >
               <Plus className="w-3 h-3" /> New season
             </button>
