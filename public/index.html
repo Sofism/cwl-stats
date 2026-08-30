@@ -18,37 +18,63 @@
         theme: {
           extend: {
             colors: {
+              // ESCALA DE SUPERFICIES: la profundidad viene de escalones de
+              // gris, no de bordes por todas partes.
+              surface: {
+                950: "#0a0a0b", // fondo de pagina
+                900: "#0e0e10",
+                850: "#141517",
+                800: "#1a1b1e", // tarjetas
+                700: "#232427", // elevado / hover
+              },
+              // BORDES hairline: uno normal y uno mas marcado.
+              line: {
+                DEFAULT: "#1e1f22",
+                strong: "#2a2b2f",
+              },
+              // TEXTO en cuatro niveles.
+              txt: {
+                hi: "#f5f5f7",
+                mid: "#d4d4d8",
+                low: "#9a9ca1",
+                dim: "#6e7075",
+              },
+              // ACENTO PRINCIPAL: solo para "esto requiere atencion".
+              accent: {
+                300: "#eb9470",
+                400: "#e0754a",
+                500: "#cf6236",
+                600: "#b04f28",
+                900: "#2a1710",
+              },
+              // REALCES SECUNDARIOS: en dosis pequenas (chips, iconos,
+              // series de graficos). Nunca en superficies grandes ni en
+              // botones primarios.
+              amber: { 400: "#d9a441", 900: "#2a2110" },
+              azure: { 400: "#5b9dd9", 900: "#101d2a" },
+              lime: { 400: "#9db843", 900: "#1c2410" },
+              // SEMANTICOS: exclusivamente bien / mal.
+              ok: { 400: "#4a9d5f", 900: "#0f2416" },
+              bad: { 400: "#c4554d", 900: "#2a1211" },
+
+              // --- Alias de la paleta anterior, remapeados a la nueva.
+              // Evita reescribir 17 componentes de golpe: todo adopta los
+              // colores nuevos y los componentes se van migrando por fases.
               void: {
-                950: "#080b12",
-                900: "#0d111a",
-                800: "#141a25",
-                700: "#1e2634",
-                600: "#2b3547",
-                500: "#3d4a61",
+                950: "#0a0a0b", 900: "#0e0e10", 800: "#1a1b1e",
+                700: "#232427", 600: "#2a2b2f", 500: "#3a3b40",
               },
               ink: {
-                50: "#eef2f8",
-                200: "#cbd5e6",
-                400: "#8b97ad",
-                500: "#6f7b91",
-                600: "#556073",
+                50: "#f5f5f7", 200: "#d4d4d8", 400: "#9a9ca1",
+                500: "#6e7075", 600: "#55565b",
               },
               signal: {
-                200: "#bcdcff",
-                300: "#7dbcff",
-                400: "#3d99ff",
-                500: "#1a7fff",
-                600: "#0d63d6",
-                700: "#0b4ea8",
-                900: "#0a2547",
+                200: "#f0c4ae", 300: "#eb9470", 400: "#e0754a",
+                500: "#cf6236", 600: "#b04f28", 700: "#8a3d1f", 900: "#2a1710",
               },
               steel: {
-                200: "#d3d5f7",
-                300: "#aab0ef",
-                400: "#7b83e0",
-                500: "#5f68cf",
-                600: "#4a51a8",
-                700: "#383e80",
+                200: "#c9cdd4", 300: "#a4aab4", 400: "#7f8794",
+                500: "#646c79", 600: "#4d5460", 700: "#3a404a",
               },
             },
             fontFamily: {

@@ -118,3 +118,24 @@ export const getClanWarLeagueWar = async (warTag) => {
     return null;
   }
 };
+
+/**
+ * Guerra normal en curso (no CWL). Requiere que el registro de guerras del
+ * clan sea PUBLICO: si es privado la API responde 403 y no hay forma de
+ * leerlo. Devuelve null si no hay guerra o si no es accesible.
+ *
+ * Estados posibles: notInWar | preparation | inWar | warEnded
+ */
+export const getCurrentWar = async (clanTag) => {
+  try {
+    const encodedTag = encodeURIComponent(normalizeTag(clanTag));
+    const response = await proxyFetch(`clans/${encodedTag}/currentwar`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data || data.state === "notInWar") return null;
+    return data;
+  } catch (err) {
+    console.error("Error fetching current war:", err);
+    return null;
+  }
+};
