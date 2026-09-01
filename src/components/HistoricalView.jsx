@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Trophy, ArrowLeft, Filter } from "lucide-react";
+import { Trophy, ArrowLeft, Filter, ChevronDown, ChevronRight } from "lucide-react";
 import { getClanMembers } from "../utils/cocApi";
 import PlayerBarChart from "./PlayerBarChart";
 import PlayerLineChart from "./PlayerLineChart";
@@ -218,7 +218,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const sortedData = getSortedData(historicalData);
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm z-50 overflow-y-auto">
       <div className="min-h-screen px-4 py-8">
         <div className="max-w-7xl mx-auto">
 
@@ -301,7 +301,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   </span>
                 )}
               </span>
-              <span className="text-accent-400 text-xl">{showFilters ? "▼" : "▶"}</span>
+              {showFilters ? (
+                <ChevronDown className="w-5 h-5 text-accent-400" />
+              ) : (
+                <ChevronRight className="w-5 h-5 text-accent-400" />
+              )}
             </button>
 
             {showFilters && (
@@ -446,10 +450,10 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                 </div>
                 <div className="overflow-x-auto" style={{ maxHeight: "400px", overflowY: "auto" }}>
                   <table className="w-full text-sm">
-                    <thead className="bg-surface-950 sticky top-0">
+                    <thead className="bg-surface-950 sticky top-0 z-10">
                       <tr className="text-left text-xs text-txt-low">
                         <th className="p-3">Rank</th>
-                        <th className="p-3">Player</th>
+                        <th className="p-3 sticky left-0 z-20 bg-surface-950">Player</th>
                         <th className="p-3">TH</th>
                         {COLUMNS.filter((c) => visibleCols[c.key]).map((c) => (
                           <th key={c.key} className="p-3">{c.label}</th>
@@ -466,7 +470,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                           <td className="p-3">
                             <span className={`font-semibold ${i < 3 ? "text-amber-400" : "text-txt-low"}`}>#{i + 1}</span>
                           </td>
-                          <td className="p-3 font-semibold">
+                          <td
+ className={`p-3 font-semibold sticky left-0 z-10 ${
+                              p.isActive ? "bg-ok-900" : "bg-surface-950"
+                            }`}
+                          >
                             <span className="text-txt-low">{p.name}</span>
                             {p.isActive && <span className="ml-1 text-xs">🟢</span>}
                           </td>
@@ -598,9 +606,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                 <h4 className="font-semibold text-lg mb-4 text-amber-400">Season by Season Evolution</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-surface-950">
+                    <thead className="bg-surface-950 sticky top-0 z-10">
                       <tr className="text-left text-xs text-txt-low">
-                        <th className="p-3">Season</th>
+                        <th className="p-3 sticky left-0 z-20 bg-surface-950">Season</th>
                         <th className="p-3">Wars</th>
                         <th className="p-3">Miss Atk</th>
                         <th className="p-3">Net ★</th>
@@ -613,7 +621,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     <tbody>
                       {getPlayerEvolution(selectedPlayer.key).map((s, i) => (
                         <tr key={i} className="border-t border-line hover:bg-surface-700/30">
-                          <td className="p-3 font-semibold text-accent-400">{s.season}</td>
+                          <td className="p-3 font-semibold text-accent-400 sticky left-0 z-10 bg-surface-950">{s.season}</td>
                           <td className="p-3">{s.wars}</td>
                           <td className="p-3">
                             {s.missAtk > 0

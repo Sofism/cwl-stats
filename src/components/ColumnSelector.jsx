@@ -1,4 +1,5 @@
 import React from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowColSelector }) => {
   const columns = [
@@ -22,7 +23,11 @@ const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowC
  className="flex items-center justify-between w-full text-sm font-semibold"
       >
         <span>Column Visibility</span>
-        <span className="text-txt-low">{showColSelector ? "▼" : "▶"}</span>
+        {showColSelector ? (
+          <ChevronDown className="w-4 h-4 text-txt-low" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-txt-low" />
+        )}
       </button>
       {showColSelector && (
         <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2">

@@ -7,7 +7,7 @@ import React from "react";
 const PlayerModal = ({ player, onClose }) => {
   return (
     <div
- className="fixed inset-0 bg-black/70 z-50 overflow-y-auto"
+ className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm z-50 overflow-y-auto"
       style={{ WebkitOverflowScrolling: "touch" }}
     >
       <div className="min-h-screen px-4 py-8 flex items-center justify-center">

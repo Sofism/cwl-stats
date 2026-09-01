@@ -75,7 +75,7 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
       (war.us.stars === war.them.stars && war.us.destruction > war.them.destruction));
 
   return (
-    <div className="fixed inset-0 bg-surface-950/95 z-50 overflow-y-auto p-4 md:p-6">
+    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm z-50 overflow-y-auto p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <h2 className="text-2xl font-semibold flex items-center gap-2 text-txt-hi">
@@ -175,10 +175,10 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
             <div className="border border-line rounded-md overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-surface-950 text-txt-low">
+                  <thead className="bg-surface-950 text-txt-low sticky top-0 z-10">
                     <tr>
                       <th className="p-3 text-left">#</th>
-                      <th className="p-3 text-left">Player</th>
+                      <th className="p-3 text-left sticky left-0 z-20 bg-surface-950">Player</th>
                       <th className="p-3 text-center">TH</th>
                       <th className="p-3 text-left">Attack</th>
                       <th className="p-3 text-left">Defense taken</th>
@@ -191,7 +191,13 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
  className={p.hasAttacked ? "" : "bg-red-500/5"}
                       >
                         <td className="p-3 text-txt-hi0">{p.position}</td>
-                        <td className="p-3 text-txt-hi">{p.name}</td>
+                        <td
+ className={`p-3 text-txt-hi sticky left-0 z-10 ${
+                            p.hasAttacked ? "bg-surface-950" : "bg-bad-900"
+                          }`}
+                        >
+                          {p.name}
+                        </td>
                         <td className="p-3 text-center text-txt-low">{p.th || "—"}</td>
                         <td className="p-3">
                           {p.attacks.length === 0 ? (

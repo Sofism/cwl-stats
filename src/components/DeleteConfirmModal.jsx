@@ -5,7 +5,7 @@ import React from "react";
 
 const DeleteConfirmModal = ({ isAll, onConfirm, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-surface-800 border border-bad-400/40 rounded-md p-6 max-w-md w-full">
         <h3 className="text-xl font-semibold mb-4 text-bad-400">Confirm Delete</h3>
         <p className="mb-6 text-txt-mid">

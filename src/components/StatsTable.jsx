@@ -59,7 +59,10 @@ const StatsTable = memo(({
               <tr className="text-left text-xs text-txt-low">
                 <th className="p-3">Rank</th>
                 {bonusCount > 0 && <th className="p-3">Bonus</th>}
-                <th className="p-3">Player</th>
+                {/* Fija: al deslizar la tabla en horizontal, el jugador
+                    sigue a la vista. z-20 = por encima de las otras
+                    celdas Y del propio thead sticky (z-10). */}
+                <th className="p-3 sticky left-0 z-20 bg-surface-950">Player</th>
                 {visibleCols.th && <th className="p-3">TH</th>}
                 {visibleCols.wars && <th className="p-3">Wars</th>}
                 {visibleCols.missAtk && <th className="p-3">Miss Atk</th>}
@@ -117,7 +120,13 @@ const StatsTable = memo(({
                         </td>
                       )}
                       
-                      <td className="p-3 font-semibold">{p.name}</td>
+                      <td
+ className={`p-3 font-semibold sticky left-0 z-10 ${
+                          hasBonus ? "bg-amber-900" : "bg-surface-950"
+                        }`}
+                      >
+                        {p.name}
+                      </td>
                       {visibleCols.th && <td className="p-3">{p.th}</td>}
                       {visibleCols.wars && (
                         <td className="p-3 tabular">{p.wars ?? "—"}</td>
