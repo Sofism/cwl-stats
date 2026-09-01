@@ -164,7 +164,7 @@ const Dashboard = ({
               ))}
             </select>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
   <button
     onClick={() => setShowCurrentWar(true)}
  className="px-4 py-2 bg-surface-700 border border-accent-400/40 rounded-md hover:bg-surface-700 transition-colors flex items-center gap-2"

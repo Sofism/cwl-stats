@@ -77,7 +77,7 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
   return (
     <div className="fixed inset-0 bg-surface-950/95 z-50 overflow-y-auto p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <h2 className="text-2xl font-semibold flex items-center gap-2 text-txt-hi">
             <Swords className="w-6 h-6 text-accent-400" />
             Current War
@@ -173,58 +173,60 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
 
             {/* Roster */}
             <div className="border border-line rounded-md overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-surface-950 text-txt-low">
-                  <tr>
-                    <th className="p-3 text-left">#</th>
-                    <th className="p-3 text-left">Player</th>
-                    <th className="p-3 text-center">TH</th>
-                    <th className="p-3 text-left">Attack</th>
-                    <th className="p-3 text-left">Defense taken</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {war.roster.map((p) => (
-                    <tr
-                      key={p.tag}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-950 text-txt-low">
+                    <tr>
+                      <th className="p-3 text-left">#</th>
+                      <th className="p-3 text-left">Player</th>
+                      <th className="p-3 text-center">TH</th>
+                      <th className="p-3 text-left">Attack</th>
+                      <th className="p-3 text-left">Defense taken</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {war.roster.map((p) => (
+                      <tr
+                        key={p.tag}
  className={p.hasAttacked ? "" : "bg-red-500/5"}
-                    >
-                      <td className="p-3 text-txt-hi0">{p.position}</td>
-                      <td className="p-3 text-txt-hi">{p.name}</td>
-                      <td className="p-3 text-center text-txt-low">{p.th || "—"}</td>
-                      <td className="p-3">
-                        {p.attacks.length === 0 ? (
-                          <span className="text-bad-400 text-xs">
-                            {isPrep ? "—" : "not used"}
-                          </span>
-                        ) : (
-                          p.attacks.map((a, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <StarRow stars={a.stars} />
+                      >
+                        <td className="p-3 text-txt-hi0">{p.position}</td>
+                        <td className="p-3 text-txt-hi">{p.name}</td>
+                        <td className="p-3 text-center text-txt-low">{p.th || "—"}</td>
+                        <td className="p-3">
+                          {p.attacks.length === 0 ? (
+                            <span className="text-bad-400 text-xs">
+                              {isPrep ? "—" : "not used"}
+                            </span>
+                          ) : (
+                            p.attacks.map((a, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <StarRow stars={a.stars} />
+                                <span className="text-txt-low text-xs">
+                                  {a.destruction}%
+                                  {a.defenderPosition ? ` → #${a.defenderPosition}` : ""}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {p.defense ? (
+                            <div className="flex items-center gap-2">
+                              <StarRow stars={p.defense.stars} />
                               <span className="text-txt-low text-xs">
-                                {a.destruction}%
-                                {a.defenderPosition ? ` → #${a.defenderPosition}` : ""}
+                                {p.defense.destruction}%
                               </span>
                             </div>
-                          ))
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {p.defense ? (
-                          <div className="flex items-center gap-2">
-                            <StarRow stars={p.defense.stars} />
-                            <span className="text-txt-low text-xs">
-                              {p.defense.destruction}%
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-txt-dim text-xs">not attacked</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          ) : (
+                            <span className="text-txt-dim text-xs">not attacked</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}

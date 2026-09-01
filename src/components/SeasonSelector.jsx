@@ -263,14 +263,14 @@ const SeasonSelector = ({
       <div className="max-w-4xl mx-auto">
 
         {/* Cabecera */}
-        <div className="flex items-start justify-between pb-4 border-b border-line mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-line mb-6">
           <div>
             <h1 className="text-2xl font-semibold text-txt-hi">CWL Stats Tracker</h1>
             <div className="font-mono text-xs tracking-[0.1em] text-txt-dim uppercase mt-1">
               {clanNames?.main || "Main"} · {clanNames?.secondary || "Secondary"}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={loadStatus}
               disabled={loadingStatus}
