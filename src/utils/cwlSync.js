@@ -230,7 +230,11 @@ export const syncCwlData = async (clanTag, clanLabel) => {
     roundsTotal: group.rounds ? group.rounds.length : null,
     roundsCompleted: completedWars.length,
     liveRounds: liveWars.length,
-    isComplete: liveWars.length === 0 && completedWars.length > 0,
+    // Ojo: NO basta con "ninguna ronda en vivo ahora mismo" (liveWars=0) -
+    // eso tambien es cierto entre rondas, mientras la siguiente esta en
+    // preparacion mucho antes de que la liga termine. Solo esta completa
+    // si ya se jugaron todas las rondas del grupo.
+    isComplete: group.rounds ? completedWars.length >= group.rounds.length : false,
   };
 };
 

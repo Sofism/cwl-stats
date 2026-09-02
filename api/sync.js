@@ -36,6 +36,20 @@ const captureOptOuts = async (clanTag) => {
 };
 
 /**
+ * Guarda ya lo que haya en el historico, si no estaba. Se usa tanto en el
+ * cierre normal (warEnded visto a tiempo) como en el rescate de una guerra
+ * que desaparecio sin pasar por ahi.
+ */
+const finalizeIfNew = async (tag, record) => {
+  if (!record) return false;
+  const finalized = await readJson(finalizedKey(tag), []);
+  if (finalized.some((w) => w.warKey === record.warKey)) return false;
+  finalized.push(record);
+  await redis.set(finalizedKey(tag), JSON.stringify(finalized));
+  return true;
+};
+
+/**
  * Sincroniza UN clan. Se llama una vez por invocacion por cada clan que
  * corresponda procesar (ver `handler` mas abajo sobre por que conviene
  * separarlos en dos llamadas del scheduler externo).
@@ -46,14 +60,34 @@ const syncClan = async (clanTag, label) => {
   const progress = await readJson(progressKey(tag), null);
 
   if (!war) {
-    // Sin guerra activa ahora mismo. Si quedaba un "en progreso" es porque
-    // el propio warEnded ya se proceso en un tick anterior (se borra al
-    // finalizar, ver abajo); no hay nada pendiente que hacer aqui.
+    if (progress?.lastWar) {
+      // La guerra que seguiamos desaparecio de currentwar SIN pasar por
+      // warEnded (la API de Clash solo expone la guerra actual). En vez de
+      // perderla del todo, se rescata con la ULTIMA foto que se guardo
+      // mientras seguia viva: puede faltarle algun ataque de los ultimos
+      // minutos si la ultima foto fue en "inWar", pero es mucho mejor que
+      // nada. Se marca explicitamente para poder distinguirla despues.
+      const record = buildNormalWarRecord(progress.lastWar, tag, progress.optOutTags);
+      if (record) {
+        record.recoveredFromFallback = true;
+        record.fallbackReason = `never observed as warEnded; last seen state was "${progress.lastSeenState}"`;
+      }
+      const saved = await finalizeIfNew(tag, record);
+      await redis.del(progressKey(tag));
+      return {
+        clan: label,
+        status: saved
+          ? "no-war (recovered previous war from last snapshot, may be incomplete)"
+          : "no-war (previous war already finalized)",
+        warKey: progress.warKey,
+      };
+    }
     return { clan: label, status: "no-war" };
   }
 
   const warKey = war.preparationStartTime || war.startTime;
-  let optOutTags = progress?.warKey === warKey ? progress.optOutTags : null;
+  const isSameWar = progress?.warKey === warKey;
+  let optOutTags = isSameWar ? progress.optOutTags : null;
 
   if (optOutTags === null || optOutTags === undefined) {
     // Guerra nueva para nosotros (o primera vez que corre el cron): se
@@ -68,27 +102,32 @@ const syncClan = async (clanTag, label) => {
     // no hay forma de reconstruir el estado real de ese momento. Solo
     // afecta a la primera guerra vista tras activar el cron.
     optOutTags = await captureOptOuts(tag);
-    await redis.set(progressKey(tag), JSON.stringify({ warKey, optOutTags }));
   }
+
+  // Foto de seguridad en CADA ejecucion mientras la guerra sigue viva, no
+  // solo al final: si el estado warEnded se nos escapa entre dos ticks
+  // (ver arriba), esta es la red de la que se puede rescatar.
+  await redis.set(
+    progressKey(tag),
+    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state })
+  );
 
   if (war.state !== "warEnded") {
     return { clan: label, status: `tracking (${war.state})`, warKey };
   }
 
-  const finalized = await readJson(finalizedKey(tag), []);
-  if (finalized.some((w) => w.warKey === warKey)) {
-    // Ya procesada en un tick anterior: no-op, idempotente.
-    return { clan: label, status: "already-finalized", warKey };
-  }
-
   const record = buildNormalWarRecord(war, tag, optOutTags);
   if (!record) return { clan: label, status: "error-building-record", warKey };
 
-  finalized.push(record);
-  await redis.set(finalizedKey(tag), JSON.stringify(finalized));
+  const saved = await finalizeIfNew(tag, record);
   await redis.del(progressKey(tag));
 
-  return { clan: label, status: "finalized", warKey, result: record.result };
+  return {
+    clan: label,
+    status: saved ? "finalized" : "already-finalized",
+    warKey,
+    result: record.result,
+  };
 };
 
 /**
