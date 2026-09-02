@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Trophy, ArrowLeft, Filter, ChevronDown, ChevronRight } from "lucide-react";
+import { Trophy, ArrowLeft, Filter, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { getClanMembers } from "../utils/cocApi";
+import { LEAGUES } from "../utils/constants";
 import PlayerBarChart from "./PlayerBarChart";
 import PlayerLineChart from "./PlayerLineChart";
 
@@ -16,6 +17,42 @@ const COLUMNS = [
 ];
 
 const normalizeName = (name) => (name || "").trim().toLowerCase();
+
+/**
+ * Ascenso/descenso de liga respecto a la temporada anterior (la que va
+ * justo despues en el array, ya que las temporadas vienen ordenadas de
+ * mas reciente a mas antigua). LEAGUES esta ordenada de mejor (indice 0,
+ * Champion I) a peor, asi que un indice mas bajo que antes es un ascenso.
+ */
+const LeagueTrend = ({ season, previousSeason, clanKey }) => {
+  if (clanKey === "unified") return <span className="text-txt-dim">—</span>;
+
+  const league = season.leagueInfo?.[clanKey]?.league;
+  if (!league) return <span className="text-txt-dim">—</span>;
+
+  const prevLeague = previousSeason?.leagueInfo?.[clanKey]?.league;
+  const curIdx = LEAGUES.indexOf(league);
+  const prevIdx = prevLeague ? LEAGUES.indexOf(prevLeague) : -1;
+  const delta = curIdx !== -1 && prevIdx !== -1 ? prevIdx - curIdx : 0;
+
+  return (
+    <span className="flex items-center gap-1.5">
+      {delta > 0 ? (
+        <ArrowUp className="w-3.5 h-3.5 text-ok-400" />
+      ) : delta < 0 ? (
+        <ArrowDown className="w-3.5 h-3.5 text-bad-400" />
+      ) : (
+        <Minus className="w-3.5 h-3.5 text-txt-dim" />
+      )}
+      <span className="text-txt-mid">{league}</span>
+      {delta !== 0 && (
+        <span className={delta > 0 ? "text-ok-400" : "text-bad-400"}>
+          {Math.abs(delta)}
+        </span>
+      )}
+    </span>
+  );
+};
 
 const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const [historicalClan, setHistoricalClan] = useState("unified");
@@ -524,6 +561,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     <thead className="bg-surface-950">
                       <tr className="text-left text-xs text-txt-low">
                         <th className="p-3">Season</th>
+                        <th className="p-3">League</th>
                         <th className="p-3">Players</th>
                         <th className="p-3">Avg 3★%</th>
                         <th className="p-3">Avg Net ★</th>
@@ -543,6 +581,13 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                         return (
                           <tr key={i} className="border-t border-line hover:bg-surface-700/30">
                             <td className="p-3 font-semibold text-accent-400">{season.name}</td>
+                            <td className="p-3">
+                              <LeagueTrend
+                                season={season}
+                                previousSeason={filteredSeasons[i + 1]}
+                                clanKey={historicalClan}
+                              />
+                            </td>
                             <td className="p-3">{combined.length}</td>
                             <td className="p-3 text-amber-400">{avgThreeRate.toFixed(1)}%</td>
                             <td className="p-3">

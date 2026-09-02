@@ -239,39 +239,143 @@ export const syncCwlData = async (clanTag, clanLabel) => {
 };
 
 /**
+ * Quien gano una guerra del grupo, desde una perspectiva NEUTRAL (no "did
+ * we win" - aqui no hay "nosotros", puede ser cualquier par de los 8
+ * clanes). A diferencia de didWeWin (pensado solo para contar SI GANAMOS,
+ * donde un empate exacto puede tratarse como "no ganada" sin mas
+ * consecuencia), aqui un empate exacto no debe adjudicarse a nadie o se
+ * falsearia la clasificacion de ese clan.
+ */
+const groupWarWinner = (war) => {
+  if (war.clan.stars !== war.opponent.stars) {
+    return war.clan.stars > war.opponent.stars ? war.clan : war.opponent;
+  }
+  if (war.clan.destructionPercentage !== war.opponent.destructionPercentage) {
+    return war.clan.destructionPercentage > war.opponent.destructionPercentage
+      ? war.clan
+      : war.opponent;
+  }
+  return null; // empate exacto: no se cuenta como ganada para nadie
+};
+
+/**
  * Clasifica los 8 clanes del grupo por (guerras ganadas, estrellas totales,
- * destrucción total) y devuelve la posición (1-8) de clanTag.
+ * destrucción total) usando SOLO las guerras ya terminadas que se pasen.
  *
  * ATENCIÓN: sin verificar contra la API real no puedo garantizar al 100%
  * que el criterio de desempate de Supercell sea exactamente este orden
  * (guerras > estrellas > destrucción). Es el orden documentado más
  * habitual, pero conviene confirmarlo con una temporada real.
  */
-const calculateGroupPosition = (group, wars, clanTag) => {
-  if (!group.clans) return null;
+const rankGroupClans = (group, completedWars) => {
+  if (!group.clans) return [];
 
   const totals = new Map(
-    group.clans.map((c) => [c.tag, { tag: c.tag, wins: 0, stars: 0, destruction: 0 }])
+    group.clans.map((c) => [
+      c.tag,
+      {
+        tag: c.tag,
+        name: c.name,
+        badge: c.badgeUrls?.small,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        played: 0,
+        stars: 0,
+        destruction: 0,
+      },
+    ])
   );
 
-  wars.filter(isCompletedWar).forEach((war) => {
+  completedWars.forEach((war) => {
     [war.clan, war.opponent].forEach((side) => {
       const t = totals.get(side.tag);
       if (!t) return;
-      t.stars += side.stars;
-      t.destruction += side.destructionPercentage;
+      t.stars += side.stars || 0;
+      t.destruction += side.destructionPercentage || 0;
+      t.played += 1;
     });
-    const winner = didWeWin(war.clan, war.opponent) ? war.clan : war.opponent;
-    const t = totals.get(winner.tag);
-    if (t) t.wins += 1;
+    const winner = groupWarWinner(war);
+    if (winner) {
+      const loserTag = winner.tag === war.clan.tag ? war.opponent.tag : war.clan.tag;
+      const winnerT = totals.get(winner.tag);
+      const loserT = totals.get(loserTag);
+      if (winnerT) winnerT.wins += 1;
+      if (loserT) loserT.losses += 1;
+    } else {
+      const tA = totals.get(war.clan.tag);
+      const tB = totals.get(war.opponent.tag);
+      if (tA) tA.draws += 1;
+      if (tB) tB.draws += 1;
+    }
   });
 
-  const ranked = Array.from(totals.values()).sort(
-    (a, b) => b.wins - a.wins || b.stars - a.stars || b.destruction - a.destruction
-  );
+  return Array.from(totals.values())
+    .sort((a, b) => b.wins - a.wins || b.stars - a.stars || b.destruction - a.destruction)
+    .map((c, i) => ({ ...c, rank: i + 1 }));
+};
 
-  const index = ranked.findIndex((c) => c.tag === clanTag);
-  return index === -1 ? null : index + 1;
+const calculateGroupPosition = (group, wars, clanTag) => {
+  const ranked = rankGroupClans(group, wars.filter(isCompletedWar));
+  const found = ranked.find((c) => c.tag === clanTag);
+  return found ? found.rank : null;
+};
+
+/**
+ * Vista de todo el grupo de CWL para el "en vivo" que se ve en el propio
+ * juego: clasificación de los 8 clanes y el emparejamiento de CADA ronda
+ * con TODOS los clanes (no solo el nuestro). syncCwlData/getCurrentCwlWar
+ * ya descargan estos mismos datos pero solo exponen lo relativo a nuestro
+ * clan; esta función hace su propia pasada porque el filtrado es distinto
+ * (aquí interesan las 4 guerras de cada ronda, no solo la nuestra).
+ */
+export const getCwlGroupOverview = async (clanTag) => {
+  const tag = normalizeTag(clanTag);
+  const group = await getCurrentWarLeagueGroup(tag);
+  if (!group || !group.rounds) return null;
+
+  const uniqueTags = [
+    ...new Set(group.rounds.flatMap((round) => round.warTags)),
+  ].filter((t) => t && t !== "#0");
+
+  const entries = await Promise.all(
+    uniqueTags.map(async (t) => [t, await getClanWarLeagueWar(t)])
+  );
+  const warsByTag = new Map(entries);
+
+  const completedWars = [...warsByTag.values()].filter((w) => w && isCompletedWar(w));
+  const standings = rankGroupClans(group, completedWars);
+
+  const rounds = group.rounds.map((round, i) => ({
+    round: i + 1,
+    matches: round.warTags
+      .filter((t) => t && t !== "#0")
+      .map((t) => {
+        const war = warsByTag.get(t);
+        if (!war) return null;
+        return {
+          warTag: t,
+          state: war.state,
+          clanA: {
+            tag: war.clan.tag,
+            name: war.clan.name,
+            badge: war.clan.badgeUrls?.small,
+            stars: war.clan.stars || 0,
+            destruction: war.clan.destructionPercentage || 0,
+          },
+          clanB: {
+            tag: war.opponent.tag,
+            name: war.opponent.name,
+            badge: war.opponent.badgeUrls?.small,
+            stars: war.opponent.stars || 0,
+            destruction: war.opponent.destructionPercentage || 0,
+          },
+        };
+      })
+      .filter(Boolean),
+  }));
+
+  return { ourTag: tag, groupState: group.state, standings, rounds };
 };
 
 /**
@@ -394,4 +498,79 @@ export const getCurrentCwlWar = async (clanTag) => {
     },
     roster,
   };
+};
+
+/**
+ * Descarga los dos clanes y avisa si guardar el resultado BORRARIA datos
+ * que ya habia (p. ej. una CWL nueva recien emparejada, con 0 rondas
+ * jugadas, sobrescribiendo una temporada que ya tenia jugadores reales).
+ * No guarda nada por si mismo: quien la llama decide si aplicar el
+ * resultado directo o pedir confirmacion primero (ver applyCwlSyncResult).
+ */
+export const runCwlSync = async (clanNames, currentSeason) => {
+  const [mainResult, secondaryResult] = await Promise.all([
+    syncCwlData(clanNames.mainTag, "Main"),
+    syncCwlData(clanNames.secondaryTag, "Secondary"),
+  ]);
+
+  const mainWouldReduce = Boolean(
+    mainResult && mainResult.players.length < (currentSeason.mainClan?.length || 0)
+  );
+  const secondaryWouldReduce = Boolean(
+    secondaryResult && secondaryResult.players.length < (currentSeason.secondaryClan?.length || 0)
+  );
+
+  return { mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce };
+};
+
+/**
+ * Aplica un resultado de runCwlSync (ya aceptado, directo o tras
+ * confirmar) sobre una temporada. Devuelve la temporada actualizada, el
+ * nuevo leagueInfo, el progreso de sincronizacion y los nombres de clan
+ * que haya podido corregir la API - quien llama decide que hacer con cada
+ * cosa (updateSeasonData, setLeagueInfo, updateClanNames...).
+ */
+export const applyCwlSyncResult = (currentSeason, leagueInfo, mainResult, secondaryResult) => {
+  const newLeagueInfo = {
+    main: mainResult
+      ? {
+          league: mainResult.league || leagueInfo.main.league,
+          position: mainResult.position || leagueInfo.main.position,
+          warsWon: mainResult.warsWon,
+          warSize: mainResult.warSize,
+        }
+      : leagueInfo.main,
+    secondary: secondaryResult
+      ? {
+          league: secondaryResult.league || leagueInfo.secondary.league,
+          position: secondaryResult.position || leagueInfo.secondary.position,
+          warsWon: secondaryResult.warsWon,
+          warSize: secondaryResult.warSize,
+        }
+      : leagueInfo.secondary,
+  };
+
+  const updatedSeason = {
+    ...currentSeason,
+    mainClan: mainResult ? mainResult.players : currentSeason.mainClan,
+    secondaryClan: secondaryResult ? secondaryResult.players : currentSeason.secondaryClan,
+    leagueInfo: newLeagueInfo,
+  };
+
+  const ref = mainResult || secondaryResult;
+  const syncProgress = ref
+    ? {
+        season: ref.season,
+        roundsCompleted: ref.roundsCompleted,
+        roundsTotal: ref.roundsTotal,
+        live: ref.liveRounds > 0,
+        isComplete: ref.isComplete,
+      }
+    : null;
+
+  const apiNames = {};
+  if (mainResult?.clanName) apiNames.main = mainResult.clanName;
+  if (secondaryResult?.clanName) apiNames.secondary = secondaryResult.clanName;
+
+  return { updatedSeason, newLeagueInfo, syncProgress, apiNames };
 };

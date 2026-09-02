@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Swords, RefreshCw, X, Clock } from "lucide-react";
 import { getCurrentCwlWar } from "../utils/cwlSync";
+import CwlGroupPanel from "./CwlGroupPanel";
 
 /**
  * La API devuelve las fechas como "20260829T120000.000Z", que Date no
@@ -234,6 +235,8 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
                 </table>
               </div>
             </div>
+
+            <CwlGroupPanel clanTag={clanTag} />
           </>
         )}
       </div>

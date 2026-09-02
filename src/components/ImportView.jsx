@@ -13,8 +13,9 @@ import SeasonList from "./SeasonList";
 import LeagueSettings from "./LeagueSettings";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import SyncReduceConfirmModal from "./SyncReduceConfirmModal";
 import { parseData } from "../utils/dataParser";
-import { syncCwlData } from "../utils/cwlSync";
+import { runCwlSync, applyCwlSyncResult } from "../utils/cwlSync";
 
 const ImportView = ({
   seasons,
@@ -37,6 +38,7 @@ const ImportView = ({
   const [syncing, setSyncing] = useState(false);
   const [syncMessages, setSyncMessages] = useState([]);
   const [syncProgress, setSyncProgress] = useState(null);
+  const [pendingSync, setPendingSync] = useState(null);
   const [leagueInfo, setLeagueInfo] = useState(
     currentSeason?.leagueInfo || {
       main: { league: "Crystal I", position: 1, warsWon: 0, warSize: 15 },
@@ -65,80 +67,62 @@ const ImportView = ({
     updateSeasonData(updated);
   };
 
-  const handleSync = async () => {
-    if (!currentSeason || !hasTags) return;
-    setSyncing(true);
-    setSyncMessages([]);
-
-    const results = await Promise.all([
-      syncCwlData(clanNames.mainTag, "Main"),
-      syncCwlData(clanNames.secondaryTag, "Secondary"),
-    ]);
-    const [mainResult, secondaryResult] = results;
-
+  const finishSync = (mainResult, secondaryResult) => {
     const messages = [];
     if (!mainResult) messages.push(`⚠ ${clanNames.main}: not currently in CWL (or the clan tag / proxy failed).`);
     if (!secondaryResult) messages.push(`⚠ ${clanNames.secondary}: not currently in CWL (or the clan tag / proxy failed).`);
 
-    const newLeagueInfo = {
-      main: mainResult
-        ? {
-            league: mainResult.league || leagueInfo.main.league,
-            position: mainResult.position || leagueInfo.main.position,
-            warsWon: mainResult.warsWon,
-            warSize: mainResult.warSize,
-          }
-        : leagueInfo.main,
-      secondary: secondaryResult
-        ? {
-            league: secondaryResult.league || leagueInfo.secondary.league,
-            position: secondaryResult.position || leagueInfo.secondary.position,
-            warsWon: secondaryResult.warsWon,
-            warSize: secondaryResult.warSize,
-          }
-        : leagueInfo.secondary,
-    };
-
-    const updated = {
-      ...currentSeason,
-      mainClan: mainResult ? mainResult.players : currentSeason.mainClan,
-      secondaryClan: secondaryResult ? secondaryResult.players : currentSeason.secondaryClan,
-      leagueInfo: newLeagueInfo,
-    };
+    const { updatedSeason, newLeagueInfo, syncProgress: progress, apiNames } = applyCwlSyncResult(
+      currentSeason,
+      leagueInfo,
+      mainResult,
+      secondaryResult
+    );
 
     setLeagueInfo(newLeagueInfo);
-    updateSeasonData(updated);
+    updateSeasonData(updatedSeason);
 
     if (mainResult) messages.push(`✓ ${mainResult.clanName || clanNames.main}: ${mainResult.players.length} players synced.`);
     if (secondaryResult) messages.push(`✓ ${secondaryResult.clanName || clanNames.secondary}: ${secondaryResult.players.length} players synced.`);
 
     // Nombres reales de los clanes desde la API: si difieren de los
     // guardados a mano, se actualizan solos.
-    const apiNames = {};
-    if (mainResult?.clanName) apiNames.main = mainResult.clanName;
-    if (secondaryResult?.clanName) apiNames.secondary = secondaryResult.clanName;
     if (Object.keys(apiNames).length && updateClanNames) {
       updateClanNames({ ...clanNames, ...apiNames });
     }
 
-    // Progreso de la liga: rondas jugadas / totales, para saber si lo que
-    // se ve es definitivo o todavia esta en marcha.
-    const ref = mainResult || secondaryResult;
-    setSyncProgress(
-      ref
-        ? {
-            season: ref.season,
-            roundsCompleted: ref.roundsCompleted,
-            roundsTotal: ref.roundsTotal,
-            live: ref.liveRounds > 0,
-            isComplete: ref.isComplete,
-          }
-        : null
-    );
-
+    setSyncProgress(progress);
     setSyncMessages(messages);
+  };
+
+  const handleSync = async () => {
+    if (!currentSeason || !hasTags) return;
+    setSyncing(true);
+    setSyncMessages([]);
+
+    const { mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce } =
+      await runCwlSync(clanNames, currentSeason);
+
+    if (mainWouldReduce || secondaryWouldReduce) {
+      // No se guarda solo: se pide confirmacion porque supondria perder
+      // jugadores que ya estaban guardados (tipico al empezar una CWL
+      // nueva antes de que termine la primera ronda).
+      setPendingSync({ mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce });
+      setSyncing(false);
+      return;
+    }
+
+    finishSync(mainResult, secondaryResult);
     setSyncing(false);
   };
+
+  const confirmPendingSync = () => {
+    if (!pendingSync) return;
+    finishSync(pendingSync.mainResult, pendingSync.secondaryResult);
+    setPendingSync(null);
+  };
+
+  const cancelPendingSync = () => setPendingSync(null);
 
   const handleDeleteConfirm = () => {
     if (deleteConfirm === "ALL") {
@@ -345,6 +329,20 @@ const ImportView = ({
               setShowModal(false);
             }}
             onCancel={() => setShowModal(false)}
+          />
+        )}
+
+        {pendingSync && (
+          <SyncReduceConfirmModal
+            clanNames={clanNames}
+            mainWouldReduce={pendingSync.mainWouldReduce}
+            secondaryWouldReduce={pendingSync.secondaryWouldReduce}
+            mainOld={currentSeason.mainClan?.length || 0}
+            mainNew={pendingSync.mainResult?.players.length || 0}
+            secondaryOld={currentSeason.secondaryClan?.length || 0}
+            secondaryNew={pendingSync.secondaryResult?.players.length || 0}
+            onConfirm={confirmPendingSync}
+            onCancel={cancelPendingSync}
           />
         )}
       </div>

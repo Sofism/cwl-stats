@@ -4,12 +4,14 @@ import StatsTable from "./StatsTable";
 import ColumnSelector from "./ColumnSelector";
 import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import SyncReduceConfirmModal from "./SyncReduceConfirmModal";
 import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
+import { runCwlSync, applyCwlSyncResult } from "../utils/cwlSync";
 import HistoricalView from "./HistoricalView";
 import CurrentWarView from "./CurrentWarView";
 import { Trash2, ArrowLeft, Trophy,
-  Swords,
+  Swords, RefreshCw,
 } from "lucide-react";
 
 const Dashboard = ({
@@ -23,6 +25,7 @@ const Dashboard = ({
   onDeleteAll,
   onPlayerSelect,
   clanNames,
+  updateClanNames,
 }) => {
   const [activePage, setActivePage] = useState("main");
   const [sortBy, setSortBy] = useState("default");
@@ -63,6 +66,58 @@ const Dashboard = ({
     main: currentSeason.bonuses?.main || [],
     secondary: currentSeason.bonuses?.secondary || []
   });
+
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState(null);
+  const [pendingSync, setPendingSync] = useState(null);
+  const hasTags = Boolean(clanNames?.mainTag && clanNames?.secondaryTag);
+
+  const finishSync = (mainResult, secondaryResult) => {
+    const { updatedSeason, newLeagueInfo, apiNames } = applyCwlSyncResult(
+      currentSeason,
+      leagueInfo,
+      mainResult,
+      secondaryResult
+    );
+    setLeagueInfo(newLeagueInfo);
+    updateSeasonData(updatedSeason);
+    if (Object.keys(apiNames).length && updateClanNames) {
+      updateClanNames({ ...clanNames, ...apiNames });
+    }
+    const parts = [];
+    if (mainResult) parts.push(`${mainResult.clanName || clanNames.main}: ${mainResult.players.length} players`);
+    else parts.push(`${clanNames.main}: not currently in CWL`);
+    if (secondaryResult) parts.push(`${secondaryResult.clanName || clanNames.secondary}: ${secondaryResult.players.length} players`);
+    else parts.push(`${clanNames.secondary}: not currently in CWL`);
+    setSyncMessage(parts.join(" · "));
+  };
+
+  const handleQuickSync = async () => {
+    if (!hasTags) {
+      setSyncMessage("Add both clan tags in Settings to enable syncing.");
+      return;
+    }
+    setSyncing(true);
+    setSyncMessage(null);
+    const { mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce } =
+      await runCwlSync(clanNames, currentSeason);
+
+    if (mainWouldReduce || secondaryWouldReduce) {
+      setPendingSync({ mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce });
+      setSyncing(false);
+      return;
+    }
+    finishSync(mainResult, secondaryResult);
+    setSyncing(false);
+  };
+
+  const confirmPendingSync = () => {
+    if (!pendingSync) return;
+    finishSync(pendingSync.mainResult, pendingSync.secondaryResult);
+    setPendingSync(null);
+  };
+
+  const cancelPendingSync = () => setPendingSync(null);
 
 
 
@@ -166,6 +221,14 @@ const Dashboard = ({
           </div>
           <div className="flex flex-wrap gap-2">
   <button
+    onClick={handleQuickSync}
+    disabled={syncing}
+ className="px-4 py-2 border border-line-strong rounded-md hover:border-accent-400 disabled:opacity-50 transition-colors flex items-center gap-2"
+  >
+    <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+    {syncing ? "Syncing..." : "Sync now"}
+  </button>
+  <button
     onClick={() => setShowCurrentWar(true)}
  className="px-4 py-2 bg-surface-700 border border-accent-400/40 rounded-md hover:bg-surface-700 transition-colors flex items-center gap-2"
   >
@@ -198,6 +261,12 @@ const Dashboard = ({
         {saveStatus && (
           <div className="mb-4 p-3 rounded-md bg-ok-900 border border-ok-400/40 text-ok-400">
             {saveStatus}
+          </div>
+        )}
+
+        {syncMessage && (
+          <div className="mb-4 p-3 rounded-md bg-surface-800 border border-line-strong text-txt-mid text-sm">
+            {syncMessage}
           </div>
         )}
 
@@ -252,6 +321,20 @@ const Dashboard = ({
               onDeleteAll();
             }}
             onCancel={() => setDeleteConfirm(null)}
+          />
+        )}
+
+        {pendingSync && (
+          <SyncReduceConfirmModal
+            clanNames={clanNames}
+            mainWouldReduce={pendingSync.mainWouldReduce}
+            secondaryWouldReduce={pendingSync.secondaryWouldReduce}
+            mainOld={currentSeason.mainClan?.length || 0}
+            mainNew={pendingSync.mainResult?.players.length || 0}
+            secondaryOld={currentSeason.secondaryClan?.length || 0}
+            secondaryNew={pendingSync.secondaryResult?.players.length || 0}
+            onConfirm={confirmPendingSync}
+            onCancel={cancelPendingSync}
           />
         )}
       </div>
