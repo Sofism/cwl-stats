@@ -105,6 +105,11 @@ Estos límites condicionan el diseño. No son suposiciones.
 Eso es correcto. Pero hay **dos aproximaciones sin verificar**:
 
 - La tabla base para **5v5** (estimada dividiendo la de 15v15 entre 3).
+  **CWL solo se juega en 15v15 o 30v30 actualmente** — el 5v5 existió una
+  única temporada y Supercell lo retiró después (confirmado por Santi). La
+  opción se mantiene en el selector solo por si hace falta editar esa
+  temporada histórica concreta; no debería aparecer como elección real
+  para temporadas nuevas.
 - La **caída de valor de medalla por posición final** (lineal, ~8% por
   puesto).
 

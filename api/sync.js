@@ -1,16 +1,15 @@
 const redis = require("./redis");
 const { getClanMembers, getCurrentWar, getPlayer, normalizeTag } = require("./_lib/cocProxy");
 const { buildNormalWarRecord } = require("./_lib/normalWarStats");
+const { parseApiDate, scheduleOneTimeCheck, deleteScheduledJob } = require("./_lib/cronJobOrg");
+const { readJson, finalizeIfNew } = require("./_lib/normalWarStore");
+
+// Margen tras el endTime real antes de la comprobacion puntual: da tiempo a
+// que el estado de la guerra en la API de Clash termine de asentarse.
+const FOLLOW_UP_BUFFER_MS = 5 * 60 * 1000;
 
 const CLAN_CONFIG_KEY = "cwl-clan-config";
-const finalizedKey = (tag) => `normal-wars:${tag}`;
 const progressKey = (tag) => `normal-wars-progress:${tag}`;
-
-const readJson = async (key, fallback) => {
-  const data = await redis.get(key);
-  if (!data) return fallback;
-  return typeof data === "string" ? JSON.parse(data) : data;
-};
 
 /**
  * Quien tiene warPreference "out" AHORA MISMO. Es la misma logica que
@@ -36,25 +35,16 @@ const captureOptOuts = async (clanTag) => {
 };
 
 /**
- * Guarda ya lo que haya en el historico, si no estaba. Se usa tanto en el
- * cierre normal (warEnded visto a tiempo) como en el rescate de una guerra
- * que desaparecio sin pasar por ahi.
- */
-const finalizeIfNew = async (tag, record) => {
-  if (!record) return false;
-  const finalized = await readJson(finalizedKey(tag), []);
-  if (finalized.some((w) => w.warKey === record.warKey)) return false;
-  finalized.push(record);
-  await redis.set(finalizedKey(tag), JSON.stringify(finalized));
-  return true;
-};
-
-/**
  * Sincroniza UN clan. Se llama una vez por invocacion por cada clan que
  * corresponda procesar (ver `handler` mas abajo sobre por que conviene
  * separarlos en dos llamadas del scheduler externo).
+ *
+ * @param {string} clanKey - "main" | "secondary", para reconstruir la URL
+ *   de la comprobacion puntual (?clan=...) al programarla en cron-job.org.
+ * @param {string} baseUrl - origen de esta misma app (https://host), para
+ *   esa misma URL. null si no se pudo determinar (se omite el anclaje).
  */
-const syncClan = async (clanTag, label) => {
+const syncClan = async (clanTag, label, clanKey, baseUrl) => {
   const tag = normalizeTag(clanTag);
   const war = await getCurrentWar(tag);
   const progress = await readJson(progressKey(tag), null);
@@ -73,6 +63,7 @@ const syncClan = async (clanTag, label) => {
         record.fallbackReason = `never observed as warEnded; last seen state was "${progress.lastSeenState}"`;
       }
       const saved = await finalizeIfNew(tag, record);
+      await deleteScheduledJob(progress.scheduledFollowUp?.jobId);
       await redis.del(progressKey(tag));
       return {
         clan: label,
@@ -104,12 +95,28 @@ const syncClan = async (clanTag, label) => {
     optOutTags = await captureOptOuts(tag);
   }
 
+  // Anclaje: en cuanto se conoce el endTime real de la guerra (disponible
+  // desde preparation, no hace falta esperar a inWar), se programa UNA
+  // comprobacion puntual en cron-job.org poco despues de ese instante, en
+  // vez de fiarlo todo a la cadencia fija del cron externo. Solo se crea
+  // una vez por warKey (isSameWar + ya tenia scheduledFollowUp = no-op).
+  let scheduledFollowUp = isSameWar ? progress.scheduledFollowUp : null;
+  if (!scheduledFollowUp && war.endTime && baseUrl && clanKey) {
+    const endDate = parseApiDate(war.endTime);
+    if (endDate) {
+      const when = new Date(endDate.getTime() + FOLLOW_UP_BUFFER_MS);
+      const followUpUrl = `${baseUrl}/api/sync?clan=${clanKey}&secret=${encodeURIComponent(process.env.CRON_SECRET)}`;
+      const jobId = await scheduleOneTimeCheck(followUpUrl, when);
+      if (jobId) scheduledFollowUp = { warKey, jobId };
+    }
+  }
+
   // Foto de seguridad en CADA ejecucion mientras la guerra sigue viva, no
   // solo al final: si el estado warEnded se nos escapa entre dos ticks
   // (ver arriba), esta es la red de la que se puede rescatar.
   await redis.set(
     progressKey(tag),
-    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state })
+    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state, scheduledFollowUp })
   );
 
   if (war.state !== "warEnded") {
@@ -120,6 +127,7 @@ const syncClan = async (clanTag, label) => {
   if (!record) return { clan: label, status: "error-building-record", warKey };
 
   const saved = await finalizeIfNew(tag, record);
+  await deleteScheduledJob(scheduledFollowUp?.jobId);
   await redis.del(progressKey(tag));
 
   return {
@@ -142,6 +150,13 @@ const syncClan = async (clanTag, label) => {
  * la misma invocacion puede acercarse al limite de 10s de las funciones
  * de Vercel Hobby. Sin ?clan se procesan ambos (util solo para pruebas
  * manuales, no para el cron real).
+ *
+ * Ademas del cron periodico, en cuanto se conoce el endTime real de una
+ * guerra se programa (via la API de cron-job.org, CRONJOB_API_KEY) una
+ * comprobacion puntual justo despues de que termine, para no depender solo
+ * de que la cadencia fija del cron externo coincida con el instante exacto
+ * en que la API de Clash todavia muestra warEnded. Si CRONJOB_API_KEY no
+ * esta configurada, este anclaje simplemente no se activa.
  */
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -163,23 +178,28 @@ export default async function handler(req, res) {
       return res.status(200).json({ error: "No clan tags configured yet" });
     }
 
+    // Host de esta misma app, para construir la URL de la comprobacion
+    // puntual que se programa en cron-job.org (ver syncClan). Si por lo
+    // que sea no viene el header, se omite el anclaje sin romper el resto.
+    const baseUrl = req.headers.host ? `https://${req.headers.host}` : null;
+
     const which = req.query?.clan;
     const targets = [];
     if ((!which || which === "main") && config.mainTag) {
-      targets.push([config.mainTag, config.main || "Main"]);
+      targets.push([config.mainTag, config.main || "Main", "main"]);
     }
     if ((!which || which === "secondary") && config.secondaryTag) {
-      targets.push([config.secondaryTag, config.secondary || "Secondary"]);
+      targets.push([config.secondaryTag, config.secondary || "Secondary", "secondary"]);
     }
 
     const results = [];
-    for (const [tag, label] of targets) {
+    for (const [tag, label, clanKey] of targets) {
       // Secuencial a proposito: no duplicar carga sobre el proxy a la vez
       // y repartir mejor el presupuesto de tiempo de la funcion. Cada
       // clan falla de forma independiente (un timeout de red en uno no
       // debe impedir que el otro se procese ni tumbar la respuesta).
       try {
-        results.push(await syncClan(tag, label));
+        results.push(await syncClan(tag, label, clanKey, baseUrl));
       } catch (err) {
         console.error(`Sync error for ${label}:`, err);
         results.push({ clan: label, status: "error", error: err.message });

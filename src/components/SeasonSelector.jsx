@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import {
   Calendar, Plus, Play, Settings, Trash2, Swords, History,
-  RefreshCw, UserPlus, UserMinus, ChevronRight, ShieldOff,
+  RefreshCw, UserPlus, UserMinus, ChevronRight, ShieldOff, FilePlus,
 } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SettingsModal from "./SettingsModal";
 import HistoricalView from "./HistoricalView";
 import CurrentWarView from "./CurrentWarView";
+import ManualWarModal from "./ManualWarModal";
 import {
   getHomeStatus,
   getCachedOptOuts,
@@ -208,6 +209,7 @@ const SeasonSelector = ({
   const [showSettings, setShowSettings] = useState(false);
   const [showHistorical, setShowHistorical] = useState(false);
   const [showCurrentWar, setShowCurrentWar] = useState(false);
+  const [showManualWar, setShowManualWar] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [pickedSeasonId, setPickedSeasonId] = useState(seasons[0]?.id || "");
 
@@ -348,7 +350,7 @@ const SeasonSelector = ({
         )}
 
         {/* Accesos */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <button
             onClick={() => setShowCurrentWar(true)}
             className="border border-line hover:border-line-strong rounded-md p-4 text-left transition-colors"
@@ -366,6 +368,14 @@ const SeasonSelector = ({
             <div className="font-mono text-xs text-txt-dim mt-1">
               {seasons.length} SEASON{seasons.length !== 1 ? "S" : ""}
             </div>
+          </button>
+          <button
+            onClick={() => setShowManualWar(true)}
+            className="border border-line hover:border-line-strong rounded-md p-4 text-left transition-colors"
+          >
+            <FilePlus className="w-4 h-4 text-txt-low mb-2" />
+            <div className="text-base text-txt-hi">Add manual war</div>
+            <div className="font-mono text-xs text-txt-dim mt-1">FOR MISSED REGULAR WARS</div>
           </button>
         </div>
 
@@ -459,6 +469,12 @@ const SeasonSelector = ({
             clanTag={clanNames?.mainTag}
             clanName={clanNames?.main}
             onClose={() => setShowCurrentWar(false)}
+          />
+        )}
+        {showManualWar && (
+          <ManualWarModal
+            clanNames={clanNames}
+            onClose={() => setShowManualWar(false)}
           />
         )}
       </div>

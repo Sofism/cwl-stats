@@ -1,14 +1,15 @@
 import { BASE_BONUSES, MEDAL_VALUES } from "./constants";
 
 /**
- * Tabla base de bonuses para guerras 5v5 (formato introducido en la
- * actualización de febrero de 2026). El roster es mucho más pequeño que en
- * 15v15/30v30, así que el número de bonuses garantizados también lo es.
+ * Tabla base de bonuses para guerras 5v5. Supercell introdujo este formato
+ * de CWL una única temporada y después lo retiró (confirmado por Santi) —
+ * ya no es seleccionable para temporadas nuevas, pero se mantiene aquí por
+ * si hace falta editar o recalcular esa temporada histórica concreta.
  *
- * OJO: no hay una tabla oficial pública fiable para 5v5 todavía. Esto es una
- * aproximación (base 15v15 escalada). Si al comparar con una temporada real
- * el número no coincide con lo que muestra el juego, dime la liga + guerras
- * ganadas + bono real y ajusto esta tabla con el dato exacto.
+ * Sigue siendo una aproximación sin verificar (base 15v15 escalada, no hay
+ * tabla oficial publicada). Si esa temporada concreta tiene el bono real
+ * documentado (liga + guerras ganadas + bono que dio el juego), se puede
+ * calibrar con ese dato.
  */
 const BASE_BONUSES_5V5 = Object.fromEntries(
   Object.entries(BASE_BONUSES).map(([league, val]) => [
