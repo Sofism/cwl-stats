@@ -245,9 +245,9 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
  className={`flex-1 py-3 px-4 rounded-md font-semibold text-sm transition-colors ${
                   historicalClan === key
                     ? key === "unified"
-                      ? "bg-amber-900/50 border-2 border-amber-400/40 text-amber-400"
+                      ? "bg-amber-900 border-2 border-amber-400/40 text-amber-400"
                       : key === "main"
-                      ? "bg-accent-900/50 border-2 border-accent-400"
+                      ? "bg-accent-900 border-2 border-accent-400"
                       : "bg-surface-700 border-2 border-steel-500"
                     : "bg-surface-800 border-2 border-line hover:bg-surface-700"
                 }`}
@@ -264,13 +264,13 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               disabled={!rosterReady}
  className={`flex-1 min-w-[240px] py-4 px-5 rounded-md font-semibold text-base border-2 transition-colors flex items-center justify-center gap-3 ${
                 activeFilterOn
-                  ? "bg-ok-900/50 border-ok-400/40 text-ok-400 hover:bg-ok-900/50"
+                  ? "bg-ok-900 border-ok-400/40 text-ok-400 hover:bg-ok-900"
                   : "bg-surface-800 border-line-strong text-txt-mid hover:bg-surface-700"
               } ${!rosterReady ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <span className="text-xl">{activeFilterOn ? "🟢" : "👥"}</span>
               {activeFilterOn ? "Current members only" : "All players (including former)"}
-              <span className="text-sm font-normal bg-surface-950/60 px-3 py-1 rounded-full">
+              <span className="text-sm font-normal bg-surface-950 px-3 py-1 rounded-full">
                 {sortedData.length}
               </span>
             </button>
@@ -284,7 +284,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
           </div>
 
           {/* Filters Panel */}
-          <div className="bg-accent-900/50 border-2 border-accent-400 rounded-md mb-6">
+          <div className="bg-accent-900 border-2 border-accent-400 rounded-md mb-6">
             <button
               onClick={() => setShowFilters(!showFilters)}
  className="w-full flex items-center justify-between p-5 font-semibold text-accent-300 hover:text-txt-hi transition-colors"
@@ -292,11 +292,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               <span className="flex items-center gap-3 text-lg flex-wrap">
                 <Filter className="w-6 h-6 text-accent-400" />
                 Filters & Columns
-                <span className="text-sm font-normal bg-accent-900/50 text-accent-300 px-3 py-1 rounded-full">
+                <span className="text-sm font-normal bg-accent-900 text-accent-300 px-3 py-1 rounded-full">
                   {filteredSeasons.length} of {seasons.length} seasons
                 </span>
                 {showOnlyActive && (
-                  <span className="text-sm font-normal bg-ok-900/50 text-ok-400 px-3 py-1 rounded-full">
+                  <span className="text-sm font-normal bg-ok-900 text-ok-400 px-3 py-1 rounded-full">
                     Active only
                   </span>
                 )}
@@ -353,7 +353,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-txt-mid">
                       🟢 Active Members
-                      <span className="ml-2 text-xs bg-ok-900/50 text-ok-400 px-2 py-0.5 rounded-full">
+                      <span className="ml-2 text-xs bg-ok-900 text-ok-400 px-2 py-0.5 rounded-full">
                         {loadingActive
                           ? "checking..."
                           : `${rosters.main.length} + ${rosters.secondary.length} across both clans`}

@@ -112,7 +112,7 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
         )}
 
         {error && !loading && (
-          <div className="bg-amber-900/40 border border-amber-400/30 rounded-md p-4 text-yellow-200 text-sm">
+          <div className="bg-amber-900 border border-amber-400/30 rounded-md p-4 text-yellow-200 text-sm">
             {error}
           </div>
         )}
@@ -126,7 +126,7 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
  className={`px-2 py-1 rounded ${
                     isPrep
                       ? "bg-surface-700 text-txt-mid"
-                      : "bg-ok-900/50 text-ok-400"
+                      : "bg-ok-900 text-ok-400"
                   }`}
                 >
                   {isPrep ? "Preparation" : "Battle day"} · {war.teamSize}v{war.teamSize}
@@ -154,8 +154,8 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
                   <span
  className={`text-xs px-2 py-1 rounded ${
                       winning
-                        ? "bg-ok-900/50 text-ok-400"
-                        : "bg-bad-900/50 text-bad-400"
+                        ? "bg-ok-900 text-ok-400"
+                        : "bg-bad-900 text-bad-400"
                     }`}
                   >
                     {winning ? "Ahead" : "Behind"}

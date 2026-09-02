@@ -196,7 +196,7 @@ const Dashboard = ({
         </div>
 
         {saveStatus && (
-          <div className="mb-4 p-3 rounded-md bg-ok-900/50 border border-ok-400/40 text-ok-400">
+          <div className="mb-4 p-3 rounded-md bg-ok-900 border border-ok-400/40 text-ok-400">
             {saveStatus}
           </div>
         )}

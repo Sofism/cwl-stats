@@ -171,7 +171,7 @@ const ImportView = ({
         </div>
 
         {saveStatus && (
-          <div className="mb-4 p-3 rounded-md bg-ok-900/50 border border-ok-400/40 text-ok-400">
+          <div className="mb-4 p-3 rounded-md bg-ok-900 border border-ok-400/40 text-ok-400">
             {saveStatus}
           </div>
         )}
@@ -217,7 +217,7 @@ const ImportView = ({
               </h2>
 
               {!hasTags ? (
-                <div className="bg-amber-900/40 border border-amber-400/30 rounded-md p-4 text-sm text-yellow-200">
+                <div className="bg-amber-900 border border-amber-400/30 rounded-md p-4 text-sm text-yellow-200">
                   Add both clan tags in Settings (⚙) to enable automatic syncing.
                 </div>
               ) : (
@@ -235,7 +235,7 @@ const ImportView = ({
                     {syncing ? "Syncing..." : "Sync now"}
                   </button>
                   {syncProgress && (
-                    <div className="mt-3 p-3 rounded border border-accent-400/30 bg-accent-900/40 text-sm">
+                    <div className="mt-3 p-3 rounded border border-accent-400/30 bg-accent-900 text-sm">
                       <p className="text-accent-300 font-semibold">
                         {syncProgress.season ? `Season ${syncProgress.season} — ` : ""}
                         Round {syncProgress.roundsCompleted}
@@ -311,7 +311,7 @@ const ImportView = ({
             )}
 
             {!hasTags && (
-              <div className="bg-accent-900/40 border border-accent-400/30 rounded-md p-4 mb-6">
+              <div className="bg-accent-900 border border-accent-400/30 rounded-md p-4 mb-6">
                 <AlertCircle className="w-5 h-5 text-accent-400 inline mr-2" />
                 <span className="text-sm text-accent-300">
                   Copy data from Excel/Google Sheets and paste here. Data saves automatically!

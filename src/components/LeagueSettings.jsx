@@ -136,7 +136,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
               </div>
               
               {/* Bonus calculation display */}
-              <div className="mt-3 p-3 bg-amber-900/40 border border-amber-400/30 rounded text-sm">
+              <div className="mt-3 p-3 bg-amber-900 border border-amber-400/30 rounded text-sm">
                 <p className="text-amber-400">
                   <span className="font-semibold">{totalBonuses} bonuses available</span>
                   {' '}({info.warSize || 15}v{info.warSize || 15}, {info.warsWon || 0} wars won)

@@ -334,12 +334,12 @@ const SeasonSelector = ({
             <Label>Roster changes</Label>
             <div className="flex flex-wrap gap-2 mt-3">
               {status.roster.joined.map((p) => (
-                <span key={p.tag} className="text-sm text-ok-400 border border-ok-400/30 bg-ok-900/40 rounded px-2 py-0.5 flex items-center gap-1">
+                <span key={p.tag} className="text-sm text-ok-400 border border-ok-400/30 bg-ok-900 rounded px-2 py-0.5 flex items-center gap-1">
                   <UserPlus className="w-3 h-3" />{p.name}
                 </span>
               ))}
               {status.roster.left.map((p) => (
-                <span key={p.tag} className="text-sm text-bad-400 border border-bad-400/30 bg-bad-900/40 rounded px-2 py-0.5 flex items-center gap-1">
+                <span key={p.tag} className="text-sm text-bad-400 border border-bad-400/30 bg-bad-900 rounded px-2 py-0.5 flex items-center gap-1">
                   <UserMinus className="w-3 h-3" />{p.name}
                 </span>
               ))}

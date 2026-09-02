@@ -33,11 +33,11 @@ const StatsTable = memo(({
       {/* Bonus Counter */}
       {bonusCount > 0 && (
         <div className={`mb-4 p-4 rounded-md border ${
-          bonusesUsed === bonusCount 
-            ? "bg-ok-900/40 border-ok-400/40" 
+          bonusesUsed === bonusCount
+            ? "bg-ok-900 border-ok-400/40"
             : bonusesUsed > bonusCount
-            ? "bg-bad-900/40 border-bad-400/40"
-            : "bg-amber-900/40 border-amber-400/40"
+            ? "bg-bad-900 border-bad-400/40"
+            : "bg-amber-900 border-amber-400/40"
         }`}>
           <div className="flex items-center justify-between">
             <span className="font-semibold">

@@ -15,7 +15,7 @@ const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo, clanNa
  className={`flex-1 py-3 px-4 rounded-md font-semibold ${
               isActive
                 ? isPurple
-                  ? "bg-accent-900/50 border-2 border-accent-400"
+                  ? "bg-accent-900 border-2 border-accent-400"
                   : "bg-surface-700 border-2 border-steel-500"
                 : "bg-surface-800 border-2 border-line"
             }`}
