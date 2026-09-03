@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Calendar, Plus, Play, Settings, Trash2, Swords, History,
-  RefreshCw, UserPlus, UserMinus, ChevronRight, ShieldOff, ListChecks,
+  RefreshCw, ChevronRight, ShieldOff, ListChecks,
 } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -330,24 +330,6 @@ const SeasonSelector = ({
           </div>
         )}
 
-        {/* Altas y bajas */}
-        {status?.roster && (status.roster.joined.length > 0 || status.roster.left.length > 0) && (
-          <div className="border border-line rounded-md p-4 mb-6">
-            <Label>Roster changes</Label>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {status.roster.joined.map((p) => (
-                <span key={p.tag} className="text-sm text-ok-400 border border-ok-400/30 bg-ok-900 rounded px-2 py-0.5 flex items-center gap-1">
-                  <UserPlus className="w-3 h-3" />{p.name}
-                </span>
-              ))}
-              {status.roster.left.map((p) => (
-                <span key={p.tag} className="text-sm text-bad-400 border border-bad-400/30 bg-bad-900 rounded px-2 py-0.5 flex items-center gap-1">
-                  <UserMinus className="w-3 h-3" />{p.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Accesos */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

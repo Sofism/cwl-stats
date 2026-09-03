@@ -70,55 +70,19 @@ const summarizeWar = (war, clanTag) => {
 };
 
 /**
- * Compara el roster actual con el ultimo guardado y devuelve altas y bajas.
- * El snapshot anterior vive en localStorage: es por dispositivo, no
- * compartido. Cuando exista el cron esto pasara a Redis y sera global.
- */
-const ROSTER_KEY = "cwl_last_roster";
-
-const diffRoster = (members) => {
-  const current = members.map((m) => ({ tag: m.tag, name: m.name }));
-  let previous = [];
-  try {
-    previous = JSON.parse(localStorage.getItem(ROSTER_KEY) || "[]");
-  } catch {
-    previous = [];
-  }
-
-  // La primera vez no hay con que comparar: se guarda y no se inventan
-  // altas (si no, los 50 miembros apareceran como "nuevos").
-  const isFirstRun = previous.length === 0;
-  const prevTags = new Set(previous.map((p) => p.tag));
-  const currTags = new Set(current.map((p) => p.tag));
-
-  const joined = isFirstRun ? [] : current.filter((p) => !prevTags.has(p.tag));
-  const left = isFirstRun ? [] : previous.filter((p) => !currTags.has(p.tag));
-
-  try {
-    localStorage.setItem(ROSTER_KEY, JSON.stringify(current));
-  } catch {
-    // Sin localStorage (modo privado): simplemente no hay historico.
-  }
-
-  return { joined, left, isFirstRun };
-};
-
-/**
  * Todo lo que el home necesita, en una sola llamada. Cada bloque falla de
  * forma independiente: que no haya CWL no impide mostrar la guerra normal.
  */
 export const getHomeStatus = async (clanTag) => {
   if (!clanTag) return null;
 
-  const [cwlRes, warRes, membersRes] = await Promise.allSettled([
+  const [cwlRes, warRes] = await Promise.allSettled([
     getCurrentCwlWar(clanTag),
     getCurrentWar(clanTag),
-    getClanMembers(clanTag),
   ]);
 
   const cwlWar = cwlRes.status === "fulfilled" ? cwlRes.value : null;
   const regularWar = warRes.status === "fulfilled" ? warRes.value : null;
-  const members = membersRes.status === "fulfilled" ? membersRes.value : [];
 
   // getCurrentCwlWar ya devuelve su propio formato con roster resuelto.
   const cwl = cwlWar
@@ -156,10 +120,6 @@ export const getHomeStatus = async (clanTag) => {
   return {
     cwl,
     regularWar: summarizeWar(regularWar, clanTag),
-    roster: {
-      size: members.length,
-      ...diffRoster(members),
-    },
     checkedAt: Date.now(),
   };
 };
