@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Settings, X } from "lucide-react";
+import { Settings, X, FilePlus } from "lucide-react";
+import ManualWarModal from "./ManualWarModal";
 
 const ACCENT_OPTIONS = [
   { id: "lime", label: "Lime", swatch: "#a8c74e" },
@@ -29,6 +30,8 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
       window.setPaletteRole(role, id);
     }
   };
+
+  const [showManualWar, setShowManualWar] = useState(false);
 
   const [mainName, setMainName] = useState(clanNames.main);
   const [secondaryName, setSecondaryName] = useState(clanNames.secondary);
@@ -156,6 +159,20 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
           )}
         </div>
 
+        <div className="mb-6 pt-4 border-t border-line">
+          <label className="block text-sm text-txt-low mb-2">Data tools</label>
+          <button
+            onClick={() => setShowManualWar(true)}
+            className="w-full border border-line-strong hover:border-accent-400 text-txt-mid hover:text-accent-400 rounded-md px-4 py-2.5 text-sm flex items-center justify-center gap-2 transition-colors"
+          >
+            <FilePlus className="w-4 h-4" />
+            Add manual war
+          </button>
+          <p className="text-xs text-txt-hi0 mt-2">
+            For a regular clan war the automatic sync missed.
+          </p>
+        </div>
+
         <div className="flex gap-3">
           <button
             onClick={handleSave}
@@ -171,6 +188,10 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
           </button>
         </div>
       </div>
+
+      {showManualWar && (
+        <ManualWarModal clanNames={clanNames} onClose={() => setShowManualWar(false)} />
+      )}
     </div>
   );
 };

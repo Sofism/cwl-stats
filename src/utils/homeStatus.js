@@ -53,11 +53,13 @@ const summarizeWar = (war, clanTag) => {
     perfectDefenses,
     starsLeft: war.teamSize * 3 - (us.stars || 0),
     us: {
+      tag: us.tag,
       name: us.name,
       stars: us.stars || 0,
       destruction: us.destructionPercentage || 0,
     },
     them: {
+      tag: them.tag,
       name: them.name,
       stars: them.stars || 0,
       destruction: them.destructionPercentage || 0,

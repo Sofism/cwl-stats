@@ -104,6 +104,7 @@ const buildNormalWarRecord = (war, clanTag, optOutTags = []) => {
 
   return {
     warKey: war.preparationStartTime || war.startTime,
+    source: "cron",
     startTime: war.startTime,
     endTime: war.endTime,
     teamSize: war.teamSize,

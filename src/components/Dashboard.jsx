@@ -340,8 +340,8 @@ const Dashboard = ({
       </div>
       {showCurrentWar && (
         <CurrentWarView
-          clanTag={activePage === "main" ? clanNames.mainTag : clanNames.secondaryTag}
-          clanName={activePage === "main" ? clanNames.main : clanNames.secondary}
+          clanNames={clanNames}
+          initialClan={activePage}
           onClose={() => setShowCurrentWar(false)}
         />
       )}

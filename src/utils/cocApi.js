@@ -141,6 +141,49 @@ export const getCurrentWar = async (clanTag) => {
 };
 
 /**
+ * Resumenes de las ultimas guerras normales de CUALQUIER clan (funciona
+ * igual con el nuestro que con el rival actual: es un endpoint publico,
+ * solo requiere que el clan tenga el war log en publico). NO trae datos
+ * por jugador, solo resultado/estrellas/destruccion/tamano/fecha - para
+ * eso hace falta sondear la guerra mientras esta viva (getCurrentWar).
+ * Devuelve un array vacio si el war log es privado o el clan no existe.
+ */
+export const getWarLog = async (clanTag, limit = 15) => {
+  try {
+    const encodedTag = encodeURIComponent(normalizeTag(clanTag));
+    // Sin "?limit=" en el endpoint: el proxy nunca ha tenido que reenviar
+    // query params dentro de "endpoint" y no esta verificado que lo haga
+    // bien (el "?" quedaria embebido en un unico valor de query). Mas
+    // seguro pedir el log tal cual (la API ya devuelve un numero razonable
+    // de guerras) y recortar aqui.
+    const response = await proxyFetch(`clans/${encodedTag}/warlog`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.items || []).slice(0, limit);
+  } catch (err) {
+    console.error("Error fetching war log:", err);
+    return [];
+  }
+};
+
+/**
+ * Racha actual (victorias o derrotas consecutivas) a partir de un warlog,
+ * que ya viene ordenado de mas reciente a mas antigua. Se para en el
+ * primer resultado distinto o en el primer empate.
+ */
+export const getCurrentStreak = (warlogItems) => {
+  if (!warlogItems || warlogItems.length === 0) return null;
+  const latest = warlogItems[0].result;
+  if (latest === "tie") return { result: "tie", count: 1 };
+  let count = 0;
+  for (const war of warlogItems) {
+    if (war.result === latest) count += 1;
+    else break;
+  }
+  return { result: latest, count };
+};
+
+/**
  * Perfil de un jugador. Lo relevante aqui es warPreference ("in" | "out"),
  * que NO viene en el listado de miembros del clan: hay que pedir el perfil
  * de cada jugador por separado.

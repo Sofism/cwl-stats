@@ -32,11 +32,18 @@ const StarRow = ({ stars }) => (
   </span>
 );
 
-const CurrentWarView = ({ clanTag, clanName, onClose }) => {
+const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
+  const [activeClan, setActiveClan] = useState(initialClan);
   const [war, setWar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [now, setNow] = useState(Date.now());
+
+  // Los dos clanes juegan CWL a la vez: se puede alternar sin cerrar la
+  // vista, en vez de tener que reabrirla desde la pestaña del clan que
+  // interese.
+  const clanTag = activeClan === "main" ? clanNames?.mainTag : clanNames?.secondaryTag;
+  const clanName = activeClan === "main" ? clanNames?.main : clanNames?.secondary;
 
   const load = useCallback(() => {
     if (!clanTag) {
@@ -99,6 +106,22 @@ const CurrentWarView = ({ clanTag, clanName, onClose }) => {
               <X className="w-4 h-4" />
             </button>
           </div>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          {["main", "secondary"].map((key) => (
+            <button
+              key={key}
+              onClick={() => setActiveClan(key)}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-colors ${
+                activeClan === key
+                  ? "bg-accent-900 border-2 border-accent-400 text-txt-hi"
+                  : "bg-surface-800 border-2 border-line hover:bg-surface-700 text-txt-mid"
+              }`}
+            >
+              {key === "main" ? clanNames?.main || "Main" : clanNames?.secondary || "Secondary"}
+            </button>
+          ))}
         </div>
 
         <p className="text-xs text-txt-hi0 mb-4">
