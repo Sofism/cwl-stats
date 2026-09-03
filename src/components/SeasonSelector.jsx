@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Calendar, Plus, Play, Settings, Trash2, Swords, History,
-  RefreshCw, ChevronRight, ShieldOff, ListChecks,
+  RefreshCw, ChevronRight, ShieldOff, ListChecks, Flame,
 } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -14,6 +14,7 @@ import {
   getCachedOptOuts,
   captureOptOutsForWar,
 } from "../utils/homeStatus";
+import { getWarLog, getCurrentStreak } from "../utils/cocApi";
 
 const parseApiDate = (raw) => {
   if (!raw) return null;
@@ -40,8 +41,124 @@ const Label = ({ children }) => (
   </div>
 );
 
+const StreakBadge = ({ streak }) => {
+  if (!streak) return null;
+  const isWin = streak.result === "win";
+  const isTie = streak.result === "tie";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded font-semibold ${
+        isTie ? "bg-surface-700 text-txt-mid" : isWin ? "bg-ok-900 text-ok-400" : "bg-bad-900 text-bad-400"
+      }`}
+    >
+      <Flame className="w-3 h-3" />
+      {isTie ? "Last was a draw" : `${streak.count} ${isWin ? "win" : "loss"}${streak.count !== 1 ? "es" : ""} streak`}
+    </span>
+  );
+};
+
+/** Una fila del listado de guerras (warlog de un clan cualquiera). */
+const WarLogRow = ({ war }) => (
+  <div className="flex items-center justify-between text-sm border-b border-line/60 py-1.5 gap-2">
+    <span className="text-txt-mid truncate flex-1">{war.opponent?.name}</span>
+    <span className="font-mono text-xs text-txt-dim w-14 text-center">
+      {war.clan?.stars}-{war.opponent?.stars}
+    </span>
+    <span
+      className={`text-xs px-2 py-0.5 rounded font-semibold ${
+        war.result === "win"
+          ? "bg-ok-900 text-ok-400"
+          : war.result === "loss"
+          ? "bg-bad-900 text-bad-400"
+          : "bg-surface-700 text-txt-mid"
+      }`}
+    >
+      {war.result === "win" ? "Win" : war.result === "loss" ? "Loss" : "Draw"}
+    </span>
+  </div>
+);
+
+/**
+ * Desplegable de "que sabemos del rival" para la guerra normal en curso:
+ * nuestras ultimas guerras y las del rival, con la racha de cada uno. Se
+ * pide bajo demanda (solo al abrir), no en la carga inicial del home.
+ */
+const WarHistoryDropdown = ({ clanTag, opponentTag, opponentName }) => {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [ourLog, setOurLog] = useState(null);
+  const [opponentLog, setOpponentLog] = useState(null);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && ourLog === null) {
+      setLoading(true);
+      const [our, their] = await Promise.all([
+        getWarLog(clanTag),
+        opponentTag ? getWarLog(opponentTag) : Promise.resolve([]),
+      ]);
+      setOurLog(our);
+      setOpponentLog(their);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="pt-3 mt-3 border-t border-line">
+      <button
+        onClick={toggle}
+        className="w-full flex items-center gap-2 text-left hover:text-accent-300 transition-colors"
+      >
+        <ChevronRight
+          className={`w-4 h-4 text-accent-400 transition-transform ${open ? "rotate-90" : ""}`}
+        />
+        <span className="font-mono text-xs text-accent-400 tracking-wider">
+          WAR HISTORY
+        </span>
+        <span className="font-mono text-[11px] text-txt-dim ml-auto">quick look</span>
+      </button>
+
+      {open && (
+        <div className="mt-3">
+          {loading ? (
+            <p className="text-sm text-txt-dim text-center py-3">Loading…</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Us — last wars</Label>
+                  <StreakBadge streak={getCurrentStreak(ourLog)} />
+                </div>
+                {!ourLog || ourLog.length === 0 ? (
+                  <p className="text-xs text-txt-dim">No war log available.</p>
+                ) : (
+                  ourLog.slice(0, 8).map((w, i) => <WarLogRow key={i} war={w} />)
+                )}
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>{opponentName || "Opponent"} — last wars</Label>
+                  <StreakBadge streak={getCurrentStreak(opponentLog)} />
+                </div>
+                {!opponentTag ? (
+                  <p className="text-xs text-txt-dim">No opponent tag available.</p>
+                ) : !opponentLog || opponentLog.length === 0 ? (
+                  <p className="text-xs text-txt-dim">Opponent's war log is private or empty.</p>
+                ) : (
+                  opponentLog.slice(0, 8).map((w, i) => <WarLogRow key={i} war={w} />)
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 /** Panel de una guerra (CWL o normal). Misma forma para las dos. */
-const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts }) => {
+const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts, showHistory, clanTag }) => {
   const [showPending, setShowPending] = useState(false);
   const isPrep = war.state === "preparation";
   const target = parseApiDate(isPrep ? war.startTime : war.endTime);
@@ -183,6 +300,14 @@ const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts }) => {
         </div>
       )}
 
+      {showHistory && clanTag && (
+        <WarHistoryDropdown
+          clanTag={clanTag}
+          opponentTag={war.them?.tag}
+          opponentName={war.them?.name}
+        />
+      )}
+
       {onOpen && (
         <button
           onClick={onOpen}
@@ -213,21 +338,24 @@ const SeasonSelector = ({
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [pickedSeasonId, setPickedSeasonId] = useState(seasons[0]?.id || "");
 
+  const [statusClan, setStatusClan] = useState("main");
   const [status, setStatus] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [optOuts, setOptOuts] = useState(null);
   const [loadingOptOuts, setLoadingOptOuts] = useState(false);
 
+  const statusClanTag = statusClan === "main" ? clanNames?.mainTag : clanNames?.secondaryTag;
+
   const seasonsByYear = getSeasonsByYear();
   const years = Object.keys(seasonsByYear).sort((a, b) => b - a);
 
   const loadStatus = React.useCallback(() => {
-    if (!clanNames?.mainTag) return;
+    if (!statusClanTag) return;
     setLoadingStatus(true);
-    getHomeStatus(clanNames.mainTag)
+    getHomeStatus(statusClanTag)
       .then(setStatus)
       .finally(() => setLoadingStatus(false));
-  }, [clanNames?.mainTag]);
+  }, [statusClanTag]);
 
   useEffect(() => {
     loadStatus();
@@ -238,7 +366,7 @@ const SeasonSelector = ({
   // Va en segundo plano para no bloquear la carga del home.
   const warKey = status?.regularWar?.warKey;
   useEffect(() => {
-    if (!warKey || !clanNames?.mainTag) {
+    if (!warKey || !statusClanTag) {
       setOptOuts(null);
       return;
     }
@@ -248,10 +376,10 @@ const SeasonSelector = ({
       return;
     }
     setLoadingOptOuts(true);
-    captureOptOutsForWar(clanNames.mainTag, warKey)
+    captureOptOutsForWar(statusClanTag, warKey)
       .then(setOptOuts)
       .finally(() => setLoadingOptOuts(false));
-  }, [warKey, clanNames?.mainTag]);
+  }, [warKey, statusClanTag]);
 
   const handleDeleteConfirm = () => {
     if (deleteConfirm) onDeleteSeason(deleteConfirm);
@@ -292,7 +420,24 @@ const SeasonSelector = ({
         </div>
 
         {/* Estado en vivo */}
-        {!clanNames?.mainTag ? (
+        {clanNames?.mainTag && clanNames?.secondaryTag && (
+          <div className="flex gap-2 mb-3">
+            {["main", "secondary"].map((key) => (
+              <button
+                key={key}
+                onClick={() => setStatusClan(key)}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-semibold transition-colors ${
+                  statusClan === key
+                    ? "bg-accent-900 border-2 border-accent-400 text-txt-hi"
+                    : "bg-surface-800 border-2 border-line hover:bg-surface-700 text-txt-mid"
+                }`}
+              >
+                {key === "main" ? clanNames?.main || "Main" : clanNames?.secondary || "Secondary"}
+              </button>
+            ))}
+          </div>
+        )}
+        {!statusClanTag ? (
           <div className="border border-line rounded-md p-6 mb-6 text-center">
             <p className="text-sm text-txt-low">
               Add your clan tags in Settings to see live war status.
@@ -317,6 +462,8 @@ const SeasonSelector = ({
                 war={status.regularWar}
                 optOuts={optOuts}
                 loadingOptOuts={loadingOptOuts}
+                showHistory
+                clanTag={statusClanTag}
               />
             )}
             {!hasAnyWar && (
@@ -449,6 +596,7 @@ const SeasonSelector = ({
         {showCurrentWar && (
           <CurrentWarView
             clanNames={clanNames}
+            initialClan={statusClan}
             onClose={() => setShowCurrentWar(false)}
           />
         )}

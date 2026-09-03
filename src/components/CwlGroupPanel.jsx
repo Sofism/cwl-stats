@@ -64,6 +64,14 @@ const MatchCard = ({ match, ourTag }) => {
           <ClanBadge badge={match.clanB.badge} name={match.clanB.name} />
         </div>
       </div>
+      <div className="flex items-center justify-between gap-2 mt-1">
+        <span className="text-[10px] text-txt-dim font-mono flex-1">
+          {match.clanA.attacksLeft} atk left
+        </span>
+        <span className="text-[10px] text-txt-dim font-mono flex-1 text-right">
+          {match.clanB.attacksLeft} atk left
+        </span>
+      </div>
       <div className="text-center text-[10px] text-txt-dim uppercase tracking-wider mt-2">
         {match.state === "warEnded" ? "Ended" : match.state === "inWar" ? "Battle day" : "Preparation"}
       </div>

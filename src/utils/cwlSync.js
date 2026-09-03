@@ -353,15 +353,22 @@ export const getCwlGroupOverview = async (clanTag) => {
       .map((t) => {
         const war = warsByTag.get(t);
         if (!war) return null;
+        // CWL es siempre 1 ataque por miembro: los restantes son el
+        // tamano del equipo menos los ataques ya usados por ese lado.
+        const attacksUsed = (side) =>
+          (side.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
+
         return {
           warTag: t,
           state: war.state,
+          teamSize: war.teamSize,
           clanA: {
             tag: war.clan.tag,
             name: war.clan.name,
             badge: war.clan.badgeUrls?.small,
             stars: war.clan.stars || 0,
             destruction: war.clan.destructionPercentage || 0,
+            attacksLeft: war.teamSize - attacksUsed(war.clan),
           },
           clanB: {
             tag: war.opponent.tag,
@@ -369,6 +376,7 @@ export const getCwlGroupOverview = async (clanTag) => {
             badge: war.opponent.badgeUrls?.small,
             stars: war.opponent.stars || 0,
             destruction: war.opponent.destructionPercentage || 0,
+            attacksLeft: war.teamSize - attacksUsed(war.opponent),
           },
         };
       })
@@ -437,14 +445,14 @@ export const getCurrentCwlWar = async (clanTag) => {
         };
       });
       const defenses = them.members
-        .flatMap((m) => m.attacks || [])
+        .flatMap((m) => (m.attacks || []).map((a) => ({ ...a, attackerTh: m.townhallLevel })))
         .filter((a) => a.defenderTag === member.tag);
       const bestDefense = defenses.reduce(
         (worst, a) =>
           !worst ||
           a.stars > worst.stars ||
           (a.stars === worst.stars && a.destructionPercentage > worst.destruction)
-            ? { stars: a.stars, destruction: a.destructionPercentage }
+            ? { stars: a.stars, destruction: a.destructionPercentage, attackerTh: a.attackerTh }
             : worst,
         null
       );

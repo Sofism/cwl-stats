@@ -206,6 +206,7 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                       <th className="p-3 text-center">TH</th>
                       <th className="p-3 text-left">Attack</th>
                       <th className="p-3 text-left">Defense taken</th>
+                      <th className="p-3 text-center">Enemy TH</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -225,9 +226,7 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                         <td className="p-3 text-center text-txt-low">{p.th || "—"}</td>
                         <td className="p-3">
                           {p.attacks.length === 0 ? (
-                            <span className="text-bad-400 text-xs">
-                              {isPrep ? "—" : "not used"}
-                            </span>
+                            <span className="text-bad-400 text-xs">—</span>
                           ) : (
                             p.attacks.map((a, i) => (
                               <div key={i} className="flex items-center gap-2">
@@ -249,8 +248,11 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                               </span>
                             </div>
                           ) : (
-                            <span className="text-txt-dim text-xs">not attacked</span>
+                            <span className="text-txt-dim text-xs">—</span>
                           )}
+                        </td>
+                        <td className="p-3 text-center text-txt-low text-xs">
+                          {p.defense?.attackerTh || "—"}
                         </td>
                       </tr>
                     ))}
