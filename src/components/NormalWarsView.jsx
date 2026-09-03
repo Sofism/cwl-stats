@@ -219,7 +219,7 @@ const NormalWarsView = ({ clanNames, initialClan = "main", onClose }) => {
   const clanStats = aggregateNormalWarStats(savedWars, { attackThFilter, defenseThFilter });
 
   return (
-    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm z-50 overflow-y-auto p-4 md:p-6">
+    <div className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <h2 className="text-2xl font-semibold flex items-center gap-2 text-txt-hi">

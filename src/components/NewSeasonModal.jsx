@@ -12,7 +12,7 @@ const NewSeasonModal = ({ onCreateSeason, onCancel }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-surface-950 flex items-center justify-center z-50 p-4">
       <div className="border border-line rounded-md p-6 max-w-md w-full">
         <h3 className="text-xl font-semibold mb-4">New Season</h3>
         

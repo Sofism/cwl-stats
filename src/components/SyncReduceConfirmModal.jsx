@@ -19,7 +19,7 @@ const SyncReduceConfirmModal = ({
   onCancel,
 }) => {
   return (
-    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-surface-950 flex items-center justify-center z-50 p-4">
       <div className="bg-surface-800 border border-bad-400/40 rounded-md p-6 max-w-md w-full">
         <h3 className="text-xl font-semibold mb-4 text-bad-400 flex items-center gap-2">
           <AlertTriangle className="w-5 h-5" />

@@ -64,7 +64,7 @@ const ManualWarModal = ({ clanNames, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-surface-950 flex items-center justify-center z-50 p-4">
       <div className="border border-line rounded-md p-6 max-w-2xl w-full my-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-txt-hi">Add manual war</h3>

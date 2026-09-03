@@ -53,7 +53,7 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-surface-950 flex items-center justify-center z-50 p-4">
       <div className="border border-line rounded-md p-6 max-w-md w-full">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold flex items-center gap-2">

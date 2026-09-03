@@ -255,7 +255,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
   const sortedData = getSortedData(historicalData);
 
   return (
-    <div className="fixed inset-0 bg-surface-950/90 backdrop-blur-sm z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto">
       <div className="min-h-screen px-4 py-8">
         <div className="max-w-7xl mx-auto">
 
