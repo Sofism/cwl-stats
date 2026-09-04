@@ -387,48 +387,12 @@ export const getCwlGroupOverview = async (clanTag) => {
 };
 
 /**
- * Ronda de CWL activa ahora mismo (en preparacion o en guerra), pensada
- * SOLO para visualizacion en vivo. No alimenta las estadisticas de la
- * temporada: esas solo se actualizan cuando la guerra termina.
- *
- * Devuelve null si el clan no esta en CWL o si no hay ninguna ronda
- * abierta en este momento (p. ej. entre rondas).
+ * Construye el detalle de UNA ronda de CWL (roster con ataques/defensas,
+ * metricas de contexto) para nuestro clan. Compartido entre
+ * getCurrentCwlWar (solo la ronda activa) y getCwlRounds (todas, para
+ * poder revisitarlas).
  */
-export const getCurrentCwlWar = async (clanTag) => {
-  const tag = normalizeTag(clanTag);
-  const group = await getCurrentWarLeagueGroup(tag);
-  if (!group || !group.rounds) return null;
-
-  const warTags = group.rounds
-    .flatMap((round) => round.warTags)
-    .filter((tag) => tag && tag !== "#0");
-
-  const wars = (
-    await Promise.all(warTags.map((tag) => getClanWarLeagueWar(tag)))
-  ).filter(Boolean);
-
-  const ours = wars
-    .map((war) => {
-      const isHome = war.clan?.tag === tag;
-      const isAway = war.opponent?.tag === tag;
-      if (!isHome && !isAway) return null;
-      return {
-        raw: war,
-        us: isHome ? war.clan : war.opponent,
-        them: isHome ? war.opponent : war.clan,
-      };
-    })
-    .filter(Boolean);
-
-  // La ronda "actual" es la que esta en guerra; si no hay ninguna, la que
-  // este en preparacion.
-  const active =
-    ours.find((w) => w.raw.state === "inWar") ||
-    ours.find((w) => w.raw.state === "preparation");
-  if (!active) return null;
-
-  const { raw, us, them } = active;
-
+const buildRoundDetail = (raw, us, them) => {
   // Ataques de cada miembro nuestro, con el objetivo resuelto para poder
   // mostrar "#3 -> #5" en vez de un tag suelto.
   const roster = (us.members || [])
@@ -445,14 +409,14 @@ export const getCurrentCwlWar = async (clanTag) => {
         };
       });
       const defenses = them.members
-        .flatMap((m) => (m.attacks || []).map((a) => ({ ...a, attackerTh: m.townhallLevel })))
+        .flatMap((m) => m.attacks || [])
         .filter((a) => a.defenderTag === member.tag);
       const bestDefense = defenses.reduce(
         (worst, a) =>
           !worst ||
           a.stars > worst.stars ||
           (a.stars === worst.stars && a.destructionPercentage > worst.destruction)
-            ? { stars: a.stars, destruction: a.destructionPercentage, attackerTh: a.attackerTh }
+            ? { stars: a.stars, destruction: a.destructionPercentage }
             : worst,
         null
       );
@@ -506,6 +470,56 @@ export const getCurrentCwlWar = async (clanTag) => {
     },
     roster,
   };
+};
+
+/**
+ * Todas las rondas de CWL de nuestro clan que ya tienen emparejamiento
+ * (preparation/inWar/warEnded), cada una con el mismo detalle de roster
+ * que antes solo se calculaba para la ronda activa. Pensado para poder
+ * revisitar rondas ya jugadas, no solo la de ahora mismo.
+ *
+ * Devuelve un array vacio si el clan no esta en CWL. Cada elemento incluye
+ * `round` (1-7) ademas de todo lo que ya devuelve buildRoundDetail.
+ */
+export const getCwlRounds = async (clanTag) => {
+  const tag = normalizeTag(clanTag);
+  const group = await getCurrentWarLeagueGroup(tag);
+  if (!group || !group.rounds) return [];
+
+  const roundEntries = group.rounds
+    .map((round, i) => ({ round: i + 1, warTags: round.warTags.filter((t) => t && t !== "#0") }))
+    .filter((r) => r.warTags.length > 0);
+
+  const results = await Promise.all(
+    roundEntries.map(async ({ round, warTags }) => {
+      const wars = (await Promise.all(warTags.map((t) => getClanWarLeagueWar(t)))).filter(Boolean);
+      const ourWar = wars.find((war) => war.clan?.tag === tag || war.opponent?.tag === tag);
+      if (!ourWar) return null;
+      const isHome = ourWar.clan?.tag === tag;
+      const us = isHome ? ourWar.clan : ourWar.opponent;
+      const them = isHome ? ourWar.opponent : ourWar.clan;
+      return { round, ...buildRoundDetail(ourWar, us, them) };
+    })
+  );
+
+  return results.filter(Boolean);
+};
+
+/**
+ * Ronda de CWL activa ahora mismo (en preparacion o en guerra), pensada
+ * SOLO para visualizacion en vivo. No alimenta las estadisticas de la
+ * temporada: esas solo se actualizan cuando la guerra termina.
+ *
+ * Devuelve null si el clan no esta en CWL o si no hay ninguna ronda
+ * abierta en este momento (p. ej. entre rondas).
+ */
+export const getCurrentCwlWar = async (clanTag) => {
+  const rounds = await getCwlRounds(clanTag);
+  return (
+    rounds.find((r) => r.state === "inWar") ||
+    rounds.find((r) => r.state === "preparation") ||
+    null
+  );
 };
 
 /**

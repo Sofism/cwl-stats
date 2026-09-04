@@ -12,8 +12,9 @@ const NewSeasonModal = ({ onCreateSeason, onCancel }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-surface-950 flex items-center justify-center z-50 p-4">
-      <div className="border border-line rounded-md p-6 max-w-md w-full">
+    <div className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto">
+      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+      <div className="border border-line rounded-md p-6 max-w-md w-full my-8">
         <h3 className="text-xl font-semibold mb-4">New Season</h3>
         
         <div className="mb-4">
@@ -57,6 +58,7 @@ const NewSeasonModal = ({ onCreateSeason, onCancel }) => {
             Cancel
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

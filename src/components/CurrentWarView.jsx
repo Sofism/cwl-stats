@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Swords, RefreshCw, X, Clock } from "lucide-react";
-import { getCurrentCwlWar } from "../utils/cwlSync";
+import { getCwlRounds } from "../utils/cwlSync";
 import CwlGroupPanel from "./CwlGroupPanel";
 
 /**
@@ -34,7 +34,8 @@ const StarRow = ({ stars }) => (
 
 const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
   const [activeClan, setActiveClan] = useState(initialClan);
-  const [war, setWar] = useState(null);
+  const [rounds, setRounds] = useState([]);
+  const [selectedRound, setSelectedRound] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [now, setNow] = useState(Date.now());
@@ -53,10 +54,21 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
     }
     setLoading(true);
     setError(null);
-    getCurrentCwlWar(clanTag)
+    getCwlRounds(clanTag)
       .then((data) => {
-        setWar(data);
-        if (!data) setError("No CWL round is currently open for this clan.");
+        setRounds(data);
+        if (data.length === 0) {
+          setError("No CWL round is currently open for this clan.");
+          setSelectedRound(null);
+        } else {
+          // Por defecto, la ronda en curso; si no hay ninguna en guerra,
+          // la que este en preparacion; si no, la mas reciente jugada.
+          const active =
+            data.find((r) => r.state === "inWar") ||
+            data.find((r) => r.state === "preparation") ||
+            data[data.length - 1];
+          setSelectedRound(active.round);
+        }
       })
       .catch((err) => setError(err.message || "Could not reach the clan API."))
       .finally(() => setLoading(false));
@@ -65,6 +77,8 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
   useEffect(() => {
     load();
   }, [load]);
+
+  const war = rounds.find((r) => r.round === selectedRound) || null;
 
   // Refresco del contador cada minuto (no vuelve a llamar a la API).
   useEffect(() => {
@@ -124,9 +138,29 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
           ))}
         </div>
 
+        {rounds.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {rounds.map((r) => (
+              <button
+                key={r.round}
+                onClick={() => setSelectedRound(r.round)}
+                className={`px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
+                  selectedRound === r.round
+                    ? "bg-accent-900 border border-accent-400 text-txt-hi"
+                    : "border border-line text-txt-low hover:border-line-strong"
+                }`}
+              >
+                Round {r.round}
+                {r.state === "inWar" && " · live"}
+              </button>
+            ))}
+          </div>
+        )}
+
         <p className="text-xs text-txt-hi0 mb-4">
-          Live view only — these numbers do not affect season stats until the
-          round ends.
+          {war?.state === "warEnded"
+            ? "This round already ended — for reference only."
+            : "Live view only — these numbers do not affect season stats until the round ends."}
         </p>
 
         {loading && !war && (
@@ -206,7 +240,6 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                       <th className="p-3 text-center">TH</th>
                       <th className="p-3 text-left">Attack</th>
                       <th className="p-3 text-left">Defense taken</th>
-                      <th className="p-3 text-center">Enemy TH</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -250,9 +283,6 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                           ) : (
                             <span className="text-txt-dim text-xs">—</span>
                           )}
-                        </td>
-                        <td className="p-3 text-center text-txt-low text-xs">
-                          {p.defense?.attackerTh || "—"}
                         </td>
                       </tr>
                     ))}

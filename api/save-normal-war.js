@@ -1,17 +1,24 @@
 const { normalizeTag } = require("./_lib/cocProxy");
-const { finalizeIfNew } = require("./_lib/normalWarStore");
+const { replaceManual } = require("./_lib/normalWarStore");
 
 /**
- * Guarda a mano una guerra normal que el cron no capturo (o que paso antes
- * de tener el cron activo). El cliente ya parsea el texto pegado con
- * parseData (src/utils/dataParser.js) - EL MISMO parser que se usa para
- * las 11 temporadas historicas de CWL, mismo formato de columnas - y manda
- * aqui el array de jugadores ya listo.
+ * Guarda a mano el agregado de las ultimas guerras normales de un clan, en
+ * un solo pegado (igual que la temporada entera de CWL se pega de una
+ * vez). El cliente ya parsea el texto con parseData (src/utils/dataParser.js)
+ * - EL MISMO parser que las 11 temporadas historicas de CWL, mismas
+ * columnas - y manda aqui el array de jugadores ya listo, cada uno con su
+ * propio numero de guerras (columna "wars" del pegado).
  *
  * Solo tiene el lado propio: igual que el pegado manual de CWL nunca tuvo
- * datos del rival, esto son estadisticas agregadas por jugador para ESA
- * guerra, no un log ataque a ataque (esa version detallada solo la puede
- * dar el cron automatico, que sondea la guerra mientras esta viva).
+ * datos del rival, esto son estadisticas agregadas por jugador, no un log
+ * ataque a ataque (eso solo lo da el cron automatico, que sondea la guerra
+ * mientras esta viva).
+ *
+ * IMPORTANTE: esto SUSTITUYE cualquier pegado manual anterior de este
+ * clan (ver replaceManual) en vez de acumularse. Un "ultimas 10 guerras"
+ * pegado hoy y otra vez el mes que viene solapa guerras ya contadas; sumar
+ * los dos las contaria dos veces. Los registros que sí capturo el cron
+ * (source: "cron") no se tocan.
  */
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -26,33 +33,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { clanTag, date, opponentName, result, players } = req.body || {};
-    if (!clanTag || !date || !Array.isArray(players) || players.length === 0) {
-      return res.status(400).json({ error: "Missing clanTag, date or players" });
+    const { clanTag, asOfDate, players } = req.body || {};
+    if (!clanTag || !asOfDate || !Array.isArray(players) || players.length === 0) {
+      return res.status(400).json({ error: "Missing clanTag, asOfDate or players" });
     }
 
     const tag = normalizeTag(clanTag);
-    const warKey = `manual-${date}`;
 
     const record = {
-      warKey,
+      warKey: "manual-aggregate",
       source: "manual",
-      date,
-      opponentName: opponentName || null,
-      result: result || null,
+      asOfDate,
       us: { players },
       them: null,
       syncedAt: Date.now(),
     };
 
-    const saved = await finalizeIfNew(tag, record);
-    if (!saved) {
-      return res.status(409).json({
-        error: "Ya hay una guerra guardada con esa fecha para este clan (borra o cambia la fecha).",
-      });
-    }
+    await replaceManual(tag, record);
 
-    return res.status(200).json({ ok: true, warKey });
+    return res.status(200).json({ ok: true });
   } catch (err) {
     console.error("Save normal war error:", err);
     return res.status(500).json({ error: "Failed", details: err.message });

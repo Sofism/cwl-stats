@@ -3,17 +3,20 @@ import { X } from "lucide-react";
 import { parseData } from "../utils/dataParser";
 
 /**
- * Guerra normal pegada a mano, para cuando el cron (api/sync.js) no la
- * capturo a tiempo. Reutiliza EL MISMO parser tabulado que ya se usa para
- * las 11 temporadas historicas de CWL (dataParser.js): mismas columnas,
- * mismo origen de datos (el bot/Excel de Santi), solo que aqui es una
- * guerra suelta en vez de una temporada entera.
+ * Agregado de las ultimas guerras normales pegado a mano, para cuando el
+ * cron no las capturo (o no estaba activo todavia). Mismo flujo que CWL:
+ * se pega de una vez el bloque entero (aqui, "ultimas N guerras" en vez de
+ * "toda la temporada"), reutilizando EL MISMO parser tabulado
+ * (dataParser.js) - cada fila ya trae su propio numero de guerras.
+ *
+ * Sustituye cualquier pegado manual anterior de este clan (ver
+ * api/save-normal-war.js): pegar nuevas "ultimas 10" mas adelante
+ * reemplaza a las anteriores en vez de sumarse, porque casi seguro se
+ * solapan.
  */
 const ManualWarModal = ({ clanNames, onClose }) => {
   const [clan, setClan] = useState("main");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [opponentName, setOpponentName] = useState("");
-  const [result, setResult] = useState("");
+  const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -43,19 +46,12 @@ const ManualWarModal = ({ clanNames, onClose }) => {
       const response = await fetch("/api/save-normal-war", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clanTag,
-          date,
-          opponentName: opponentName.trim() || null,
-          result: result || null,
-          players,
-        }),
+        body: JSON.stringify({ clanTag, asOfDate, players }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Save failed");
-      setMessage({ type: "ok", text: `Saved — ${players.length} players recorded for this war.` });
+      setMessage({ type: "ok", text: `Saved — ${players.length} players, replaces any previous manual batch for this clan.` });
       setText("");
-      setOpponentName("");
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
@@ -64,18 +60,22 @@ const ManualWarModal = ({ clanNames, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-surface-950 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto">
+      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
       <div className="border border-line rounded-md p-6 max-w-2xl w-full my-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-txt-hi">Add manual war</h3>
+          <h3 className="text-xl font-semibold text-txt-hi">Add manual wars</h3>
           <button onClick={onClose} className="text-txt-low hover:text-txt-hi transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
 
         <p className="text-sm text-txt-low mb-4">
-          For a regular clan war the automatic sync missed. Paste the exact same
-          column format you already use for CWL — it's parsed the same way.
+          For regular wars the automatic sync missed. Paste the aggregate of your
+          last wars in the exact same column format you already use for CWL —
+          same parser, one player per row, each with its own war count. This
+          <span className="text-txt-hi font-semibold"> replaces</span> any manual
+          batch you saved before for this clan (they'd overlap otherwise).
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -91,36 +91,13 @@ const ManualWarModal = ({ clanNames, onClose }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm text-txt-low mb-1">War end date</label>
+            <label className="block text-sm text-txt-low mb-1">As of date</label>
             <input
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={asOfDate}
+              onChange={(e) => setAsOfDate(e.target.value)}
               className="w-full bg-surface-950 border border-line rounded px-3 py-2 text-txt-hi"
             />
-          </div>
-          <div>
-            <label className="block text-sm text-txt-low mb-1">Opponent (optional)</label>
-            <input
-              type="text"
-              value={opponentName}
-              onChange={(e) => setOpponentName(e.target.value)}
-              placeholder="Opponent clan name"
-              className="w-full bg-surface-950 border border-line rounded px-3 py-2 text-txt-hi"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-txt-low mb-1">Result (optional)</label>
-            <select
-              value={result}
-              onChange={(e) => setResult(e.target.value)}
-              className="w-full bg-surface-950 border border-line rounded px-3 py-2 text-txt-hi"
-            >
-              <option value="">Unknown</option>
-              <option value="win">Win</option>
-              <option value="loss">Loss</option>
-              <option value="tie">Tie</option>
-            </select>
           </div>
         </div>
 
@@ -128,7 +105,7 @@ const ManualWarModal = ({ clanNames, onClose }) => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           className="w-full h-56 bg-surface-950 border border-line rounded p-3 text-sm font-mono text-txt-hi mb-3"
-          placeholder="Paste the war data here (same columns as CWL)..."
+          placeholder="Paste the aggregated data here (same columns as CWL)..."
         />
 
         {message && (
@@ -149,7 +126,7 @@ const ManualWarModal = ({ clanNames, onClose }) => {
             disabled={saving}
             className="flex-1 border border-accent-400 text-accent-400 hover:bg-accent-900 disabled:opacity-50 text-txt-hi font-semibold py-3 rounded-md transition-colors"
           >
-            {saving ? "Saving..." : "Save war"}
+            {saving ? "Saving..." : "Save batch"}
           </button>
           <button
             onClick={onClose}
@@ -158,6 +135,7 @@ const ManualWarModal = ({ clanNames, onClose }) => {
             Close
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

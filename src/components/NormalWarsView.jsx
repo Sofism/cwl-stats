@@ -183,9 +183,11 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                 >
                   {savedWars.map((w) => (
                     <option key={w.warKey} value={w.warKey}>
-                      {w.date || (w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey)}
-                      {w.them?.name ? ` vs ${w.them.name}` : w.opponentName ? ` vs ${w.opponentName}` : ""}
-                      {w.source === "manual" ? " (manual)" : ""}
+                      {w.source === "manual"
+                        ? `Manual batch (as of ${w.asOfDate})`
+                        : `${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
+                            w.them?.name ? ` vs ${w.them.name}` : ""
+                          }`}
                     </option>
                   ))}
                 </select>

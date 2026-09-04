@@ -87,7 +87,7 @@ const MatchCard = ({ match, ourTag }) => {
 const CwlGroupPanel = ({ clanTag }) => {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("rounds");
+  const [tab, setTab] = useState("standings");
 
   useEffect(() => {
     if (!clanTag) return;

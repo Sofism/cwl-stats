@@ -21,4 +21,20 @@ const finalizeIfNew = async (tag, record) => {
   return true;
 };
 
-module.exports = { finalizedKey, readJson, finalizeIfNew };
+/**
+ * El pegado manual es un AGREGADO de varias guerras a la vez (ultimas N),
+ * no una guerra suelta identificable por warKey. Pegar de nuevo mas tarde
+ * casi seguro solapa con guerras ya contadas en el pegado anterior, asi
+ * que en vez de acumular registros manuales (que sumaria dos veces las
+ * guerras solapadas) se guarda como una UNICA foto que sustituye a la
+ * anterior por completo. Los registros del cron (source: "cron") no se
+ * tocan.
+ */
+const replaceManual = async (tag, record) => {
+  const finalized = await readJson(finalizedKey(tag), []);
+  const withoutManual = finalized.filter((w) => w.source !== "manual");
+  withoutManual.push(record);
+  await redis.set(finalizedKey(tag), JSON.stringify(withoutManual));
+};
+
+module.exports = { finalizedKey, readJson, finalizeIfNew, replaceManual };
