@@ -28,12 +28,13 @@ const summarizeWar = (war, clanTag) => {
   const usAttacksUsed = (us.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
   const themAttacksUsed = (them.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
 
-  // Defensa por bando: cuantas bases de "defendingSide" siguen SIN llegar a
-  // 3 estrellas de "attackingSide" - sin tocar cuenta igual que aguantar
-  // con 1 o 2 estrellas (a esto le llama Santi "defensa": 0 estrellas
-  // exactas es demasiado raro para ser la barra, lo que importa es no
-  // llegar al 3-star).
-  const basesHolding = (defendingSide, attackingSide) => {
+  // Defensa por bando: para cada base de "defendingSide", el PEOR ataque
+  // que recibio de "attackingSide" (0-3 estrellas). "Holding" = las que se
+  // quedaron por debajo de 3 (sin tocar cuenta igual que aguantar con 1 o
+  // 2 estrellas - 0 estrellas exactas es demasiado raro para ser la barra,
+  // lo que importa es no llegar al 3-star). oneStarConceded/
+  // twoStarConceded desglosan cuantas de esas se quedaron justo en 1 o 2.
+  const defenseBreakdown = (defendingSide, attackingSide) => {
     const worstByDefender = new Map();
     (attackingSide.members || [])
       .flatMap((m) => m.attacks || [])
@@ -41,9 +42,16 @@ const summarizeWar = (war, clanTag) => {
         const current = worstByDefender.get(a.defenderTag);
         if (current === undefined || a.stars > current) worstByDefender.set(a.defenderTag, a.stars);
       });
-    const threeStarred = [...worstByDefender.values()].filter((stars) => stars >= 3).length;
-    return (defendingSide.members || []).length - threeStarred;
+    const worstValues = [...worstByDefender.values()];
+    const threeStarred = worstValues.filter((stars) => stars >= 3).length;
+    return {
+      holding: (defendingSide.members || []).length - threeStarred,
+      oneStarConceded: worstValues.filter((stars) => stars === 1).length,
+      twoStarConceded: worstValues.filter((stars) => stars === 2).length,
+    };
   };
+  const usDefense = defenseBreakdown(us, them);
+  const themDefense = defenseBreakdown(them, us);
 
   return {
     state: war.state,
@@ -57,8 +65,12 @@ const summarizeWar = (war, clanTag) => {
     usAttacksLeft: totalAttacks - usAttacksUsed,
     themAttacksUsed,
     themAttacksLeft: totalAttacks - themAttacksUsed,
-    usBasesHolding: basesHolding(us, them),
-    themBasesHolding: basesHolding(them, us),
+    usBasesHolding: usDefense.holding,
+    themBasesHolding: themDefense.holding,
+    usOneStarConceded: usDefense.oneStarConceded,
+    usTwoStarConceded: usDefense.twoStarConceded,
+    themOneStarConceded: themDefense.oneStarConceded,
+    themTwoStarConceded: themDefense.twoStarConceded,
     starsLeft: war.teamSize * 3 - (us.stars || 0),
     us: {
       tag: us.tag,

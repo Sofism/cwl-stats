@@ -210,21 +210,37 @@ const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts, showHistory, cl
       </div>
 
       {!isPrep && (
-        <div className={`grid ${isCwl ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"} gap-3 py-4 border-t border-line`}>
-          <Metric
-            label="Our attacks"
-            value={`${war.usAttacksUsed}/${war.usAttacksUsed + war.usAttacksLeft}`}
-          />
-          <Metric
-            label="Enemy attacks"
-            value={`${war.themAttacksUsed}/${war.themAttacksUsed + war.themAttacksLeft}`}
-          />
-          {!isCwl && (
-            <>
-              <Metric label="Our defense" value={`${war.usBasesHolding}/${war.teamSize}`} />
-              <Metric label="Enemy defense" value={`${war.themBasesHolding}/${war.teamSize}`} />
-            </>
-          )}
+        <div className="grid grid-cols-2 gap-4 py-4 border-t border-line">
+          <div className="text-center space-y-2">
+            <Metric
+              label="Attacks"
+              value={`${war.usAttacksUsed}/${war.usAttacksUsed + war.usAttacksLeft}`}
+            />
+            {!isCwl && (
+              <>
+                <Metric label="Defense" value={`${war.usBasesHolding}/${war.teamSize}`} />
+                <div className="flex justify-center gap-4">
+                  <Metric label="1★ conceded" value={war.usOneStarConceded} />
+                  <Metric label="2★ conceded" value={war.usTwoStarConceded} />
+                </div>
+              </>
+            )}
+          </div>
+          <div className="text-center space-y-2">
+            <Metric
+              label="Attacks"
+              value={`${war.themAttacksUsed}/${war.themAttacksUsed + war.themAttacksLeft}`}
+            />
+            {!isCwl && (
+              <>
+                <Metric label="Defense" value={`${war.themBasesHolding}/${war.teamSize}`} />
+                <div className="flex justify-center gap-4">
+                  <Metric label="1★ conceded" value={war.themOneStarConceded} />
+                  <Metric label="2★ conceded" value={war.themTwoStarConceded} />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
