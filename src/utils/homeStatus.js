@@ -27,14 +27,23 @@ const summarizeWar = (war, clanTag) => {
   const totalAttacks = war.teamSize * attacksPerMember;
   const usAttacksUsed = (us.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
   const themAttacksUsed = (them.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
-  // Defensas: cuantas de nuestras aldeas recibieron ataque y cuantas
-  // aguantaron sin conceder ni una estrella.
-  const enemyAttacks = (them.members || []).flatMap((m) => m.attacks || []);
-  const attackedTags = new Set(enemyAttacks.map((a) => a.defenderTag));
-  const perfectDefenses = (us.members || []).filter((m) => {
-    const taken = enemyAttacks.filter((a) => a.defenderTag === m.tag);
-    return taken.length > 0 && taken.every((a) => a.stars === 0);
-  }).length;
+
+  // Defensa por bando: cuantas bases de "defendingSide" siguen SIN llegar a
+  // 3 estrellas de "attackingSide" - sin tocar cuenta igual que aguantar
+  // con 1 o 2 estrellas (a esto le llama Santi "defensa": 0 estrellas
+  // exactas es demasiado raro para ser la barra, lo que importa es no
+  // llegar al 3-star).
+  const basesHolding = (defendingSide, attackingSide) => {
+    const worstByDefender = new Map();
+    (attackingSide.members || [])
+      .flatMap((m) => m.attacks || [])
+      .forEach((a) => {
+        const current = worstByDefender.get(a.defenderTag);
+        if (current === undefined || a.stars > current) worstByDefender.set(a.defenderTag, a.stars);
+      });
+    const threeStarred = [...worstByDefender.values()].filter((stars) => stars >= 3).length;
+    return (defendingSide.members || []).length - threeStarred;
+  };
 
   return {
     state: war.state,
@@ -48,9 +57,8 @@ const summarizeWar = (war, clanTag) => {
     usAttacksLeft: totalAttacks - usAttacksUsed,
     themAttacksUsed,
     themAttacksLeft: totalAttacks - themAttacksUsed,
-    ourBasesAttacked: attackedTags.size,
-    ourBasesUntouched: war.teamSize - attackedTags.size,
-    perfectDefenses,
+    usBasesHolding: basesHolding(us, them),
+    themBasesHolding: basesHolding(them, us),
     starsLeft: war.teamSize * 3 - (us.stars || 0),
     us: {
       tag: us.tag,

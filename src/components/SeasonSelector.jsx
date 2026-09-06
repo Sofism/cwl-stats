@@ -158,7 +158,7 @@ const WarHistoryDropdown = ({ clanTag, opponentTag, opponentName }) => {
 };
 
 /** Panel de una guerra (CWL o normal). Misma forma para las dos. */
-const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts, showHistory, clanTag }) => {
+const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts, showHistory, clanTag, isCwl }) => {
   const [showPending, setShowPending] = useState(false);
   const isPrep = war.state === "preparation";
   const target = parseApiDate(isPrep ? war.startTime : war.endTime);
@@ -210,23 +210,21 @@ const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts, showHistory, cl
       </div>
 
       {!isPrep && (
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-3 py-4 border-t border-line">
+        <div className={`grid ${isCwl ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"} gap-3 py-4 border-t border-line`}>
           <Metric
             label="Our attacks"
             value={`${war.usAttacksUsed}/${war.usAttacksUsed + war.usAttacksLeft}`}
           />
           <Metric
-            label="Enemy left"
-            value={war.themAttacksLeft}
-            tone={war.themAttacksLeft > 0 ? "text-rust-400" : "text-txt-hi"}
+            label="Enemy attacks"
+            value={`${war.themAttacksUsed}/${war.themAttacksUsed + war.themAttacksLeft}`}
           />
-          <Metric label="Untouched" value={war.ourBasesUntouched} />
-          <Metric
-            label="Held at 0★"
-            value={war.perfectDefenses}
-            tone={war.perfectDefenses > 0 ? "text-ok-400" : "text-txt-hi"}
-          />
-          <Metric label="Stars left" value={war.starsLeft} />
+          {!isCwl && (
+            <>
+              <Metric label="Our defense" value={`${war.usBasesHolding}/${war.teamSize}`} />
+              <Metric label="Enemy defense" value={`${war.themBasesHolding}/${war.teamSize}`} />
+            </>
+          )}
         </div>
       )}
 
@@ -454,6 +452,7 @@ const SeasonSelector = ({
                 title="CWL · Current round"
                 war={status.cwl}
                 onOpen={() => setShowCurrentWar(true)}
+                isCwl
               />
             )}
             {status?.regularWar && (
