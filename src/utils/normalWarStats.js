@@ -21,10 +21,15 @@ export const aggregateNormalWarStats = (
 ) => {
   const byTag = new Map();
 
-  const getPlayer = (tag, name, th) => {
-    if (!byTag.has(tag)) {
-      byTag.set(tag, {
-        tag,
+  // Clave de union: el tag cuando existe; si no (pegado manual sin
+  // columna Tag reconocida), se cae al nombre - mismo criterio que ya usa
+  // HistoricalView para las temporadas antiguas de CWL sin tag. Sin esto,
+  // todos los jugadores con tag ausente colapsan en una unica entrada.
+  const getPlayer = (rawTag, name, th) => {
+    const key = rawTag || name;
+    if (!byTag.has(key)) {
+      byTag.set(key, {
+        tag: rawTag,
         name,
         th: th || 0,
         wars: 0,
@@ -47,7 +52,7 @@ export const aggregateNormalWarStats = (
         rawDefDest: 0,
       });
     }
-    const p = byTag.get(tag);
+    const p = byTag.get(key);
     p.name = name;
     p.th = Math.max(p.th || 0, th || 0);
     return p;

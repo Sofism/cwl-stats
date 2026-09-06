@@ -195,7 +195,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                 {selectedWar && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {(selectedWar.us?.players || []).map((p) => (
-                      <AttackLogCard key={p.tag} player={p} hasDetail={selectedWar.source !== "manual"} />
+                      <AttackLogCard key={p.tag || p.name} player={p} hasDetail={selectedWar.source !== "manual"} />
                     ))}
                   </div>
                 )}
@@ -241,7 +241,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {clanStats.map((p) => (
-                    <ClanStatCard key={p.tag} p={p} />
+                    <ClanStatCard key={p.tag || p.name} p={p} />
                   ))}
                 </div>
               </>

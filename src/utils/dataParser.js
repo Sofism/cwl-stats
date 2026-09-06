@@ -7,6 +7,7 @@
 // de columnas del bot sin volver a romperse.
 const HEADER_ALIASES = {
   name: ["Name"],
+  tag: ["Tag"],
   th: ["Town Hall"],
   wars: ["Wars Participated"],
   offStars: ["Total Stars"],
@@ -78,6 +79,7 @@ export const parseData = (text, clan) => {
 
     data.push({
       name,
+      tag: columns.tag !== -1 ? c[columns.tag] || undefined : undefined,
       clan,
       th: columns.th !== -1 ? parseInt(c[columns.th]) || 0 : 0,
       missAtk,
