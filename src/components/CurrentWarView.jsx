@@ -279,8 +279,11 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                       <th className="p-3 text-left">#</th>
                       <th className="p-3 text-left sticky left-0 z-20 bg-surface-950">Player</th>
                       <th className="p-3 text-center">TH</th>
-                      <th className="p-3 text-left">Attack</th>
-                      <th className="p-3 text-left">Defense taken</th>
+                      {rosterTab === "attacks" ? (
+                        <th className="p-3 text-left">Attack</th>
+                      ) : (
+                        <th className="p-3 text-left">Defense taken</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -297,33 +300,36 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                             {p.name}
                           </td>
                           <td className="p-3 text-center text-txt-low">{p.th || "—"}</td>
-                          <td className="p-3">
-                            {p.attacks.length === 0 ? (
-                              <span className="text-bad-400 text-xs">—</span>
-                            ) : (
-                              p.attacks.map((a, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <StarRow stars={a.stars} />
+                          {rosterTab === "attacks" ? (
+                            <td className="p-3">
+                              {p.attacks.length === 0 ? (
+                                <span className="text-bad-400 text-xs">—</span>
+                              ) : (
+                                p.attacks.map((a, i) => (
+                                  <div key={i} className="flex items-center gap-2">
+                                    <StarRow stars={a.stars} />
+                                    <span className="text-txt-low text-xs">
+                                      {a.destruction}%
+                                      {a.defenderPosition ? ` → #${a.defenderPosition}` : ""}
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </td>
+                          ) : (
+                            <td className="p-3">
+                              {p.defense ? (
+                                <div className="flex items-center gap-2">
+                                  <StarRow stars={p.defense.stars} />
                                   <span className="text-txt-low text-xs">
-                                    {a.destruction}%
-                                    {a.defenderPosition ? ` → #${a.defenderPosition}` : ""}
+                                    {p.defense.destruction}%
                                   </span>
                                 </div>
-                              ))
-                            )}
-                          </td>
-                          <td className="p-3">
-                            {p.defense ? (
-                              <div className="flex items-center gap-2">
-                                <StarRow stars={p.defense.stars} />
-                                <span className="text-txt-low text-xs">
-                                  {p.defense.destruction}%
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-txt-dim text-xs">—</span>
-                            )}
-                          </td>
+                              ) : (
+                                <span className="text-txt-dim text-xs">—</span>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })}

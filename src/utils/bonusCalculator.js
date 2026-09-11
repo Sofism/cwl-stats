@@ -46,7 +46,7 @@ export const calculateBonusSlots = ({ league, warsWon = 0, warSize = 15 }) => {
   } else {
     base = BASE_BONUSES[league] || 0;
   }
-  return base + (warsWon || 0);
+  return base + (Number(warsWon) || 0);
 };
 
 /**

@@ -421,7 +421,7 @@ const SeasonSelector = ({
                 className="bg-accent-900 border-2 border-accent-400 rounded px-3 py-2 text-sm font-semibold text-txt-hi hover:bg-accent-900 transition-colors flex items-center gap-2"
               >
                 <Play className="w-3.5 h-3.5 text-accent-400" />
-                Latest season
+                Latest CWL season
               </button>
             )}
             <button
