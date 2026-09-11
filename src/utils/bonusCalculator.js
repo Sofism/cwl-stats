@@ -1,6 +1,20 @@
 import { BASE_BONUSES, BASE_BONUSES_30V30, MEDAL_VALUES } from "./constants";
 
 /**
+ * El nombre de liga se guarda en DOS formatos distintos segun de donde
+ * vino: el sync automatico escribe el nombre tal cual lo da la API de
+ * Clash ("Master League I"), mientras que el desplegable manual de
+ * LeagueSettings escribe la forma corta ("Master I") que usan las tablas
+ * de esta app. Ambos formatos conviven en datos ya guardados (temporadas
+ * distintas sincronizadas en momentos distintos), asi que se normaliza
+ * aqui en vez de migrar el dato: quitar " League" deja las dos formas
+ * iguales. Sin esto, cualquier liga auto-sincronizada y nunca corregida a
+ * mano buscaba en la tabla con la clave equivocada y caia siempre a 0.
+ */
+const normalizeLeagueName = (league) =>
+  (league || "").replace(/\s*League\s*/i, " ").replace(/\s+/g, " ").trim();
+
+/**
  * Tabla base de bonuses para guerras 5v5. Supercell introdujo este formato
  * de CWL una única temporada y después lo retiró (confirmado por Santi) —
  * ya no es seleccionable para temporadas nuevas, pero se mantiene aquí por
@@ -38,13 +52,14 @@ const BASE_BONUSES_5V5 = Object.fromEntries(
  * @param {number} params.warSize - Tamaño de guerra: 5, 15 o 30
  */
 export const calculateBonusSlots = ({ league, warsWon = 0, warSize = 15 }) => {
+  const key = normalizeLeagueName(league);
   let base;
   if (warSize === 5) {
-    base = BASE_BONUSES_5V5[league] || 0;
+    base = BASE_BONUSES_5V5[key] || 0;
   } else if (warSize === 30) {
-    base = BASE_BONUSES_30V30[league] ?? BASE_BONUSES[league] ?? 0;
+    base = BASE_BONUSES_30V30[key] ?? BASE_BONUSES[key] ?? 0;
   } else {
-    base = BASE_BONUSES[league] || 0;
+    base = BASE_BONUSES[key] || 0;
   }
   return base + (Number(warsWon) || 0);
 };
@@ -66,7 +81,7 @@ export const calculateBonusSlots = ({ league, warsWon = 0, warSize = 15 }) => {
  * @param {number} params.position - Posición final (1-8)
  */
 export const calculateMedalValue = ({ league, position = 1 }) => {
-  const base = MEDAL_VALUES[league] || 0;
+  const base = MEDAL_VALUES[normalizeLeagueName(league)] || 0;
   const clampedPosition = Math.min(8, Math.max(1, position || 1));
   const decayPerPosition = 0.08;
   const multiplier = Math.max(0.4, 1 - (clampedPosition - 1) * decayPerPosition);
