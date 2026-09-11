@@ -64,28 +64,84 @@ const AttackLogCard = ({ player, hasDetail }) => (
   </div>
 );
 
-/** Tarjeta de un jugador en la vista acumulada del clan. */
-const ClanStatCard = ({ p }) => (
-  <div className="border border-line rounded-md p-4">
-    <div className="flex items-center justify-between mb-3">
-      <span className="font-semibold text-txt-hi">{p.name}</span>
-      <span className="text-xs text-txt-dim">TH{p.th} · {p.wars} wars</span>
-    </div>
-    <div className="grid grid-cols-2 gap-3">
-      <div>
-        <div className="text-xs text-accent-400 uppercase tracking-wide mb-1">Offense</div>
-        <p className="font-mono text-lg text-txt-hi">{p.successRate.toFixed(1)}%</p>
-        <p className="text-xs text-txt-dim">3★ rate ({p.offAttacksCounted} counted)</p>
-      </div>
-      <div>
-        <div className="text-xs text-bad-400 uppercase tracking-wide mb-1">Defense</div>
-        <p className="font-mono text-lg text-txt-hi">{p.defenseFailRate.toFixed(1)}%</p>
-        <p className="text-xs text-txt-dim">3★ conceded ({p.defAttacksCounted} counted)</p>
-      </div>
-    </div>
-    <div className="flex justify-between text-xs text-txt-low mt-3 pt-3 border-t border-line">
-      <span>Missed atk: <span className={p.missAtk > 0 ? "text-bad-400" : "text-ok-400"}>{p.missAtk}</span></span>
-      <span>Net ★: <span className={p.netStars >= 0 ? "text-ok-400" : "text-bad-400"}>{p.netStars >= 0 ? "+" : ""}{p.netStars}</span></span>
+/** % de un conteo sobre un total, o "—" si el total es 0 (nada que dividir). */
+const pct = (n, total) => (total > 0 ? `${Math.round((n / total) * 100)}%` : "—");
+
+/**
+ * Tabla acumulada del clan, estilo denso (misma idea que StatsTable de
+ * CWL): jugador fijo a la izquierda, bloque de ofensa y bloque de defensa
+ * separados por un borde, cada estrella con su conteo y %.
+ */
+const ClanStatsTable = ({ data }) => (
+  <div className="border border-line rounded-md overflow-hidden">
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-surface-950 text-txt-low sticky top-0 z-10">
+          <tr className="text-center">
+            <th className="p-3 text-left sticky left-0 z-20 bg-surface-950">Player</th>
+            <th className="p-3">TH</th>
+            <th className="p-3">Wars</th>
+            <th className="p-3 border-l border-line-strong text-accent-400">Atk</th>
+            <th className="p-3 text-accent-400">3★</th>
+            <th className="p-3 text-accent-400">2★</th>
+            <th className="p-3 text-accent-400">1★</th>
+            <th className="p-3 text-accent-400">0★</th>
+            <th className="p-3 border-l border-line-strong text-bad-400">Def</th>
+            <th className="p-3 text-bad-400">3★</th>
+            <th className="p-3 text-bad-400">2★</th>
+            <th className="p-3 text-bad-400">1★</th>
+            <th className="p-3 text-bad-400">0★</th>
+            <th className="p-3 border-l border-line-strong">Missed</th>
+            <th className="p-3">Net ★</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {data.map((p) => (
+            <tr key={p.tag || p.name} className="hover:bg-surface-700/30 text-center">
+              <td className="p-3 text-left font-semibold text-txt-hi sticky left-0 z-10 bg-surface-950">
+                {p.name}
+              </td>
+              <td className="p-3 text-txt-low">{p.th || "—"}</td>
+              <td className="p-3 text-txt-low">{p.wars}</td>
+              <td className="p-3 border-l border-line font-mono">{p.offAttacksCounted}</td>
+              <td className="p-3 font-mono">
+                {p.offStars3} <span className="text-txt-dim text-xs">({pct(p.offStars3, p.offAttacksCounted)})</span>
+              </td>
+              <td className="p-3 font-mono">
+                {p.offStars2} <span className="text-txt-dim text-xs">({pct(p.offStars2, p.offAttacksCounted)})</span>
+              </td>
+              <td className="p-3 font-mono">
+                {p.offStars1} <span className="text-txt-dim text-xs">({pct(p.offStars1, p.offAttacksCounted)})</span>
+              </td>
+              <td className="p-3 font-mono">
+                {p.offStars0} <span className="text-txt-dim text-xs">({pct(p.offStars0, p.offAttacksCounted)})</span>
+              </td>
+              <td className="p-3 border-l border-line font-mono">{p.defAttacksCounted}</td>
+              <td className="p-3 font-mono">
+                {p.defStars3} <span className="text-txt-dim text-xs">({pct(p.defStars3, p.defAttacksCounted)})</span>
+              </td>
+              <td className="p-3 font-mono">
+                {p.defStars2} <span className="text-txt-dim text-xs">({pct(p.defStars2, p.defAttacksCounted)})</span>
+              </td>
+              <td className="p-3 font-mono">
+                {p.defStars1} <span className="text-txt-dim text-xs">({pct(p.defStars1, p.defAttacksCounted)})</span>
+              </td>
+              <td className="p-3 font-mono">
+                {p.defStars0} <span className="text-txt-dim text-xs">({pct(p.defStars0, p.defAttacksCounted)})</span>
+              </td>
+              <td className="p-3 border-l border-line font-mono">
+                <span className={p.missAtk > 0 ? "text-bad-400" : "text-ok-400"}>{p.missAtk}</span>
+              </td>
+              <td className="p-3 font-mono">
+                <span className={p.netStars >= 0 ? "text-ok-400" : "text-bad-400"}>
+                  {p.netStars >= 0 ? "+" : ""}
+                  {p.netStars}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   </div>
 );
@@ -239,11 +295,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {clanStats.map((p) => (
-                    <ClanStatCard key={p.tag || p.name} p={p} />
-                  ))}
-                </div>
+                <ClanStatsTable data={clanStats} />
               </>
             )}
           </div>
