@@ -404,6 +404,7 @@ const buildRoundDetail = (raw, us, them) => {
         return {
           stars: a.stars,
           destruction: a.destructionPercentage,
+          order: a.order,
           defenderPosition: defender ? defender.mapPosition : null,
           defenderName: defender ? defender.name : null,
         };
@@ -416,7 +417,7 @@ const buildRoundDetail = (raw, us, them) => {
           !worst ||
           a.stars > worst.stars ||
           (a.stars === worst.stars && a.destructionPercentage > worst.destruction)
-            ? { stars: a.stars, destruction: a.destructionPercentage }
+            ? { stars: a.stars, destruction: a.destructionPercentage, order: a.order }
             : worst,
         null
       );
@@ -440,6 +441,21 @@ const buildRoundDetail = (raw, us, them) => {
   const ourBasesAttacked = roster.filter((p) => p.defense).length;
   const perfectDefenses = roster.filter((p) => p.defense && p.defense.stars === 0).length;
 
+  // Defensa aguantada = cualquier base que NO haya sido 3-estrellada (sin
+  // tocar cuenta igual que aguantar con 1 o 2 estrellas). Mismo criterio
+  // que homeStatus.js usa para guerra normal.
+  const basesHolding = (defendingSide, attackingSide) => {
+    const worstByDefender = new Map();
+    (attackingSide.members || [])
+      .flatMap((m) => m.attacks || [])
+      .forEach((a) => {
+        const current = worstByDefender.get(a.defenderTag);
+        if (current === undefined || a.stars > current) worstByDefender.set(a.defenderTag, a.stars);
+      });
+    const threeStarred = [...worstByDefender.values()].filter((stars) => stars >= 3).length;
+    return (defendingSide.members || []).length - threeStarred;
+  };
+
   return {
     state: raw.state, // "preparation" | "inWar"
     teamSize: raw.teamSize,
@@ -451,6 +467,8 @@ const buildRoundDetail = (raw, us, them) => {
     ourBasesAttacked,
     ourBasesUntouched: raw.teamSize - ourBasesAttacked,
     perfectDefenses,
+    usBasesHolding: basesHolding(us, them),
+    themBasesHolding: basesHolding(them, us),
     starsLeft: raw.teamSize * 3 - (us.stars || 0),
     startTime: raw.startTime,
     endTime: raw.endTime,

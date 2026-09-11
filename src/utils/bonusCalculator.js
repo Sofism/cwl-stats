@@ -1,4 +1,4 @@
-import { BASE_BONUSES, MEDAL_VALUES } from "./constants";
+import { BASE_BONUSES, BASE_BONUSES_30V30, MEDAL_VALUES } from "./constants";
 
 /**
  * Tabla base de bonuses para guerras 5v5. Supercell introdujo este formato
@@ -21,10 +21,16 @@ const BASE_BONUSES_5V5 = Object.fromEntries(
 /**
  * Número de bonuses (slots) que el líder puede repartir al final de la CWL.
  *
- * Regla oficial: bono base según la liga + 1 bono extra por cada guerra
- * ganada. 15v15 y 30v30 reparten el MISMO número de bonuses (solo cambia
- * entre cuántos jugadores se reparten, no cuántos hay) — por eso warSize
- * solo cambia la tabla base cuando es 5v5.
+ * Regla oficial (tabla dada por Santi, 2026-09): bono base según la liga
+ * y el tamaño de guerra + 1 bono extra por cada guerra ganada de las 7 de
+ * la temporada. 30v30 DOBLA el bono base respecto a 15v15, pero solo
+ * existe hasta Master — Champion/Titan/Legend son exclusivamente 15v15,
+ * asi que en esas ligas 30v30 no tiene tabla propia y cae al valor de
+ * 15v15 (ver BASE_BONUSES_30V30 en constants.js).
+ *
+ * Si el resultado sigue sin coincidir con lo que da el juego, lo mas
+ * probable es que `warsWon` no sea el numero real de guerras ganadas esa
+ * temporada — revisar ese dato antes que la formula.
  *
  * @param {Object} params
  * @param {string} params.league - Nombre de la liga (debe existir en BASE_BONUSES)
@@ -32,8 +38,14 @@ const BASE_BONUSES_5V5 = Object.fromEntries(
  * @param {number} params.warSize - Tamaño de guerra: 5, 15 o 30
  */
 export const calculateBonusSlots = ({ league, warsWon = 0, warSize = 15 }) => {
-  const table = warSize === 5 ? BASE_BONUSES_5V5 : BASE_BONUSES;
-  const base = table[league] || 0;
+  let base;
+  if (warSize === 5) {
+    base = BASE_BONUSES_5V5[league] || 0;
+  } else if (warSize === 30) {
+    base = BASE_BONUSES_30V30[league] ?? BASE_BONUSES[league] ?? 0;
+  } else {
+    base = BASE_BONUSES[league] || 0;
+  }
   return base + (warsWon || 0);
 };
 

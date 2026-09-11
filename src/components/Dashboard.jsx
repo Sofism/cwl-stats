@@ -281,6 +281,13 @@ const Dashboard = ({
           <option value="threeRate">3★ Hitrate</option>
           <option value="missAtk">Missed Attacks</option>
         </select>
+        {sortBy === "default" && (
+          <p className="text-xs text-txt-dim mb-4">
+            Default order: fewest missed attacks first, then highest net stars
+            {activePage !== "main" ? ", then lowest avg. distance," : ","} then
+            highest 3★ rate, then highest net destruction.
+          </p>
+        )}
 
         <ColumnSelector
           visibleCols={visibleCols}
