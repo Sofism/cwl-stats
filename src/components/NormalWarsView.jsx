@@ -270,7 +270,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap gap-4 mb-4 text-sm">
+                <div className="flex flex-wrap gap-4 mb-1 text-sm">
                   <label className="flex items-center gap-2">
                     <span className="text-txt-low">Offense vs TH:</span>
                     <select
@@ -294,7 +294,19 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                     </select>
                   </label>
                 </div>
+                <p className="text-xs text-txt-dim mb-4">
+                  "Equal or higher" only counts your attacks against a rival TH at least as
+                  high as yours — hitting a lower TH doesn't say much about your skill.
+                  "Equal or lower attacker" is the mirror for defense: getting 3★'d by an
+                  equal or lower TH is the real warning sign; losing to a higher TH is expected.
+                  Switch to "All" to see every attack regardless of TH.
+                </p>
 
+                <p className="text-xs text-txt-dim mb-2">
+                  <span className="text-accent-400 font-semibold">Left (accent)</span> = your
+                  attacks on the enemy. <span className="text-bad-400 font-semibold">Right (red)</span> = attacks
+                  you received. "Atk"/"Def" is how many attacks the % columns are based on.
+                </p>
                 <ClanStatsTable data={clanStats} />
               </>
             )}
