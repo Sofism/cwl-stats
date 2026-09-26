@@ -55,6 +55,9 @@ const buildRoster = (members, opposingMembers, attacksMade, freshMade, attacksFa
         stars: a.stars,
         destruction: a.destructionPercentage,
         fresh: freshFaced.get(a.defenderTag) === a.order,
+        // Orden global dentro de la guerra: permite reconstruir cuantos
+        // golpes aguanto la base antes de caer (defense rate).
+        order: a.order,
         attackerTag: a.attackerTag,
         attackerTh: a.attackerTh,
       }));

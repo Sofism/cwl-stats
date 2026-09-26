@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Swords, ListChecks, BarChart3 } from "lucide-react";
+import { X, Swords, ListChecks, BarChart3, ChevronUp, ChevronDown } from "lucide-react";
 import { aggregateNormalWarStats } from "../utils/normalWarStats";
 
 const parseApiDate = (raw) => {
@@ -64,87 +64,114 @@ const AttackLogCard = ({ player, hasDetail }) => (
   </div>
 );
 
-/** % de un conteo sobre un total, o "—" si el total es 0 (nada que dividir). */
-const pct = (n, total) => (total > 0 ? `${Math.round((n / total) * 100)}%` : "—");
+/** Barra fina + % grande + n/total; "—" si no hay muestra suficiente. */
+const RateCell = ({ rate, num, den, tone }) => {
+  if (rate == null) return <span className="text-txt-dim">—</span>;
+  const bar = tone === "ok" ? "bg-ok-400" : "bg-accent-400";
+  return (
+    <div className="min-w-[96px]">
+      <div className="flex items-baseline justify-center gap-1.5">
+        <span className="text-lg font-semibold font-mono text-txt-hi">{Math.round(rate)}%</span>
+        <span className="text-xs font-mono text-txt-dim">{num}/{den}</span>
+      </div>
+      <div className="h-1 mt-1 rounded-full bg-surface-700 overflow-hidden">
+        <div className={`h-full ${bar}`} style={{ width: `${Math.min(100, rate)}%` }} />
+      </div>
+    </div>
+  );
+};
+
+/** Cabecera clicable que ordena por una columna. */
+const SortTh = ({ label, sub, col, sort, onSort, className = "" }) => {
+  const active = sort.key === col;
+  const Icon = sort.dir === "desc" ? ChevronDown : ChevronUp;
+  return (
+    <th className={`p-3 ${className}`}>
+      <button
+        onClick={() => onSort(col)}
+        className={`inline-flex flex-col items-center leading-tight ${
+          active ? "text-accent-400" : "text-txt-low hover:text-txt-hi"
+        }`}
+      >
+        <span className="inline-flex items-center gap-1 font-semibold">
+          {label}
+          {active && <Icon className="w-3.5 h-3.5" />}
+        </span>
+        {sub && <span className="text-[10px] font-normal text-txt-dim">{sub}</span>}
+      </button>
+    </th>
+  );
+};
 
 /**
- * Tabla acumulada del clan, estilo denso (misma idea que StatsTable de
- * CWL): jugador fijo a la izquierda, bloque de ofensa y bloque de defensa
- * separados por un borde, cada estrella con su conteo y %.
+ * Tabla del clan: tres metricas que se leen de un vistazo (3★ rate, defense
+ * rate, missed wars), cada una ordenable. Los jugadores sin muestra en la
+ * columna ordenada van siempre al final, sea cual sea la direccion.
  */
-const ClanStatsTable = ({ data }) => (
-  <div className="border border-line rounded-md overflow-hidden">
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-surface-950 text-txt-low sticky top-0 z-10">
-          <tr className="text-center">
-            <th className="p-3 text-left sticky left-0 z-20 bg-surface-950">Player</th>
-            <th className="p-3">TH</th>
-            <th className="p-3">Wars</th>
-            <th className="p-3 border-l border-line-strong text-accent-400">Atk</th>
-            <th className="p-3 text-accent-400">3★</th>
-            <th className="p-3 text-accent-400">2★</th>
-            <th className="p-3 text-accent-400">1★</th>
-            <th className="p-3 text-accent-400">0★</th>
-            <th className="p-3 border-l border-line-strong text-bad-400">Def</th>
-            <th className="p-3 text-bad-400">3★</th>
-            <th className="p-3 text-bad-400">2★</th>
-            <th className="p-3 text-bad-400">1★</th>
-            <th className="p-3 text-bad-400">0★</th>
-            <th className="p-3 border-l border-line-strong">Missed</th>
-            <th className="p-3">Net ★</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {data.map((p) => (
-            <tr key={p.tag || p.name} className="hover:bg-surface-700/30 text-center">
-              <td className="p-3 text-left font-semibold text-txt-hi sticky left-0 z-10 bg-surface-950">
-                {p.name}
-              </td>
-              <td className="p-3 text-txt-low">{p.th || "—"}</td>
-              <td className="p-3 text-txt-low">{p.wars}</td>
-              <td className="p-3 border-l border-line font-mono">{p.offAttacksCounted}</td>
-              <td className="p-3 font-mono">
-                {p.offStars3} <span className="text-txt-dim text-xs">({pct(p.offStars3, p.offAttacksCounted)})</span>
-              </td>
-              <td className="p-3 font-mono">
-                {p.offStars2} <span className="text-txt-dim text-xs">({pct(p.offStars2, p.offAttacksCounted)})</span>
-              </td>
-              <td className="p-3 font-mono">
-                {p.offStars1} <span className="text-txt-dim text-xs">({pct(p.offStars1, p.offAttacksCounted)})</span>
-              </td>
-              <td className="p-3 font-mono">
-                {p.offStars0} <span className="text-txt-dim text-xs">({pct(p.offStars0, p.offAttacksCounted)})</span>
-              </td>
-              <td className="p-3 border-l border-line font-mono">{p.defAttacksCounted}</td>
-              <td className="p-3 font-mono">
-                {p.defStars3} <span className="text-txt-dim text-xs">({pct(p.defStars3, p.defAttacksCounted)})</span>
-              </td>
-              <td className="p-3 font-mono">
-                {p.defStars2} <span className="text-txt-dim text-xs">({pct(p.defStars2, p.defAttacksCounted)})</span>
-              </td>
-              <td className="p-3 font-mono">
-                {p.defStars1} <span className="text-txt-dim text-xs">({pct(p.defStars1, p.defAttacksCounted)})</span>
-              </td>
-              <td className="p-3 font-mono">
-                {p.defStars0} <span className="text-txt-dim text-xs">({pct(p.defStars0, p.defAttacksCounted)})</span>
-              </td>
-              <td className="p-3 border-l border-line font-mono">
-                <span className={p.missAtk > 0 ? "text-bad-400" : "text-ok-400"}>{p.missAtk}</span>
-              </td>
-              <td className="p-3 font-mono">
-                <span className={p.netStars >= 0 ? "text-ok-400" : "text-bad-400"}>
-                  {p.netStars >= 0 ? "+" : ""}
-                  {p.netStars}
-                </span>
-              </td>
+const ClanStatsTable = ({ data }) => {
+  const [sort, setSort] = useState({ key: "threeRate", dir: "desc" });
+
+  const onSort = (key) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }
+    );
+
+  const sorted = data.slice().sort((a, b) => {
+    const av = a[sort.key];
+    const bv = b[sort.key];
+    if (av == null && bv == null) return a.name.localeCompare(b.name);
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (av !== bv) return sort.dir === "desc" ? bv - av : av - bv;
+    return a.name.localeCompare(b.name);
+  });
+
+  return (
+    <div className="border border-line rounded-md overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-950 sticky top-0 z-10">
+            <tr className="text-center">
+              <th className="p-3 text-left sticky left-0 z-20 bg-surface-950 text-txt-low font-semibold">
+                Player
+              </th>
+              <SortTh label="3★ rate" sub="fresh · same TH" col="threeRate" sort={sort} onSort={onSort} />
+              <SortTh label="Defense rate" sub="held before 3★ · same TH" col="defenseRate" sort={sort} onSort={onSort} />
+              <SortTh label="Missed wars" sub="no attacks used" col="missedWars" sort={sort} onSort={onSort} />
+              <SortTh label="Wars" col="wars" sort={sort} onSort={onSort} />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {sorted.map((p) => (
+              <tr key={p.tag || p.name} className="hover:bg-surface-700/30 text-center">
+                <td className="p-3 text-left sticky left-0 z-10 bg-surface-950 whitespace-nowrap">
+                  <span className="font-semibold text-txt-hi">{p.name}</span>
+                  <span className="ml-2 text-xs text-txt-dim">TH{p.th || "?"}</span>
+                </td>
+                <td className="p-3">
+                  <RateCell rate={p.threeRate} num={p.sameThTriples} den={p.sameThAttacks} />
+                </td>
+                <td className="p-3">
+                  <RateCell rate={p.defenseRate} num={p.sameThHeld} den={p.sameThDefenses} tone="ok" />
+                </td>
+                <td className="p-3 font-mono">
+                  {p.detailedWars === 0 ? (
+                    <span className="text-txt-dim">—</span>
+                  ) : (
+                    <span className={p.missedWars > 0 ? "text-bad-400 font-semibold" : "text-txt-low"}>
+                      {p.missedWars}
+                    </span>
+                  )}
+                </td>
+                <td className="p-3 font-mono text-txt-low">{p.wars}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Log de ataques y estadisticas acumuladas de guerras normales. Solo del
@@ -159,8 +186,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   const [savedWars, setSavedWars] = useState([]);
   const [loadingSaved, setLoadingSaved] = useState(true);
   const [selectedWarKey, setSelectedWarKey] = useState(null);
-  const [attackThFilter, setAttackThFilter] = useState("upOrEqual");
-  const [defenseThFilter, setDefenseThFilter] = useState("downOrEqual");
+  const [defenseFilter, setDefenseFilter] = useState("all");
 
   useEffect(() => {
     if (!clanTag) return;
@@ -170,7 +196,9 @@ const NormalWarsView = ({ clanNames, onClose }) => {
       .then((r) => (r.ok ? r.json() : { wars: [] }))
       .then((data) => {
         if (cancelled) return;
-        const wars = (data.wars || []).slice().sort((a, b) => (b.warKey || "").localeCompare(a.warKey || ""));
+        const wars = (data.wars || [])
+          .filter((w) => w.source !== "manual")
+          .slice().sort((a, b) => (b.warKey || "").localeCompare(a.warKey || ""));
         setSavedWars(wars);
         setSelectedWarKey(wars[0]?.warKey || null);
       })
@@ -183,7 +211,16 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   }, [clanTag]);
 
   const selectedWar = savedWars.find((w) => w.warKey === selectedWarKey) || null;
-  const clanStats = aggregateNormalWarStats(savedWars, { attackThFilter, defenseThFilter });
+  const clanStats = aggregateNormalWarStats(savedWars);
+
+  const matchesDefense = (p) => {
+    const defs = p.defenses || [];
+    if (defenseFilter === "held") return defs.some((d) => d.stars < 3);
+    if (defenseFilter === "triple") return defs.some((d) => d.stars === 3);
+    if (defenseFilter === "none") return defs.length === 0;
+    return true;
+  };
+  const visiblePlayers = (selectedWar?.us?.players || []).filter(matchesDefense);
 
   return (
     <div className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto p-4 md:p-6">
@@ -232,26 +269,41 @@ const NormalWarsView = ({ clanNames, onClose }) => {
               </div>
             ) : (
               <>
-                <select
-                  value={selectedWarKey || ""}
-                  onChange={(e) => setSelectedWarKey(e.target.value)}
-                  className="w-full mb-4 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
-                >
-                  {savedWars.map((w) => (
-                    <option key={w.warKey} value={w.warKey}>
-                      {w.source === "manual"
-                        ? `Manual batch (as of ${w.asOfDate})`
-                        : `${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
-                            w.them?.name ? ` vs ${w.them.name}` : ""
-                          }`}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <select
+                    value={selectedWarKey || ""}
+                    onChange={(e) => setSelectedWarKey(e.target.value)}
+                    className="w-full bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
+                  >
+                    {savedWars.map((w) => (
+                      <option key={w.warKey} value={w.warKey}>
+                        {`${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
+                          w.them?.name ? ` vs ${w.them.name}` : ""
+                        }`}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={defenseFilter}
+                    onChange={(e) => setDefenseFilter(e.target.value)}
+                    className="sm:w-64 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
+                  >
+                    <option value="all">Defense: all players</option>
+                    <option value="held">Defense: held (not 3★)</option>
+                    <option value="triple">Defense: 3-starred</option>
+                    <option value="none">Defense: not attacked</option>
+                  </select>
+                </div>
 
+                {selectedWar && visiblePlayers.length === 0 && (
+                  <div className="border border-line rounded-md p-6 text-center text-txt-low text-sm">
+                    No players match this defense filter.
+                  </div>
+                )}
                 {selectedWar && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {(selectedWar.us?.players || []).map((p) => (
-                      <AttackLogCard key={p.tag || p.name} player={p} hasDetail={selectedWar.source !== "manual"} />
+                    {visiblePlayers.map((p) => (
+                      <AttackLogCard key={p.tag || p.name} player={p} hasDetail />
                     ))}
                   </div>
                 )}
@@ -270,42 +322,10 @@ const NormalWarsView = ({ clanNames, onClose }) => {
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap gap-4 mb-1 text-sm">
-                  <label className="flex items-center gap-2">
-                    <span className="text-txt-low">Offense vs TH:</span>
-                    <select
-                      value={attackThFilter}
-                      onChange={(e) => setAttackThFilter(e.target.value)}
-                      className="bg-surface-800 border border-line rounded px-2 py-1 text-txt-hi"
-                    >
-                      <option value="upOrEqual">Equal or higher</option>
-                      <option value="all">All</option>
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <span className="text-txt-low">Defense vs TH:</span>
-                    <select
-                      value={defenseThFilter}
-                      onChange={(e) => setDefenseThFilter(e.target.value)}
-                      className="bg-surface-800 border border-line rounded px-2 py-1 text-txt-hi"
-                    >
-                      <option value="downOrEqual">Equal or lower attacker</option>
-                      <option value="all">All</option>
-                    </select>
-                  </label>
-                </div>
-                <p className="text-xs text-txt-dim mb-4">
-                  "Equal or higher" only counts your attacks against a rival TH at least as
-                  high as yours — hitting a lower TH doesn't say much about your skill.
-                  "Equal or lower attacker" is the mirror for defense: getting 3★'d by an
-                  equal or lower TH is the real warning sign; losing to a higher TH is expected.
-                  Switch to "All" to see every attack regardless of TH.
-                </p>
-
-                <p className="text-xs text-txt-dim mb-2">
-                  <span className="text-accent-400 font-semibold">Left (accent)</span> = your
-                  attacks on the enemy. <span className="text-bad-400 font-semibold">Right (red)</span> = attacks
-                  you received. "Atk"/"Def" is how many attacks the % columns are based on.
+                <p className="text-xs text-txt-dim mb-3">
+                  3★ rate = fresh attacks (first hit on a base) vs the same TH. Defense rate = hits from
+                  the same TH that didn't 3-star the base, counted only until the base fell.
+                  Click a header to sort.
                 </p>
                 <ClanStatsTable data={clanStats} />
               </>
