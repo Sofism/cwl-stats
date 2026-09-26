@@ -2,7 +2,7 @@ const redis = require("./redis");
 const { getClanMembers, getCurrentWar, getPlayer, normalizeTag } = require("./_lib/cocProxy");
 const { buildNormalWarRecord } = require("./_lib/normalWarStats");
 const { parseApiDate, scheduleOneTimeCheck, deleteScheduledJob } = require("./_lib/cronJobOrg");
-const { readJson, finalizeIfNew } = require("./_lib/normalWarStore");
+const { readJson, finalizeIfNew, touchRoster } = require("./_lib/normalWarStore");
 
 // Margen tras el endTime real antes de la comprobacion puntual: da tiempo a
 // que el estado de la guerra en la API de Clash termine de asentarse.
@@ -46,6 +46,16 @@ const captureOptOuts = async (clanTag) => {
  */
 const syncClan = async (clanTag, label, clanKey, baseUrl) => {
   const tag = normalizeTag(clanTag);
+
+  // Foto del roster para la gracia de "ha salido del clan" (ver
+  // touchRoster). Es una peticion mas por ejecucion; si falla no debe
+  // impedir el resto del sync.
+  try {
+    await touchRoster(tag, await getClanMembers(tag));
+  } catch (err) {
+    console.error("Roster snapshot error:", err);
+  }
+
   const war = await getCurrentWar(tag);
   const progress = await readJson(progressKey(tag), null);
 

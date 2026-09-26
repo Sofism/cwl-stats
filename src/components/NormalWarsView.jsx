@@ -12,11 +12,25 @@ const parseApiDate = (raw) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+/** Punto verde/rojo de war opt-in; sin dato (null/undefined) no pinta nada. */
+const OptDot = ({ optedOut }) => {
+  if (typeof optedOut !== "boolean") return null;
+  return (
+    <span
+      title={optedOut ? "Opted out of war" : "Opted in to war"}
+      className={`inline-block w-2 h-2 rounded-full shrink-0 ${optedOut ? "bg-bad-400" : "bg-ok-400"}`}
+    />
+  );
+};
+
 /** Tarjeta de un jugador en el log de ataques de una guerra concreta. */
 const AttackLogCard = ({ player, hasDetail }) => (
   <div className="border border-line rounded-md p-4">
     <div className="flex items-center justify-between mb-3">
-      <span className="font-semibold text-txt-hi">{player.name}</span>
+      <span className="font-semibold text-txt-hi flex items-center gap-2">
+        <OptDot optedOut={player.optedOut} />
+        {player.name}
+      </span>
       <span className="text-xs text-txt-dim">TH{player.th}</span>
     </div>
 
@@ -108,7 +122,7 @@ const SortTh = ({ label, sub, col, sort, onSort, className = "" }) => {
  * rate, missed wars), cada una ordenable. Los jugadores sin muestra en la
  * columna ordenada van siempre al final, sea cual sea la direccion.
  */
-const ClanStatsTable = ({ data }) => {
+const ClanStatsTable = ({ data, optByTag }) => {
   const [sort, setSort] = useState({ key: "threeRate", dir: "desc" });
 
   const onSort = (key) =>
@@ -145,7 +159,10 @@ const ClanStatsTable = ({ data }) => {
             {sorted.map((p) => (
               <tr key={p.tag || p.name} className="hover:bg-surface-700/30 text-center">
                 <td className="p-3 text-left sticky left-0 z-10 bg-surface-950 whitespace-nowrap">
-                  <span className="font-semibold text-txt-hi">{p.name}</span>
+                  <span className="inline-flex items-center gap-2 font-semibold text-txt-hi">
+                    <OptDot optedOut={optByTag[p.tag]} />
+                    {p.name}
+                  </span>
                   <span className="ml-2 text-xs text-txt-dim">TH{p.th || "?"}</span>
                 </td>
                 <td className="p-3">
@@ -184,6 +201,11 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   const clanLabel = clanNames?.main || "Main";
 
   const [savedWars, setSavedWars] = useState([]);
+  const [liveWar, setLiveWar] = useState(null);
+  const [activeTags, setActiveTags] = useState(null);
+  const [statsDefense, setStatsDefense] = useState("all");
+  const [statsOpt, setStatsOpt] = useState("all");
+  const [statsRange, setStatsRange] = useState("all");
   const [loadingSaved, setLoadingSaved] = useState(true);
   const [selectedWarKey, setSelectedWarKey] = useState(null);
   const [defenseFilter, setDefenseFilter] = useState("all");
@@ -200,7 +222,11 @@ const NormalWarsView = ({ clanNames, onClose }) => {
           .filter((w) => w.source !== "manual")
           .slice().sort((a, b) => (b.warKey || "").localeCompare(a.warKey || ""));
         setSavedWars(wars);
-        setSelectedWarKey(wars[0]?.warKey || null);
+        // La guerra en curso solo se ofrece si aun no esta guardada.
+        const live = data.live && !wars.some((w) => w.warKey === data.live.warKey) ? data.live : null;
+        setLiveWar(live);
+        setActiveTags(Array.isArray(data.activeTags) ? data.activeTags : null);
+        setSelectedWarKey((live || wars[0])?.warKey || null);
       })
       .finally(() => {
         if (!cancelled) setLoadingSaved(false);
@@ -210,8 +236,29 @@ const NormalWarsView = ({ clanNames, onClose }) => {
     };
   }, [clanTag]);
 
-  const selectedWar = savedWars.find((w) => w.warKey === selectedWarKey) || null;
-  const clanStats = aggregateNormalWarStats(savedWars);
+  const logWars = liveWar ? [liveWar, ...savedWars] : savedWars;
+  const selectedWar = logWars.find((w) => w.warKey === selectedWarKey) || null;
+  // Opt-in de la guerra mas reciente (en curso si la hay): es la foto que
+  // congela el cron al empezar cada guerra, no el estado de este instante.
+  const optByTag = {};
+  ((liveWar || savedWars[0])?.us?.players || []).forEach((pl) => {
+    optByTag[pl.tag] = pl.optedOut;
+  });
+
+  // Fuera del clan (mas de 12 h, calculado en el servidor) no aparecen en
+  // stats; sus datos siguen guardados. Sin dato de roster no se oculta a nadie.
+  // savedWars ya viene de mas reciente a mas antigua, asi que slice = ultimas N.
+  const activeSet = activeTags ? new Set(activeTags) : null;
+  const rangedWars = statsRange === "all" ? savedWars : savedWars.slice(0, Number(statsRange));
+  const clanStats = aggregateNormalWarStats(rangedWars).filter((p) => {
+    if (activeSet && !activeSet.has(p.tag)) return false;
+    if (statsOpt === "in" && optByTag[p.tag] !== false) return false;
+    if (statsOpt === "out" && optByTag[p.tag] !== true) return false;
+    if (statsDefense === "held" && p.defensesHeld === 0) return false;
+    if (statsDefense === "triple" && p.defensesTripled === 0) return false;
+    if (statsDefense === "none" && p.defensesFaced > 0) return false;
+    return true;
+  });
 
   const matchesDefense = (p) => {
     const defs = p.defenses || [];
@@ -262,7 +309,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
           <div>
             {loadingSaved ? (
               <div className="text-center text-txt-low text-sm py-6">Loading…</div>
-            ) : savedWars.length === 0 ? (
+            ) : logWars.length === 0 ? (
               <div className="border border-line rounded-md p-8 text-center text-txt-low text-sm">
                 No regular wars saved yet for {clanLabel}. They get added automatically once the sync
                 catches one (or paste one by hand in Settings).
@@ -275,9 +322,9 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                     onChange={(e) => setSelectedWarKey(e.target.value)}
                     className="w-full bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
                   >
-                    {savedWars.map((w) => (
+                    {logWars.map((w) => (
                       <option key={w.warKey} value={w.warKey}>
-                        {`${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
+                        {`${w === liveWar ? "LIVE · " : ""}${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
                           w.them?.name ? ` vs ${w.them.name}` : ""
                         }`}
                       </option>
@@ -322,12 +369,45 @@ const NormalWarsView = ({ clanNames, onClose }) => {
               </div>
             ) : (
               <>
+                <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                  <select
+                    value={statsRange}
+                    onChange={(e) => setStatsRange(e.target.value)}
+                    className="sm:w-56 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
+                  >
+                    <option value="all">Wars: all</option>
+                    <option value="5">Wars: last 5</option>
+                    <option value="10">Wars: last 10</option>
+                    <option value="20">Wars: last 20</option>
+                  </select>
+                  <select
+                    value={statsOpt}
+                    onChange={(e) => setStatsOpt(e.target.value)}
+                    className="sm:w-56 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
+                  >
+                    <option value="all">Opt-in: all players</option>
+                    <option value="in">Opt-in: opted in</option>
+                    <option value="out">Opt-in: opted out</option>
+                  </select>
+                  <select
+                    value={statsDefense}
+                    onChange={(e) => setStatsDefense(e.target.value)}
+                    className="sm:w-64 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
+                  >
+                    <option value="all">Defense: all players</option>
+                    <option value="held">Defense: held at least once</option>
+                    <option value="triple">Defense: 3-starred at least once</option>
+                    <option value="none">Defense: never attacked</option>
+                  </select>
+                </div>
                 <p className="text-xs text-txt-dim mb-3">
                   3★ rate = fresh attacks (first hit on a base) vs the same TH. Defense rate = hits from
                   the same TH that didn't 3-star the base, counted only until the base fell.
-                  Click a header to sort.
+                  Click a header to sort. Dot = war opt-in as of the latest war:{" "}
+                  <span className="text-ok-400">green</span> in, <span className="text-bad-400">red</span> out.
+                  Players who left the clan more than 12 h ago are hidden.
                 </p>
-                <ClanStatsTable data={clanStats} />
+                <ClanStatsTable data={clanStats} optByTag={optByTag} />
               </>
             )}
           </div>

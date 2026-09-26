@@ -31,6 +31,9 @@ export const aggregateNormalWarStats = (wars) => {
         sameThTriples: 0,
         sameThDefenses: 0,
         sameThHeld: 0,
+        defensesFaced: 0,
+        defensesHeld: 0,
+        defensesTripled: 0,
       });
     }
     const p = byKey.get(key);
@@ -61,6 +64,12 @@ export const aggregateNormalWarStats = (wars) => {
       const faced = (pl.defenses || [])
         .slice()
         .sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
+      // Contadores para el filtro de defensa (cualquier TH, todos los golpes).
+      faced.forEach((d) => {
+        p.defensesFaced += 1;
+        if (d.stars === 3) p.defensesTripled += 1;
+        else p.defensesHeld += 1;
+      });
       for (const d of faced) {
         const sameTh = d.attackerTh === pl.th;
         if (d.stars === 3) {
