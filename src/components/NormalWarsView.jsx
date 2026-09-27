@@ -254,9 +254,11 @@ const NormalWarsView = ({ clanNames, onClose }) => {
     if (activeSet && !activeSet.has(p.tag)) return false;
     if (statsOpt === "in" && optByTag[p.tag] !== false) return false;
     if (statsOpt === "out" && optByTag[p.tag] !== true) return false;
-    if (statsDefense === "held" && p.defensesHeld === 0) return false;
-    if (statsDefense === "triple" && p.defensesTripled === 0) return false;
-    if (statsDefense === "none" && p.defensesFaced > 0) return false;
+    // Mismos contadores que la columna Defense rate (mismo TH, antes del
+    // triple), para que filtro y tabla nunca se contradigan.
+    if (statsDefense === "held" && p.sameThHeld === 0) return false;
+    if (statsDefense === "triple" && p.sameThDefenses === p.sameThHeld) return false;
+    if (statsDefense === "none" && p.sameThDefenses > 0) return false;
     return true;
   });
 
@@ -395,9 +397,9 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                     className="sm:w-64 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
                   >
                     <option value="all">Defense: all players</option>
-                    <option value="held">Defense: held at least once</option>
-                    <option value="triple">Defense: 3-starred at least once</option>
-                    <option value="none">Defense: never attacked</option>
+                    <option value="held">Defense: rate above 0%</option>
+                    <option value="triple">Defense: 3-starred by same TH</option>
+                    <option value="none">Defense: no same-TH attacks</option>
                   </select>
                 </div>
                 <p className="text-xs text-txt-dim mb-3">
