@@ -72,12 +72,17 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
         record.recoveredFromFallback = true;
         record.fallbackReason = `never observed as warEnded; last seen state was "${progress.lastSeenState}"`;
       }
-      const saved = await finalizeIfNew(tag, record);
+      // Foto sin un solo ataque (p. ej. solo se vio en preparacion): no es
+      // una guerra jugada, guardarla solo contaminaria las estadisticas.
+      const hasAttacks = (record?.us?.players || []).some((pl) => pl.attacks.length > 0);
+      const saved = hasAttacks ? await finalizeIfNew(tag, record) : false;
       await deleteScheduledJob(progress.scheduledFollowUp?.jobId);
       await redis.del(progressKey(tag));
       return {
         clan: label,
-        status: saved
+        status: !hasAttacks
+          ? "no-war (discarded previous war: no attacks were ever recorded)"
+          : saved
           ? "no-war (recovered previous war from last snapshot, may be incomplete)"
           : "no-war (previous war already finalized)",
         warKey: progress.warKey,

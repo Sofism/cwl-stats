@@ -13,6 +13,14 @@
  *   repaso (no solo fresh), porque justo esos son los golpes repetidos.
  * - Missed wars: guerras en las que no uso NINGUNO de sus ataques.
  */
+/**
+ * Guerra sin ningun ataque de nuestro clan: casi seguro una foto de la fase
+ * de preparacion rescatada por el cron, no una guerra jugada. No aporta
+ * datos y hundiria a todos en "missed wars".
+ */
+export const isEmptyWar = (war) =>
+  !(war.us?.players || []).some((pl) => (pl.attacks || []).length > 0);
+
 export const aggregateNormalWarStats = (wars) => {
   const byKey = new Map();
 
@@ -40,13 +48,17 @@ export const aggregateNormalWarStats = (wars) => {
   };
 
   wars.forEach((war) => {
+    if (isEmptyWar(war)) return;
+    // Rescatada de una foto parcial: los ataques que constan valen, pero
+    // "no ataco" no se puede afirmar (pudo atacar despues de la foto).
+    const partial = !!war.recoveredFromFallback;
     (war.us?.players || []).forEach((pl) => {
       const p = getPlayer(pl.tag, pl.name, pl.th);
       p.wars += 1;
       p.detailedWars += 1;
       const attacksPerMember = war.attacksPerMember || pl.attacksPerMember || 1;
       const attacks = pl.attacks || [];
-      if (attacks.length === 0 && attacksPerMember > 0) p.missedWars += 1;
+      if (!partial && attacks.length === 0 && attacksPerMember > 0) p.missedWars += 1;
 
       attacks.forEach((a) => {
         if (a.fresh && a.opponentTh === pl.th) {

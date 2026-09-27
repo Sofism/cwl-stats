@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Swords, ListChecks, BarChart3, ChevronUp, ChevronDown } from "lucide-react";
-import { aggregateNormalWarStats } from "../utils/normalWarStats";
+import { aggregateNormalWarStats, isEmptyWar } from "../utils/normalWarStats";
 
 const parseApiDate = (raw) => {
   if (!raw) return null;
@@ -326,7 +326,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   >
                     {logWars.map((w) => (
                       <option key={w.warKey} value={w.warKey}>
-                        {`${w === liveWar ? "LIVE · " : ""}${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
+                        {`${w === liveWar ? "LIVE · " : ""}${isEmptyWar(w) ? "(no data) " : w.recoveredFromFallback ? "(partial) " : ""}${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
                           w.them?.name ? ` vs ${w.them.name}` : ""
                         }`}
                       </option>
@@ -344,6 +344,13 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   </select>
                 </div>
 
+                {selectedWar && selectedWar !== liveWar && (isEmptyWar(selectedWar) || selectedWar.recoveredFromFallback) && (
+                  <div className="border border-line rounded-md p-3 mb-3 text-xs text-txt-low">
+                    {isEmptyWar(selectedWar)
+                      ? "This war has no recorded attacks (likely captured only during preparation). It is excluded from Clan stats."
+                      : "This war was rescued from a snapshot taken before it ended, so some attacks may be missing. It doesn't count toward Missed wars."}
+                  </div>
+                )}
                 {selectedWar && visiblePlayers.length === 0 && (
                   <div className="border border-line rounded-md p-6 text-center text-txt-low text-sm">
                     No players match this defense filter.
