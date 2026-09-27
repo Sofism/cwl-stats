@@ -45,6 +45,14 @@ export default async function handler(req, res) {
       console.error("Roster error:", e);
     }
 
+    let lastSync = null;
+    try {
+      const raw = await redis.get(`sync-status:${tag}`);
+      lastSync = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : null;
+    } catch (e) {
+      console.error("Sync status error:", e);
+    }
+
     let live = null;
     try {
       const progress = await redis.get(`normal-wars-progress:${tag}`);
@@ -68,7 +76,7 @@ export default async function handler(req, res) {
       console.error("Live war error:", e);
     }
 
-    return res.status(200).json({ wars, live, activeTags });
+    return res.status(200).json({ wars, live, activeTags, lastSync });
   } catch (err) {
     console.error("Get normal wars error:", err);
     return res.status(500).json({ error: "Failed", details: err.message });

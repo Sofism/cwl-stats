@@ -23,6 +23,35 @@ const OptDot = ({ optedOut }) => {
   );
 };
 
+/** "Hace X" corto para el indicador de ultima sincronizacion. */
+const timeAgo = (ms) => {
+  const min = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (min < 60) return `${min} min ago`;
+  const h = Math.floor(min / 60);
+  return h < 48 ? `${h} h ago` : `${Math.floor(h / 24)} d ago`;
+};
+
+const STALE_SYNC_MS = 3 * 60 * 60 * 1000;
+
+/** Verde si el cron corrio hace poco; rojo si lleva horas sin hacerlo o fallo. */
+const SyncStatus = ({ lastSync }) => {
+  const stale = !lastSync || Date.now() - lastSync.at > STALE_SYNC_MS;
+  const failed = lastSync?.status === "error";
+  const bad = stale || failed;
+  return (
+    <p className={`text-xs mb-4 flex items-center gap-2 ${bad ? "text-bad-400" : "text-txt-low"}`}>
+      <span className={`inline-block w-2 h-2 rounded-full ${bad ? "bg-bad-400" : "bg-ok-400"}`} />
+      {!lastSync
+        ? "Sync has never run — wars are not being captured."
+        : failed
+        ? `Last sync failed ${timeAgo(lastSync.at)}: ${lastSync.error || "unknown error"}`
+        : stale
+        ? `Last sync ${timeAgo(lastSync.at)} — the cron may have stopped, wars may be missed.`
+        : `Last sync ${timeAgo(lastSync.at)}`}
+    </p>
+  );
+};
+
 /** Tarjeta de un jugador en el log de ataques de una guerra concreta. */
 const AttackLogCard = ({ player, hasDetail }) => (
   <div className="border border-line rounded-md p-4">
@@ -203,6 +232,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   const [savedWars, setSavedWars] = useState([]);
   const [liveWar, setLiveWar] = useState(null);
   const [activeTags, setActiveTags] = useState(null);
+  const [lastSync, setLastSync] = useState(null);
   const [statsDefense, setStatsDefense] = useState("all");
   const [statsOpt, setStatsOpt] = useState("all");
   const [statsRange, setStatsRange] = useState("all");
@@ -225,6 +255,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
         // La guerra en curso solo se ofrece si aun no esta guardada.
         const live = data.live && !wars.some((w) => w.warKey === data.live.warKey) ? data.live : null;
         setLiveWar(live);
+        setLastSync(data.lastSync || null);
         setActiveTags(Array.isArray(data.activeTags) ? data.activeTags : null);
         setSelectedWarKey((live || wars[0])?.warKey || null);
       })
@@ -286,6 +317,8 @@ const NormalWarsView = ({ clanNames, onClose }) => {
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        <SyncStatus lastSync={lastSync} />
 
         <div className="flex gap-2 mb-6">
           {[

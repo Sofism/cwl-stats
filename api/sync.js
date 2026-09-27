@@ -7,6 +7,11 @@ const { readJson, finalizeIfNew, touchRoster } = require("./_lib/normalWarStore"
 // Margen tras el endTime real antes de la comprobacion puntual: da tiempo a
 // que el estado de la guerra en la API de Clash termine de asentarse.
 const FOLLOW_UP_BUFFER_MS = 5 * 60 * 1000;
+// Foto extra ANTES del final: si la comprobacion de despues falla, el
+// rescate parte de una foto con casi todos los ataques y no de una de hace
+// una hora.
+const PRE_END_MARGIN_MS = 10 * 60 * 1000;
+const syncStatusKey = (tag) => `sync-status:${tag}`;
 
 const CLAN_CONFIG_KEY = "cwl-clan-config";
 const progressKey = (tag) => `normal-wars-progress:${tag}`;
@@ -77,6 +82,7 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
       const hasAttacks = (record?.us?.players || []).some((pl) => pl.attacks.length > 0);
       const saved = hasAttacks ? await finalizeIfNew(tag, record) : false;
       await deleteScheduledJob(progress.scheduledFollowUp?.jobId);
+      await deleteScheduledJob(progress.scheduledPreEnd?.jobId);
       await redis.del(progressKey(tag));
       return {
         clan: label,
@@ -126,12 +132,28 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
     }
   }
 
+  // Segunda comprobacion puntual, 10 min ANTES del final. Solo si aun no
+  // existe para esta guerra y ese instante todavia esta por llegar (una
+  // guerra ya casi terminada, o vista por primera vez tarde, no la crea).
+  let scheduledPreEnd = isSameWar ? progress.scheduledPreEnd : null;
+  if (!scheduledPreEnd && war.endTime && baseUrl && clanKey) {
+    const endDate = parseApiDate(war.endTime);
+    if (endDate) {
+      const when = new Date(endDate.getTime() - PRE_END_MARGIN_MS);
+      if (when.getTime() > Date.now() + 60 * 1000) {
+        const preEndUrl = `${baseUrl}/api/sync?clan=${clanKey}&secret=${encodeURIComponent(process.env.CRON_SECRET)}`;
+        const jobId = await scheduleOneTimeCheck(preEndUrl, when);
+        if (jobId) scheduledPreEnd = { warKey, jobId };
+      }
+    }
+  }
+
   // Foto de seguridad en CADA ejecucion mientras la guerra sigue viva, no
   // solo al final: si el estado warEnded se nos escapa entre dos ticks
   // (ver arriba), esta es la red de la que se puede rescatar.
   await redis.set(
     progressKey(tag),
-    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state, scheduledFollowUp })
+    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state, scheduledFollowUp, scheduledPreEnd })
   );
 
   if (war.state !== "warEnded") {
@@ -143,6 +165,7 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
 
   const saved = await finalizeIfNew(tag, record);
   await deleteScheduledJob(scheduledFollowUp?.jobId);
+  await deleteScheduledJob(scheduledPreEnd?.jobId);
   await redis.del(progressKey(tag));
 
   return {
@@ -213,11 +236,23 @@ export default async function handler(req, res) {
       // y repartir mejor el presupuesto de tiempo de la funcion. Cada
       // clan falla de forma independiente (un timeout de red en uno no
       // debe impedir que el otro se procese ni tumbar la respuesta).
+      let result;
       try {
-        results.push(await syncClan(tag, label, clanKey, baseUrl));
+        result = await syncClan(tag, label, clanKey, baseUrl);
       } catch (err) {
         console.error(`Sync error for ${label}:`, err);
-        results.push({ clan: label, status: "error", error: err.message });
+        result = { clan: label, status: "error", error: err.message };
+      }
+      results.push(result);
+      // Ultima ejecucion (bien o mal), para el indicador "Last sync" de la
+      // UI: permite ver el mismo dia que el cron dejo de correr.
+      try {
+        await redis.set(
+          syncStatusKey(normalizeTag(tag)),
+          JSON.stringify({ at: Date.now(), status: result.status, error: result.error || null })
+        );
+      } catch (e) {
+        console.error("Sync status write error:", e);
       }
     }
 
