@@ -1,6 +1,6 @@
 /**
  * Agrega, jugador a jugador, las guerras normales guardadas de un clan
- * (solo datos live del cron; el pegado manual ya no se usa).
+ * (datos live del cron).
  *
  * Metricas (acordadas con Santi, sin filtros ajustables):
  * - 3★ rate: de los ataques FRESH (primer golpe a esa base, "clean shot")
@@ -24,7 +24,7 @@ export const isEmptyWar = (war) =>
 export const aggregateNormalWarStats = (wars) => {
   const byKey = new Map();
 
-  // Clave: tag si existe; si no (pegado manual sin columna Tag), el nombre.
+  // Clave: el tag; el nombre solo como respaldo si un registro no lo trae.
   const getPlayer = (rawTag, name, th) => {
     const key = rawTag || name;
     if (!byKey.has(key)) {
@@ -68,11 +68,14 @@ export const aggregateNormalWarStats = (wars) => {
       });
 
       // Defensas en orden de ataque; se corta en el primer triple (de
-      // cualquier atacante: la base ya cayo). Registros antiguos sin `order`
-      // conservan el orden guardado.
-      const faced = (pl.defenses || [])
-        .slice()
-        .sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
+      // cualquier atacante: la base ya cayo).
+      const defenses = pl.defenses || [];
+      // Las guerras guardadas antes de añadir `order` no permiten saber en
+      // que orden llegaron los ataques: mejor no contar sus defensas que
+      // dar un rate inventado.
+      const faced = defenses.some((d) => typeof d.order !== "number")
+        ? []
+        : defenses.slice().sort((x, y) => x.order - y.order);
       for (const d of faced) {
         const sameTh = d.attackerTh === pl.th;
         if (d.stars === 3) {

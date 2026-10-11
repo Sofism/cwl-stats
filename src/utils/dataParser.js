@@ -31,6 +31,42 @@ const REQUIRED_KEYS = [
   "missAtk", "totalDef", "defStars", "defDest",
 ];
 
+/**
+ * Por que parseData devolveria [] para este texto, o null si no hay
+ * problema (el fallo esta en otro sitio, p. ej. ninguna fila de datos).
+ * Pensado para mostrarselo al usuario: parseData() en si no explica nada,
+ * solo devuelve una lista vacia, y eso ya causo una vez un pegado que no
+ * parecia hacer nada sin forma de saber por que.
+ */
+export const describeParseProblem = (text) => {
+  const rows = text
+    .trim()
+    .split("\n")
+    .map((line) => line.split(/\t/).map((x) => x.trim()));
+  if (rows.length === 0 || !text.trim()) return null;
+
+  const headerRow = rows.find((c) => (c[0] || "").toLowerCase() === "name");
+  if (!headerRow) {
+    return 'No header row found: one row must have exactly "Name" as its first column.';
+  }
+
+  const indexOf = (aliases) => {
+    for (const alias of aliases) {
+      const idx = headerRow.findIndex((h) => h.toLowerCase() === alias.toLowerCase());
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+
+  const missing = REQUIRED_KEYS.filter((key) => indexOf(HEADER_ALIASES[key]) === -1).map(
+    (key) => HEADER_ALIASES[key][0]
+  );
+  if (missing.length > 0) {
+    return `The header row is missing these columns (or they are named differently): ${missing.join(", ")}.`;
+  }
+  return null;
+};
+
 export const parseData = (text, clan) => {
   const rows = text
     .trim()

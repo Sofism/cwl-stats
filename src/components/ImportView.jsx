@@ -14,7 +14,7 @@ import LeagueSettings from "./LeagueSettings";
 import NewSeasonModal from "./NewSeasonModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SyncReduceConfirmModal from "./SyncReduceConfirmModal";
-import { parseData } from "../utils/dataParser";
+import { parseData, describeParseProblem } from "../utils/dataParser";
 import { runCwlSync, applyCwlSyncResult } from "../utils/cwlSync";
 
 const ImportView = ({
@@ -35,6 +35,8 @@ const ImportView = ({
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showManualImport, setShowManualImport] = useState(false);
+  const [mainImportError, setMainImportError] = useState(null);
+  const [secondaryImportError, setSecondaryImportError] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessages, setSyncMessages] = useState([]);
   const [syncProgress, setSyncProgress] = useState(null);
@@ -49,13 +51,30 @@ const ImportView = ({
   const hasTags = Boolean(clanNames.mainTag && clanNames.secondaryTag);
 
   const handleImport = (text, isMain) => {
-    if (!text.trim() || !currentSeason) return;
-    const key = isMain ? "mainClan" : "secondaryClan";
+    const setError = isMain ? setMainImportError : setSecondaryImportError;
+    if (!text.trim() || !currentSeason) {
+      setError(null);
+      return;
+    }
     const parsedData = parseData(text, isMain ? "Main" : "Secondary");
+    if (parsedData.length === 0) {
+      // No se guarda nada: un pegado que no se reconoce no debe borrar
+      // datos que ya hubiera en la temporada. Solo se avisa.
+      setError(
+        describeParseProblem(text) ||
+          "No player rows were recognised in the pasted text."
+      );
+      return;
+    }
+    setError(null);
+    const key = isMain ? "mainClan" : "secondaryClan";
     const updated = {
       ...currentSeason,
       [key]: parsedData,
       leagueInfo: leagueInfo,
+      // Lo pegado a mano se marca: el sync automatico del servidor no lo
+      // sobrescribe. "Sync now" si lo hace (y quita la marca).
+      manual: { ...(currentSeason.manual || {}), [isMain ? "main" : "secondary"]: true },
     };
     updateSeasonData(updated);
   };
@@ -67,10 +86,15 @@ const ImportView = ({
     updateSeasonData(updated);
   };
 
-  const finishSync = (mainResult, secondaryResult) => {
+  const finishSync = (mainResult, secondaryResult, errors = {}) => {
     const messages = [];
-    if (!mainResult) messages.push(`⚠ ${clanNames.main}: not currently in CWL (or the clan tag / proxy failed).`);
-    if (!secondaryResult) messages.push(`⚠ ${clanNames.secondary}: not currently in CWL (or the clan tag / proxy failed).`);
+    const missing = (result, error, name) => {
+      if (result) return;
+      if (error) messages.push(`⚠ ${name}: could not reach the Clash API (${error}) — kept the saved data.`);
+      else messages.push(`⚠ ${name}: not currently in CWL — kept the saved data.`);
+    };
+    missing(mainResult, errors.main, clanNames.main);
+    missing(secondaryResult, errors.secondary, clanNames.secondary);
 
     const { updatedSeason, newLeagueInfo, syncProgress: progress, apiNames } = applyCwlSyncResult(
       currentSeason,
@@ -100,25 +124,44 @@ const ImportView = ({
     setSyncing(true);
     setSyncMessages([]);
 
-    const { mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce } =
-      await runCwlSync(clanNames, currentSeason);
+    const {
+      mainResult,
+      secondaryResult,
+      mainError,
+      secondaryError,
+      seasonMismatch,
+      mainWouldReduce,
+      secondaryWouldReduce,
+    } = await runCwlSync(clanNames, currentSeason);
+
+    if (seasonMismatch) {
+      // Guardar aqui mezclaria dos meses. La temporada del mes correcto se
+      // crea sola con el sync automatico; si aun no existe, se crea a mano.
+      setSyncMessages([
+        `⚠ This CWL is ${seasonMismatch.month} ${seasonMismatch.year}, but "${currentSeason.name}" is open. ` +
+          `Open the ${seasonMismatch.month} season (the automatic sync creates it) or create it, then sync there. Nothing was saved.`,
+      ]);
+      setSyncing(false);
+      return;
+    }
+    const errors = { main: mainError, secondary: secondaryError };
 
     if (mainWouldReduce || secondaryWouldReduce) {
       // No se guarda solo: se pide confirmacion porque supondria perder
       // jugadores que ya estaban guardados (tipico al empezar una CWL
       // nueva antes de que termine la primera ronda).
-      setPendingSync({ mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce });
+      setPendingSync({ mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce, errors });
       setSyncing(false);
       return;
     }
 
-    finishSync(mainResult, secondaryResult);
+    finishSync(mainResult, secondaryResult, errors);
     setSyncing(false);
   };
 
   const confirmPendingSync = () => {
     if (!pendingSync) return;
-    finishSync(pendingSync.mainResult, pendingSync.secondaryResult);
+    finishSync(pendingSync.mainResult, pendingSync.secondaryResult, pendingSync.errors);
     setPendingSync(null);
   };
 
@@ -268,10 +311,14 @@ const ImportView = ({
                     placeholder="Paste spreadsheet data here..."
                     onChange={(e) => handleImport(e.target.value, true)}
                   />
-                  {currentSeason.mainClan.length > 0 && (
-                    <div className="mt-3 text-ok-400 text-sm">
-                      ✓ {currentSeason.mainClan.length} players loaded
-                    </div>
+                  {mainImportError ? (
+                    <div className="mt-3 text-bad-400 text-sm">⚠ {mainImportError}</div>
+                  ) : (
+                    currentSeason.mainClan.length > 0 && (
+                      <div className="mt-3 text-ok-400 text-sm">
+                        ✓ {currentSeason.mainClan.length} players loaded
+                      </div>
+                    )
                   )}
                 </div>
 
@@ -285,10 +332,14 @@ const ImportView = ({
                     placeholder="Paste spreadsheet data here..."
                     onChange={(e) => handleImport(e.target.value, false)}
                   />
-                  {currentSeason.secondaryClan.length > 0 && (
-                    <div className="mt-3 text-ok-400 text-sm">
-                      ✓ {currentSeason.secondaryClan.length} players loaded
-                    </div>
+                  {secondaryImportError ? (
+                    <div className="mt-3 text-bad-400 text-sm">⚠ {secondaryImportError}</div>
+                  ) : (
+                    currentSeason.secondaryClan.length > 0 && (
+                      <div className="mt-3 text-ok-400 text-sm">
+                        ✓ {currentSeason.secondaryClan.length} players loaded
+                      </div>
+                    )
                   )}
                 </div>
               </div>

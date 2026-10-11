@@ -71,30 +71,6 @@ export const BASE_BONUSES_30V30 = {
   "Bronze III": 2,
 };
 
-// Medallas por bono según liga. Legend y Titan no estan todavia: si se
-// selecciona alguna, calculateMedalValue cae a 0 (sin valor inventado).
-// Falta el dato real de esas dos ligas.
-export const MEDAL_VALUES = {
-  "Champion I": 105,
-  "Champion II": 100,
-  "Champion III": 95,
-  "Master I": 90,
-  "Master II": 85,
-  "Master III": 80,
-  "Crystal I": 75,
-  "Crystal II": 70,
-  "Crystal III": 65,
-  "Gold I": 60,
-  "Gold II": 55,
-  "Gold III": 50,
-  "Silver I": 45,
-  "Silver II": 40,
-  "Silver III": 40,
-  "Bronze I": 35,
-  "Bronze II": 35,
-  "Bronze III": 35,
-};
-
 export const DEFAULT_VISIBLE_COLS = {
   th: false,
   wars: true,

@@ -1,7 +1,7 @@
 import React from "react";
 import { Trophy } from "lucide-react";
 import { LEAGUES } from "../utils/constants";
-import { calculateBonusSlots } from "../utils/bonusCalculator";
+import { calculateBonusSlots, normalizeLeagueName } from "../utils/bonusCalculator";
 
 const WAR_SIZES = [5, 15, 30];
 
@@ -47,7 +47,7 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                 <div>
                   <label className="block text-sm text-txt-low mb-2">League</label>
                   <select
-                    value={info.league}
+                    value={normalizeLeagueName(info.league)}
                     onChange={(e) => {
                       const newLeagueInfo = {
                         ...leagueInfo,
@@ -57,6 +57,14 @@ const LeagueSettings = ({ leagueInfo, updateLeague, clanNames }) => {
                     }}
  className="w-full bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi"
                   >
+                    {/* El sync guarda el nombre tal cual lo da la API ("Master League I"):
+                        se muestra normalizado ("Master I"); si aun asi no esta en la
+                        lista, se anade para que el desplegable no quede en blanco. */}
+                    {!LEAGUES.includes(normalizeLeagueName(info.league)) && (
+                      <option value={normalizeLeagueName(info.league)}>
+                        {normalizeLeagueName(info.league) || "—"}
+                      </option>
+                    )}
                     {LEAGUES.map((l) => (
                       <option key={l} value={l}>
                         {l}

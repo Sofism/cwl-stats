@@ -3,6 +3,7 @@ const { getClanMembers, getCurrentWar, getPlayer, normalizeTag } = require("./_l
 const { buildNormalWarRecord } = require("./_lib/normalWarStats");
 const { parseApiDate, scheduleOneTimeCheck, deleteScheduledJob } = require("./_lib/cronJobOrg");
 const { readJson, finalizeIfNew, touchRoster } = require("./_lib/normalWarStore");
+const { syncCwlForClan } = require("./_lib/cwlSyncServer");
 
 // Margen tras el endTime real antes de la comprobacion puntual: da tiempo a
 // que el estado de la guerra en la API de Clash termine de asentarse.
@@ -12,6 +13,9 @@ const FOLLOW_UP_BUFFER_MS = 5 * 60 * 1000;
 // una hora.
 const PRE_END_MARGIN_MS = 10 * 60 * 1000;
 const syncStatusKey = (tag) => `sync-status:${tag}`;
+// Margen para que la parte de CWL no agote los 10 s de las funciones de
+// Vercel Hobby: pasado este punto no se piden mas guerras en esta ejecucion.
+const CWL_TIME_BUDGET_MS = 7000;
 
 const CLAN_CONFIG_KEY = "cwl-clan-config";
 const progressKey = (tag) => `normal-wars-progress:${tag}`;
@@ -189,6 +193,11 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
  * de Vercel Hobby. Sin ?clan se procesan ambos (util solo para pruebas
  * manuales, no para el cron real).
  *
+ * Cada ejecucion hace dos cosas por clan: (1) sigue la guerra normal y
+ * (2) sincroniza la CWL (api/_lib/cwlSyncServer.js): crea la temporada del
+ * mes cuando aparece el grupo y va incorporando cada ronda al terminar. En
+ * la respuesta, `cwl.status` dice que paso.
+ *
  * Ademas del cron periodico, en cuanto se conoce el endTime real de una
  * guerra se programa (via la API de cron-job.org, CRONJOB_API_KEY) una
  * comprobacion puntual justo despues de que termine, para no depender solo
@@ -204,6 +213,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  const startedAt = Date.now();
   try {
     const configRaw = await redis.get(CLAN_CONFIG_KEY);
     const config = configRaw
@@ -243,13 +253,34 @@ export default async function handler(req, res) {
         console.error(`Sync error for ${label}:`, err);
         result = { clan: label, status: "error", error: err.message };
       }
+      // CWL: se crea la temporada sola cuando aparece el grupo y cada ronda
+      // se incorpora al terminar. Va DESPUES de las guerras normales y con
+      // un tope de tiempo: el trabajo pesado de una y otra casi nunca
+      // coincide (en CWL no hay guerras normales), pero si coincidiera, lo
+      // que quede se completa en la ejecucion siguiente.
+      try {
+        result.cwl = await syncCwlForClan({
+          tag,
+          clanKey,
+          deadline: startedAt + CWL_TIME_BUDGET_MS,
+        });
+      } catch (err) {
+        console.error(`CWL sync error for ${label}:`, err);
+        result.cwl = { status: "error", error: err.message };
+      }
       results.push(result);
       // Ultima ejecucion (bien o mal), para el indicador "Last sync" de la
       // UI: permite ver el mismo dia que el cron dejo de correr.
       try {
         await redis.set(
           syncStatusKey(normalizeTag(tag)),
-          JSON.stringify({ at: Date.now(), status: result.status, error: result.error || null })
+          JSON.stringify({
+            at: Date.now(),
+            status: result.status,
+            error: result.error || null,
+            cwl: result.cwl ? result.cwl.status : null,
+            cwlError: result.cwl?.error || null,
+          })
         );
       } catch (e) {
         console.error("Sync status write error:", e);

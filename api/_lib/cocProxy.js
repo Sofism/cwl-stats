@@ -51,4 +51,38 @@ const getPlayer = async (playerTag) => {
   return response.json();
 };
 
-module.exports = { normalizeTag, getClanMembers, getCurrentWar, getPlayer };
+// Como proxyFetch pero devolviendo status + cuerpo, para poder distinguir
+// "esta peticion dio 404" (p. ej. el clan no esta en CWL) de un fallo real
+// del proxy o de la API de Clash (5xx, 429, red caida), que NO deben
+// tratarse como "no hay datos".
+const proxyGet = async (endpointPath) => {
+  const response = await proxyFetch(endpointPath);
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (e) {
+    data = null;
+  }
+  return { status: response.status, ok: response.ok, data };
+};
+
+const getClanInfo = async (clanTag) => {
+  const r = await proxyGet(`clans/${encodeURIComponent(normalizeTag(clanTag))}`);
+  return r.ok ? r.data : null;
+};
+
+/** { status, ok, data }: status 404 = el clan no tiene grupo de CWL ahora. */
+const getLeagueGroup = (clanTag) =>
+  proxyGet(`clans/${encodeURIComponent(normalizeTag(clanTag))}/currentwar/leaguegroup`);
+
+const getLeagueWar = (warTag) => proxyGet(`clanwarleagues/wars/${encodeURIComponent(warTag)}`);
+
+module.exports = {
+  normalizeTag,
+  getClanMembers,
+  getCurrentWar,
+  getPlayer,
+  getClanInfo,
+  getLeagueGroup,
+  getLeagueWar,
+};

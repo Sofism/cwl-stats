@@ -36,7 +36,7 @@ const STALE_SYNC_MS = 3 * 60 * 60 * 1000;
 /** Verde si el cron corrio hace poco; rojo si lleva horas sin hacerlo o fallo. */
 const SyncStatus = ({ lastSync }) => {
   const stale = !lastSync || Date.now() - lastSync.at > STALE_SYNC_MS;
-  const failed = lastSync?.status === "error";
+  const failed = lastSync?.status === "error" || lastSync?.cwl === "error";
   const bad = stale || failed;
   return (
     <p className={`text-xs mb-4 flex items-center gap-2 ${bad ? "text-bad-400" : "text-txt-low"}`}>
@@ -44,7 +44,7 @@ const SyncStatus = ({ lastSync }) => {
       {!lastSync
         ? "Sync has never run — wars are not being captured."
         : failed
-        ? `Last sync failed ${timeAgo(lastSync.at)}: ${lastSync.error || "unknown error"}`
+        ? `Last sync failed ${timeAgo(lastSync.at)}: ${lastSync.error || lastSync.cwlError || "unknown error"}`
         : stale
         ? `Last sync ${timeAgo(lastSync.at)} — the cron may have stopped, wars may be missed.`
         : `Last sync ${timeAgo(lastSync.at)}`}
@@ -249,6 +249,8 @@ const NormalWarsView = ({ clanNames, onClose }) => {
       .then((data) => {
         if (cancelled) return;
         const wars = (data.wars || [])
+          // Registros "manual" de las pruebas del pegado a mano (ya
+          // eliminado): pueden seguir en Redis, no son guerras reales.
           .filter((w) => w.source !== "manual")
           .slice().sort((a, b) => (b.warKey || "").localeCompare(a.warKey || ""));
         setSavedWars(wars);

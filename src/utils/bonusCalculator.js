@@ -1,4 +1,4 @@
-import { BASE_BONUSES, BASE_BONUSES_30V30, MEDAL_VALUES } from "./constants";
+import { BASE_BONUSES, BASE_BONUSES_30V30 } from "./constants";
 
 /**
  * El nombre de liga se guarda en DOS formatos distintos segun de donde
@@ -11,7 +11,7 @@ import { BASE_BONUSES, BASE_BONUSES_30V30, MEDAL_VALUES } from "./constants";
  * iguales. Sin esto, cualquier liga auto-sincronizada y nunca corregida a
  * mano buscaba en la tabla con la clave equivocada y caia siempre a 0.
  */
-const normalizeLeagueName = (league) =>
+export const normalizeLeagueName = (league) =>
   (league || "").replace(/\s*League\s*/i, " ").replace(/\s+/g, " ").trim();
 
 /**
@@ -62,28 +62,4 @@ export const calculateBonusSlots = ({ league, warsWon = 0, warSize = 15 }) => {
     base = BASE_BONUSES[key] || 0;
   }
   return base + (Number(warsWon) || 0);
-};
-
-/**
- * Valor aproximado de cada medalla de bono, ajustado por la posición final
- * (1º-8º) dentro del grupo. La tabla MEDAL_VALUES de constants.js son los
- * valores para el 1er puesto de cada liga; cada posición por debajo reduce
- * el valor de forma progresiva.
- *
- * APROXIMACIÓN: la caída exacta por posición no está documentada de forma
- * fiable y varía entre fuentes. Esto usa una caída lineal del ~8% por
- * puesto (1º = 100%, 8º = ~44%) como punto de partida razonable. Si tienes
- * un caso real con el que contrastar (liga + posición + medallas exactas
- * que dio el juego), lo calibro con ese dato.
- *
- * @param {Object} params
- * @param {string} params.league
- * @param {number} params.position - Posición final (1-8)
- */
-export const calculateMedalValue = ({ league, position = 1 }) => {
-  const base = MEDAL_VALUES[normalizeLeagueName(league)] || 0;
-  const clampedPosition = Math.min(8, Math.max(1, position || 1));
-  const decayPerPosition = 0.08;
-  const multiplier = Math.max(0.4, 1 - (clampedPosition - 1) * decayPerPosition);
-  return Math.round(base * multiplier);
 };

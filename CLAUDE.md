@@ -42,6 +42,14 @@ del cliente, así que es visible para cualquiera que mire la pestaña de red.
 Frena abuso casual, no es seguridad real. La solución definitiva es mover
 las llamadas a una función serverless propia (ver "Cron" más abajo).
 
+**Clave de escritura (opt-in):** si se define `WRITE_SECRET` en Vercel **y**
+`REACT_APP_WRITE_SECRET` con el mismo valor, los endpoints que escriben
+(`save-season`, `delete-season`, `clan-config`, `seasons-backups`) la exigen
+(cabecera `x-write-secret`). Si solo se define una de las dos, la app deja
+de poder guardar. Igual que el secreto del proxy, la del cliente va en el
+bundle: frena curls a ciegas, no es seguridad real. Sin `WRITE_SECRET` no se
+exige nada (estado actual por defecto).
+
 **Aviso 2:** las variables `REACT_APP_*` se hornean **en tiempo de build**.
 Cambiarlas no surte efecto hasta redesplegar, y hay que marcarlas para el
 entorno correcto (Production/Preview). Esto ya causó un 404 fantasma.
@@ -99,10 +107,51 @@ Estos límites condicionan el diseño. No son suposiciones.
   sobre posibles. Se planteó cambiarlo y se descartó para no romper la
   comparabilidad con las 11 temporadas históricas del bot.
 
+### Persistencia de temporadas (importante, hubo una pérdida de datos)
+
+`cwl-seasons` es UN array en Redis. Reglas actuales (`api/_lib/seasonStore.js`):
+
+- **`save-season` fusiona por id, nunca borra por omisión.** Un cliente con la
+  lista sin cargar ya no puede vaciar nada. Cada clan de una temporada lleva
+  su sello (`mainAt` / `secondaryAt`) y gana el más reciente: el cliente lo
+  pone al editar (`stampSeason` en `useSeasons.js`), el sync automático al
+  escribir.
+- **Borrar** va por `DELETE /api/delete-season?id=` (o `?all=1`), con
+  tombstones (`cwl-seasons-deleted`) para que un cliente viejo no resucite
+  lo borrado ni el sync recree el mes borrado.
+- **Copias de seguridad** rotativas (5) antes de cada escritura que cambia
+  algo y siempre antes de borrar: `GET /api/seasons-backups` (lista) y
+  `?n=1` (contenido). Restaurar = `POST /api/save-season` con
+  `{ seasons, replace: true }`.
+- Escrituras serializadas con un lock en Redis (`cwl-seasons-lock`).
+- Cada temporada lleva `cwlSeason: "2026-10"` (de `group.season`), que es lo
+  que la vincula con su CWL. Las anteriores a esto no lo tienen: se adoptan
+  por mes de creación o nombre, y los clanes que ya tenían jugadores se
+  marcan `manual`.
+- `manual: {main, secondary}`: lo pegado a mano. El sync **automático** no lo
+  pisa; "Sync now" sí (y quita la marca). `cwlComplete: {main, secondary}`:
+  la liga ya terminó y se guardó la versión final; no se vuelve a tocar.
+- "Sync now" en el cliente **se niega a guardar** si la CWL descargada es de
+  un mes distinto a la temporada abierta (así acabaron los datos de octubre
+  dentro de "September").
+- Límite a vigilar: Upstash free admite ~1 MB por petición y las temporadas
+  ocupan ~250 KB (+25 KB/mes).
+
+### Sync automático de CWL
+
+`api/sync.js` (el mismo cron de guerras normales) llama a
+`api/_lib/cwlSyncServer.js` por clan: crea la temporada del mes cuando
+aparece el grupo y añade cada ronda al terminar. Es incremental (guarda las
+guerras terminadas en `cwl-state:{tag}`). La API de Clash solo expone la CWL
+en curso y el grupo desaparece cuando el clan empieza otra guerra, así que lo
+no capturado a tiempo se pierde: el cron debe correr durante toda la liga.
+`api/_lib/cwlAggregate.js` es copia de la lógica de `src/utils/cwlSync.js`
+(el cliente no puede importar de `api/`): cambios de criterio, en ambos.
+
 ### Bonos de CWL — PENDIENTE DE CALIBRAR
 
 `bonusCalculator.js` calcula: bonos base según liga + 1 por guerra ganada.
-Eso es correcto. Pero hay **dos aproximaciones sin verificar**:
+Eso es correcto. Queda **una aproximación sin verificar**:
 
 - La tabla base para **5v5** (estimada dividiendo la de 15v15 entre 3).
   **CWL solo se juega en 15v15 o 30v30 actualmente** — el 5v5 existió una
@@ -110,8 +159,8 @@ Eso es correcto. Pero hay **dos aproximaciones sin verificar**:
   opción se mantiene en el selector solo por si hace falta editar esa
   temporada histórica concreta; no debería aparecer como elección real
   para temporadas nuevas.
-- La **caída de valor de medalla por posición final** (lineal, ~8% por
-  puesto).
+- (Se eliminó `calculateMedalValue` y su tabla de medallas: ninguna pantalla
+  las usaba y eran valores sin verificar.)
 
 15v15 y 30v30 reparten el mismo número de bonos. Si Santi aporta un caso
 real (liga + tamaño + guerras ganadas + número que da el juego), calibrar
@@ -187,7 +236,7 @@ Durante meses no lo estaba y ninguna regla se aplicaba.
 1. **Guerras normales con stats por jugador** (lo siguiente a abordar).
    Requiere el cron: sin sondeo periódico se pierden la mayoría, porque el
    ciclo es de ~48h.
-2. **Cron.** Plan acordado: endpoint `/api/sync` que hace el trabajo en
+2. ~~Cron~~ (hecho para guerras normales y CWL; el texto siguiente es el plan original). Plan acordado: endpoint `/api/sync` que hace el trabajo en
    servidor (elimina la duplicación de lógica y saca el secreto del
    navegador), sync **incremental** (guardar warTags ya procesados; las
    guerras terminadas no cambian), y un programador **externo**
@@ -196,7 +245,7 @@ Durante meses no lo estaba y ninguna regla se aplicaba.
    Pro son 20 $/mes. El endpoint HTTP acepta llamadas de cualquiera, así
    que un programador externo evita el límite. Validar `CRON_SECRET`.
    Los tags ya están en Redis, que era requisito previo.
-3. Creación automática de temporada desde `group.season` (`"2026-08"`).
+3. ~~Creación automática de temporada~~ (hecho en `cwlSyncServer.js`).
 4. Mover a Redis lo que aún está en localStorage: histórico de opted-out,
    snapshot de roster para altas/bajas.
 5. `StatsTable` aún no usa `font-mono` en las cifras.

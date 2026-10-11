@@ -103,6 +103,20 @@ export const getCurrentWarLeagueGroup = async (clanTag) => {
 };
 
 /**
+ * Igual que getCurrentWarLeagueGroup pero SIN tragarse los errores: devuelve
+ * null solo si el clan no esta en CWL (404). Cualquier otro fallo (proxy
+ * caido, 429, 5xx, red) lanza error. Para sincronizar datos: confundir "no
+ * hay CWL" con "no se pudo consultar" hacia creer que no habia datos.
+ */
+export const getCurrentWarLeagueGroupStrict = async (clanTag) => {
+  const encodedTag = encodeURIComponent(normalizeTag(clanTag));
+  const response = await proxyFetch(`clans/${encodedTag}/currentwar/leaguegroup`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Clash API / proxy error (${response.status})`);
+  return response.json();
+};
+
+/**
  * Detalle de una guerra concreta de la CWL (ataques, defensas, mapPosition
  * de cada miembro, etc.) a partir de un warTag devuelto por
  * getCurrentWarLeagueGroup. El warTag incluye el "#" y hay que codificarlo.

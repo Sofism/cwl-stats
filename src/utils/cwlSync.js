@@ -2,9 +2,11 @@ import {
   getClanInfo,
   getClanMembers,
   getCurrentWarLeagueGroup,
+  getCurrentWarLeagueGroupStrict,
   getClanWarLeagueWar,
   normalizeTag,
 } from "./cocApi";
+import { seasonKeyFromGroup, matchesCwlSeason, monthNameFromKey, yearFromKey } from "./cwlSeasonLink";
 
 /**
  * Roster actual del clan, independiente de la CWL. Sirve para saber quién
@@ -49,7 +51,7 @@ const didWeWin = (ourSide, theirSide) => {
  * antes producía dataParser.js a partir del texto pegado manualmente.
  *
  * Devuelve null si el clan no está actualmente en una CWL (grupo no
- * encontrado / 404).
+ * encontrado / 404). Lanza error si el proxy o la API de Clash fallan.
  */
 export const syncCwlData = async (clanTag, clanLabel) => {
   // La API devuelve los tags SIEMPRE en mayusculas y con "#". Hay que
@@ -58,7 +60,7 @@ export const syncCwlData = async (clanTag, clanLabel) => {
 
   const [clanInfo, group] = await Promise.all([
     getClanInfo(tag),
-    getCurrentWarLeagueGroup(tag),
+    getCurrentWarLeagueGroupStrict(tag),
   ]);
 
   if (!group || !group.rounds) {
@@ -541,17 +543,36 @@ export const getCurrentCwlWar = async (clanTag) => {
 };
 
 /**
- * Descarga los dos clanes y avisa si guardar el resultado BORRARIA datos
- * que ya habia (p. ej. una CWL nueva recien emparejada, con 0 rondas
- * jugadas, sobrescribiendo una temporada que ya tenia jugadores reales).
- * No guarda nada por si mismo: quien la llama decide si aplicar el
- * resultado directo o pedir confirmacion primero (ver applyCwlSyncResult).
+ * Descarga los dos clanes y avisa de lo que haria falta confirmar ANTES de
+ * guardar nada:
+ *  - `seasonMismatch`: la CWL descargada es de un mes distinto a la
+ *    temporada abierta. Guardarla aqui mezclaria dos meses (asi acabaron los
+ *    datos de octubre dentro de "September"), asi que no se aplica.
+ *  - `*WouldReduce`: guardar quitaria jugadores que ya estaban guardados.
+ *  - `mainError` / `secondaryError`: el proxy o la API de Clash fallaron
+ *    para ese clan. NO es lo mismo que "no esta en CWL" (mainResult null).
+ * No guarda nada por si mismo: quien la llama decide (ver applyCwlSyncResult).
  */
 export const runCwlSync = async (clanNames, currentSeason) => {
-  const [mainResult, secondaryResult] = await Promise.all([
-    syncCwlData(clanNames.mainTag, "Main"),
-    syncCwlData(clanNames.secondaryTag, "Secondary"),
+  const settle = async (tag, label) => {
+    try {
+      return { result: await syncCwlData(tag, label), error: null };
+    } catch (err) {
+      return { result: null, error: err.message || "Request failed" };
+    }
+  };
+  const [main, secondary] = await Promise.all([
+    settle(clanNames.mainTag, "Main"),
+    settle(clanNames.secondaryTag, "Secondary"),
   ]);
+  const mainResult = main.result;
+  const secondaryResult = secondary.result;
+
+  const key = seasonKeyFromGroup({ season: (mainResult || secondaryResult)?.season });
+  const seasonMismatch =
+    key && !matchesCwlSeason(currentSeason, key)
+      ? { key, month: monthNameFromKey(key), year: yearFromKey(key) }
+      : null;
 
   const mainWouldReduce = Boolean(
     mainResult && mainResult.players.length < (currentSeason.mainClan?.length || 0)
@@ -560,7 +581,15 @@ export const runCwlSync = async (clanNames, currentSeason) => {
     secondaryResult && secondaryResult.players.length < (currentSeason.secondaryClan?.length || 0)
   );
 
-  return { mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce };
+  return {
+    mainResult,
+    secondaryResult,
+    mainError: main.error,
+    secondaryError: secondary.error,
+    seasonMismatch,
+    mainWouldReduce,
+    secondaryWouldReduce,
+  };
 };
 
 /**
@@ -569,6 +598,10 @@ export const runCwlSync = async (clanNames, currentSeason) => {
  * nuevo leagueInfo, el progreso de sincronizacion y los nombres de clan
  * que haya podido corregir la API - quien llama decide que hacer con cada
  * cosa (updateSeasonData, setLeagueInfo, updateClanNames...).
+ *
+ * Sincronizar a mano es una orden explicita de sobrescribir: quita la marca
+ * `manual` de los clanes sincronizados (el sync automatico respeta esa
+ * marca y no pisa lo pegado a mano) y vincula la temporada con su CWL.
  */
 export const applyCwlSyncResult = (currentSeason, leagueInfo, mainResult, secondaryResult) => {
   const newLeagueInfo = {
@@ -590,14 +623,26 @@ export const applyCwlSyncResult = (currentSeason, leagueInfo, mainResult, second
       : leagueInfo.secondary,
   };
 
+  const manual = { ...(currentSeason.manual || {}) };
+  if (mainResult) manual.main = false;
+  if (secondaryResult) manual.secondary = false;
+  const cwlComplete = { ...(currentSeason.cwlComplete || {}) };
+  if (mainResult) cwlComplete.main = Boolean(mainResult.isComplete);
+  if (secondaryResult) cwlComplete.secondary = Boolean(secondaryResult.isComplete);
+
+  const ref = mainResult || secondaryResult;
+  const key = ref ? seasonKeyFromGroup({ season: ref.season }) : null;
+
   const updatedSeason = {
     ...currentSeason,
     mainClan: mainResult ? mainResult.players : currentSeason.mainClan,
     secondaryClan: secondaryResult ? secondaryResult.players : currentSeason.secondaryClan,
     leagueInfo: newLeagueInfo,
+    manual,
+    cwlComplete,
+    ...(key ? { cwlSeason: key } : {}),
   };
 
-  const ref = mainResult || secondaryResult;
   const syncProgress = ref
     ? {
         season: ref.season,

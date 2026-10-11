@@ -72,7 +72,7 @@ const Dashboard = ({
   const [pendingSync, setPendingSync] = useState(null);
   const hasTags = Boolean(clanNames?.mainTag && clanNames?.secondaryTag);
 
-  const finishSync = (mainResult, secondaryResult) => {
+  const finishSync = (mainResult, secondaryResult, errors = {}) => {
     const { updatedSeason, newLeagueInfo, apiNames } = applyCwlSyncResult(
       currentSeason,
       leagueInfo,
@@ -84,12 +84,17 @@ const Dashboard = ({
     if (Object.keys(apiNames).length && updateClanNames) {
       updateClanNames({ ...clanNames, ...apiNames });
     }
-    const parts = [];
-    if (mainResult) parts.push(`${mainResult.clanName || clanNames.main}: ${mainResult.players.length} players`);
-    else parts.push(`${clanNames.main}: not currently in CWL`);
-    if (secondaryResult) parts.push(`${secondaryResult.clanName || clanNames.secondary}: ${secondaryResult.players.length} players`);
-    else parts.push(`${clanNames.secondary}: not currently in CWL`);
-    setSyncMessage(parts.join(" · "));
+    const describe = (result, error, fallbackName) => {
+      if (result) return `${result.clanName || fallbackName}: ${result.players.length} players`;
+      if (error) return `${fallbackName}: could not reach the Clash API (${error}) — kept the saved data`;
+      return `${fallbackName}: not currently in CWL — kept the saved data`;
+    };
+    setSyncMessage(
+      [
+        describe(mainResult, errors.main, clanNames.main),
+        describe(secondaryResult, errors.secondary, clanNames.secondary),
+      ].join(" · ")
+    );
   };
 
   const handleQuickSync = async () => {
@@ -99,21 +104,40 @@ const Dashboard = ({
     }
     setSyncing(true);
     setSyncMessage(null);
-    const { mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce } =
-      await runCwlSync(clanNames, currentSeason);
+    const {
+      mainResult,
+      secondaryResult,
+      mainError,
+      secondaryError,
+      seasonMismatch,
+      mainWouldReduce,
+      secondaryWouldReduce,
+    } = await runCwlSync(clanNames, currentSeason);
 
-    if (mainWouldReduce || secondaryWouldReduce) {
-      setPendingSync({ mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce });
+    if (seasonMismatch) {
+      // Guardar aqui mezclaria dos meses. La temporada del mes correcto se
+      // crea sola con el sync automatico; si aun no existe, se crea a mano.
+      setSyncMessage(
+        `This CWL is ${seasonMismatch.month} ${seasonMismatch.year}, but "${currentSeason.name}" is open. ` +
+          `Open the ${seasonMismatch.month} season (the automatic sync creates it) or create it, then sync there. Nothing was saved.`
+      );
       setSyncing(false);
       return;
     }
-    finishSync(mainResult, secondaryResult);
+
+    const errors = { main: mainError, secondary: secondaryError };
+    if (mainWouldReduce || secondaryWouldReduce) {
+      setPendingSync({ mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce, errors });
+      setSyncing(false);
+      return;
+    }
+    finishSync(mainResult, secondaryResult, errors);
     setSyncing(false);
   };
 
   const confirmPendingSync = () => {
     if (!pendingSync) return;
-    finishSync(pendingSync.mainResult, pendingSync.secondaryResult);
+    finishSync(pendingSync.mainResult, pendingSync.secondaryResult, pendingSync.errors);
     setPendingSync(null);
   };
 
@@ -267,6 +291,19 @@ const Dashboard = ({
         {syncMessage && (
           <div className="mb-4 p-3 rounded-md bg-surface-800 border border-line-strong text-txt-mid text-sm">
             {syncMessage}
+          </div>
+        )}
+
+        {(currentSeason.manual?.main || currentSeason.manual?.secondary) && (
+          <div className="mb-4 p-3 rounded-md border border-line text-txt-low text-xs">
+            {[
+              currentSeason.manual?.main && clanNames.main,
+              currentSeason.manual?.secondary && clanNames.secondary,
+            ]
+              .filter(Boolean)
+              .join(" and ")}
+            : data was pasted by hand, so the automatic sync will not overwrite it. "Sync now"
+            replaces it with what the Clash API reports.
           </div>
         )}
 
