@@ -1,3 +1,5 @@
+import { comparePlayers } from "./sortPlayers";
+
 // Nombres de columna (case-insensitive) que puede usar el bot para cada
 // dato que necesitamos. Se busca POR NOMBRE en la fila de cabecera, no por
 // posicion fija: el export de CWL trae columnas (Attack Percentage,
@@ -21,6 +23,12 @@ const HEADER_ALIASES = {
   defStars: ["Defensive Stars", "Total Def Stars"],
   defDest: ["Total Defensive Destruction", "Total Def Dest"],
   avgDistance: ["Avg. Target Distance", "Avg Target Distance"],
+  // Opcionales: con las tres se separa cuantos ataques fueron contra el
+  // mismo TH (ataques - dips - reaches) y contra uno superior (reaches).
+  // Sin ellas el dato queda vacio.
+  attacks: ["Number of Attacks"],
+  dips: ["Lower TH Hits (Dips)"],
+  reaches: ["Upper TH Hits (Reaches)"],
 };
 
 // Estas son imprescindibles: sin alguna de ellas no se puede calcular nada
@@ -112,6 +120,14 @@ export const parseData = (text, clan) => {
     const defStars = defStarsRaw + missDef * 2;
     const defDest = defDestRaw + missDef * 85;
     const avgDistance = columns.avgDistance !== -1 ? parseFloat(c[columns.avgDistance]) || 0 : 0;
+    const hasSameTh = columns.attacks !== -1 && columns.dips !== -1 && columns.reaches !== -1;
+    const reaches = hasSameTh ? parseInt(c[columns.reaches]) || 0 : 0;
+    const sameTh = hasSameTh
+      ? Math.max(
+          0,
+          (parseInt(c[columns.attacks]) || 0) - (parseInt(c[columns.dips]) || 0) - reaches
+        )
+      : undefined;
 
     data.push({
       name,
@@ -133,26 +149,10 @@ export const parseData = (text, clan) => {
       stars1: oneStarCount,
       stars0: zeroStarCount,
       avgDistance,
+      ...(sameTh !== undefined ? { sameTh, higherTh: reaches } : {}),
     });
   }
 
-  // Ordenamiento: avgDistance SOLO para clan Secondary (DD), NO para Main (True North)
-  return data.sort((a, b) => {
-    // 1. Prioridad: Ataques perdidos (menor es mejor)
-    if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-
-    // 2. Net Stars (mayor es mejor)
-    if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-
-    // 3. Average Distance - SOLO si NO es "Main" (True North)
-    if (a.clan !== "Main" && a.avgDistance !== b.avgDistance) {
-      return a.avgDistance - b.avgDistance;
-    }
-
-    // 4. Three star rate (mayor es mejor)
-    if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-
-    // 5. Net destruction (mayor es mejor)
-    return b.netDest - a.netDest;
-  });
+  // Orden por defecto compartido: ver sortPlayers.js.
+  return data.sort(comparePlayers);
 };

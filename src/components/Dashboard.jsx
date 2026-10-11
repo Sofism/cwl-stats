@@ -6,6 +6,7 @@ import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SyncReduceConfirmModal from "./SyncReduceConfirmModal";
 import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
+import { sortPlayers } from "../utils/sortPlayers";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
 import { runCwlSync, applyCwlSyncResult } from "../utils/cwlSync";
 import HistoricalView from "./HistoricalView";
@@ -34,7 +35,11 @@ const Dashboard = ({
   // una preferencia guardada de antes.
   const [visibleCols, setVisibleCols] = useState(() => {
     try {
-      const saved = localStorage.getItem("cwl-visible-cols");
+      // Clave versionada: al cambiar el orden por defecto, las columnas que
+      // entran en el calculo tenian que verse; una preferencia guardada con
+      // la clave anterior las habria dejado ocultas. Se parte de los valores
+      // por defecto una vez y desde ahi se vuelve a recordar lo que elijas.
+      const saved = localStorage.getItem("cwl-visible-cols-v2");
       return saved
         ? { ...DEFAULT_VISIBLE_COLS, ...JSON.parse(saved) }
         : DEFAULT_VISIBLE_COLS;
@@ -45,7 +50,7 @@ const Dashboard = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem("cwl-visible-cols", JSON.stringify(visibleCols));
+      localStorage.setItem("cwl-visible-cols-v2", JSON.stringify(visibleCols));
     } catch {
       // sin localStorage: simplemente no se recuerda
     }
@@ -182,16 +187,8 @@ const Dashboard = ({
     } else if (sortBy === "missAtk") {
       data.sort((a, b) => a.missAtk - b.missAtk);
     } else {
-      // Default sorting - Different for Main and Secondary
-      data.sort((a, b) => {
-        if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-        if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-        if (activePage !== "main" && a.avgDistance !== b.avgDistance) {
-          return a.avgDistance - b.avgDistance;
-        }
-        if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-        return b.netDest - a.netDest;
-      });
+      // Orden por defecto (igual para los dos clanes): ver sortPlayers.js.
+      data = sortPlayers(data);
     }
 
     return data;
@@ -320,9 +317,11 @@ const Dashboard = ({
         </select>
         {sortBy === "default" && (
           <p className="text-xs text-txt-dim mb-4">
-            Default order: fewest missed attacks first, then highest net stars
-            {activePage !== "main" ? ", then lowest avg. distance," : ","} then
-            highest 3★ rate, then highest net destruction.
+            Default order: fewest missed attacks first (nobody with a missed attack
+            ranks above someone with none), then highest net stars. Ties in net
+            stars are broken by wars in, then attacks on the same or a higher TH,
+            then 3★ rate. Anything still tied goes by net destruction; names never
+            break a tie.
           </p>
         )}
 

@@ -10,6 +10,16 @@
 const UNPUNISHED_DEFENSE_STARS = 2;
 const UNPUNISHED_DEFENSE_DEST = 85;
 
+// Orden por defecto: copia de src/utils/sortPlayers.js (mismo criterio).
+const sameOrHigherTh = (p) => (p.sameTh || 0) + (p.higherTh || 0);
+const comparePlayers = (a, b) =>
+  (a.missAtk || 0) - (b.missAtk || 0) ||
+  (b.netStars || 0) - (a.netStars || 0) ||
+  (b.wars || 0) - (a.wars || 0) ||
+  sameOrHigherTh(b) - sameOrHigherTh(a) ||
+  (b.threeRate || 0) - (a.threeRate || 0) ||
+  (b.netDest || 0) - (a.netDest || 0);
+
 const didWeWin = (ourSide, theirSide) => {
   if (ourSide.stars !== theirSide.stars) return ourSide.stars > theirSide.stars;
   return ourSide.destructionPercentage > theirSide.destructionPercentage;
@@ -87,6 +97,10 @@ const aggregateCwlPlayers = (ourEndedWars, clanLabel) => {
         defAttacks: [],
         unpunishedDefenses: 0,
         distances: [],
+        sameTh: 0,
+        sameThTriples: 0,
+        higherTh: 0,
+        higherThTriples: 0,
       });
     }
     return byTag.get(member.tag);
@@ -103,7 +117,18 @@ const aggregateCwlPlayers = (ourEndedWars, clanLabel) => {
         p.offAttacks.push(attack.stars);
         p.destTotal += attack.destructionPercentage;
         const defender = them.members.find((m) => m.tag === attack.defenderTag);
-        if (defender) p.distances.push(member.mapPosition - defender.mapPosition);
+        if (defender) {
+          p.distances.push(member.mapPosition - defender.mapPosition);
+          const defTh = defender.townhallLevel || 0;
+          const ownTh = member.townhallLevel || 0;
+          if (defTh === ownTh) {
+            p.sameTh += 1;
+            if (attack.stars === 3) p.sameThTriples += 1;
+          } else if (defTh > ownTh) {
+            p.higherTh += 1;
+            if (attack.stars === 3) p.higherThTriples += 1;
+          }
+        }
       } else {
         p.missedAttacks += 1;
       }
@@ -155,16 +180,14 @@ const aggregateCwlPlayers = (ourEndedWars, clanLabel) => {
       stars1,
       stars0,
       avgDistance,
+      sameTh: p.sameTh,
+      sameThTriples: p.sameThTriples,
+      higherTh: p.higherTh,
+      higherThTriples: p.higherThTriples,
     };
   });
 
-  players.sort((a, b) => {
-    if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-    if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-    if (clanLabel !== "Main" && a.avgDistance !== b.avgDistance) return a.avgDistance - b.avgDistance;
-    if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-    return b.netDest - a.netDest;
-  });
+  players.sort(comparePlayers);
 
   return players;
 };

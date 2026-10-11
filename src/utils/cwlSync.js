@@ -6,6 +6,7 @@ import {
   getClanWarLeagueWar,
   normalizeTag,
 } from "./cocApi";
+import { comparePlayers } from "./sortPlayers";
 import { seasonKeyFromGroup, matchesCwlSeason, monthNameFromKey, yearFromKey } from "./cwlSeasonLink";
 
 /**
@@ -115,6 +116,10 @@ export const syncCwlData = async (clanTag, clanLabel) => {
         defAttacks: [],
         unpunishedDefenses: 0,
         distances: [],
+        sameTh: 0,
+        sameThTriples: 0,
+        higherTh: 0,
+        higherThTriples: 0,
       });
     }
     return byTag.get(member.tag);
@@ -140,6 +145,20 @@ export const syncCwlData = async (clanTag, clanLabel) => {
           // (posición propia - posición del objetivo). Ej: jugador en la
           // posición 5 atacando en 20/25/30 -> (-15,-20,-25) -> media -20.
           p.distances.push(member.mapPosition - defender.mapPosition);
+          // Contra su mismo TH o uno SUPERIOR es lo que mide de verdad el
+          // nivel (los "dips" a TH menores inflan el hit rate). Se guarda por
+          // separado y con cuantos fueron triple: los datos de CWL
+          // desaparecen de la API, y asi queda capturado por si luego se
+          // quiere un 3★% de TH igual o superior.
+          const defTh = defender.townhallLevel || 0;
+          const ownTh = member.townhallLevel || 0;
+          if (defTh === ownTh) {
+            p.sameTh += 1;
+            if (attack.stars === 3) p.sameThTriples += 1;
+          } else if (defTh > ownTh) {
+            p.higherTh += 1;
+            if (attack.stars === 3) p.higherThTriples += 1;
+          }
         }
       } else {
         p.missedAttacks += 1;
@@ -201,19 +220,15 @@ export const syncCwlData = async (clanTag, clanLabel) => {
       stars1,
       stars0,
       avgDistance,
+      sameTh: p.sameTh,
+      sameThTriples: p.sameThTriples,
+      higherTh: p.higherTh,
+      higherThTriples: p.higherThTriples,
     };
   });
 
-  // Mismo criterio de orden que dataParser.js
-  players.sort((a, b) => {
-    if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-    if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-    if (clanLabel !== "Main" && a.avgDistance !== b.avgDistance) {
-      return a.avgDistance - b.avgDistance;
-    }
-    if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-    return b.netDest - a.netDest;
-  });
+  // Orden por defecto compartido: ver sortPlayers.js.
+  players.sort(comparePlayers);
 
   // Posición final dentro del grupo (provisional si aún quedan guerras).
   const position = calculateGroupPosition(group, wars, tag);

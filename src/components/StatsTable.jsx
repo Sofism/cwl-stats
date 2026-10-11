@@ -70,6 +70,14 @@ const StatsTable = memo(({
                   <th className="p-3">Miss Def</th>
                 )}
                 {visibleCols.netStars && <th className="p-3">Net ★</th>}
+                {visibleCols.sameOrHigherTh && (
+                  <th
+                    className="p-3"
+                    title="Attacks against a village of the same or a higher Town Hall level"
+                  >
+                    Hits ≥ TH
+                  </th>
+                )}
                 {visibleCols.netPercent && <th className="p-3">Net %</th>}
                 {visibleCols.threeRate && <th className="p-3">3★%</th>}
                 {visibleCols.starGain && <th className="p-3">★ Gain</th>}
@@ -180,6 +188,18 @@ const StatsTable = memo(({
                               </span>
                             )}
                           </div>
+                        </td>
+                      )}
+                      {visibleCols.sameOrHigherTh && (
+                        <td
+                          className="p-3 tabular"
+                          title={
+                            p.sameTh === undefined
+                              ? undefined
+                              : `${p.sameTh} same TH · ${p.higherTh || 0} higher TH`
+                          }
+                        >
+                          {p.sameTh === undefined ? "—" : p.sameTh + (p.higherTh || 0)}
                         </td>
                       )}
                       {visibleCols.netPercent && (

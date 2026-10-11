@@ -100,6 +100,22 @@ Estos límites condicionan el diseño. No son suposiciones.
 - **La lista de opted-out es una regla interna** y aplica solo a guerras
   normales: si estás OUT no se espera tu ataque. Se captura **al empezar
   cada guerra** (clave: `preparationStartTime`) y se congela.
+- **Orden por defecto de los resultados de CWL** (`src/utils/sortPlayers.js`,
+  copia en `api/_lib/cwlAggregate.js`): 1º menos ataques fallados (nadie con
+  un fallo puede estar por encima de quien no ha fallado); 2º más net stars,
+  y los empates dentro de net stars se rompen por guerras jugadas, luego
+  ataques contra un TH **igual o superior** al propio (`sameTh + higherTh`,
+  los "dips" a TH menores no cuentan), luego 3★%; al final net destruction.
+  **El nombre nunca desempata** (decisión de Santi). `avgDistance` ya no
+  ordena (solo se muestra).
+- `sameTh` / `higherTh` = ataques contra el mismo TH / uno superior. La API
+  los calcula (con sus `...Triples`); del pegado del bot salen de `Number of
+  Attacks − Lower TH Hits − Upper TH Hits` y `Upper TH Hits`. Las temporadas
+  guardadas antes no los tienen: se muestra "—" y cuentan como 0 al ordenar
+  hasta que se resincronicen/repeguen. Ojo: el bot y la API pueden clasificar
+  algún ataque distinto (p. ej. Wiki_Ziki: bot 4 reaches + 1 dip, API 5 superiores).
+- Las columnas visibles se guardan en `cwl-visible-cols-v2` (se versiona para
+  poder reiniciar las preferencias cuando cambian las columnas del orden).
 - `avgDistance` = **posición propia − posición del objetivo**. Confirmado
   contra la definición del bot original: jugador en la posición 5 atacando
   en 20/25/30 da media −20.

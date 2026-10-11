@@ -77,6 +77,7 @@ export const DEFAULT_VISIBLE_COLS = {
   missAtk: true,
   missDef: false,
   netStars: true,
+  sameOrHigherTh: true,
   netPercent: false,
   threeRate: true,
   starGain: true,
