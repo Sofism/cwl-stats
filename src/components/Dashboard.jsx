@@ -5,8 +5,8 @@ import ColumnSelector from "./ColumnSelector";
 import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SyncReduceConfirmModal from "./SyncReduceConfirmModal";
-import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
-import { sortPlayers } from "../utils/sortPlayers";
+import { DEFAULT_VISIBLE_COLS, LEGACY_VISIBLE_COLS } from "../utils/constants";
+import { sortForDisplay, hasNewRanking } from "../utils/sortPlayers";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
 import { runCwlSync, applyCwlSyncResult } from "../utils/cwlSync";
 import HistoricalView from "./HistoricalView";
@@ -30,31 +30,34 @@ const Dashboard = ({
 }) => {
   const [activePage, setActivePage] = useState("main");
   const [sortBy, setSortBy] = useState("default");
-  // Las columnas elegidas se recuerdan entre sesiones. Se fusiona con los
-  // valores por defecto para que las columnas nuevas aparezcan aunque haya
-  // una preferencia guardada de antes.
-  const [visibleCols, setVisibleCols] = useState(() => {
+  // Las columnas elegidas se recuerdan entre sesiones, por separado para
+  // cada sistema de orden (ver sortPlayers.js): las temporadas anteriores
+  // conservan la clave y los valores de siempre; el sistema nuevo usa una
+  // clave propia (versionada). Se fusiona con los valores por defecto para
+  // que las columnas nuevas aparezcan aunque haya una preferencia guardada.
+  const loadCols = (key, defaults) => {
     try {
-      // Clave versionada: al cambiar el orden por defecto, las columnas que
-      // entran en el calculo tenian que verse; una preferencia guardada con
-      // la clave anterior las habria dejado ocultas. Se parte de los valores
-      // por defecto una vez y desde ahi se vuelve a recordar lo que elijas.
-      const saved = localStorage.getItem("cwl-visible-cols-v2");
-      return saved
-        ? { ...DEFAULT_VISIBLE_COLS, ...JSON.parse(saved) }
-        : DEFAULT_VISIBLE_COLS;
+      const saved = localStorage.getItem(key);
+      return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
     } catch {
-      return DEFAULT_VISIBLE_COLS;
+      return defaults;
     }
-  });
+  };
+  const [colsLegacy, setColsLegacy] = useState(() =>
+    loadCols("cwl-visible-cols", LEGACY_VISIBLE_COLS)
+  );
+  const [colsNew, setColsNew] = useState(() =>
+    loadCols("cwl-visible-cols-v2", DEFAULT_VISIBLE_COLS)
+  );
 
   useEffect(() => {
     try {
-      localStorage.setItem("cwl-visible-cols-v2", JSON.stringify(visibleCols));
+      localStorage.setItem("cwl-visible-cols", JSON.stringify(colsLegacy));
+      localStorage.setItem("cwl-visible-cols-v2", JSON.stringify(colsNew));
     } catch {
       // sin localStorage: simplemente no se recuerda
     }
-  }, [visibleCols]);
+  }, [colsLegacy, colsNew]);
   const [showColSelector, setShowColSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showHistorical, setShowHistorical] = useState(false);
@@ -187,8 +190,8 @@ const Dashboard = ({
     } else if (sortBy === "missAtk") {
       data.sort((a, b) => a.missAtk - b.missAtk);
     } else {
-      // Orden por defecto (igual para los dos clanes): ver sortPlayers.js.
-      data = sortPlayers(data);
+      // Orden por defecto: nuevo o anterior segun los datos del clan.
+      data = sortForDisplay(data, activePage);
     }
 
     return data;
@@ -205,6 +208,14 @@ const Dashboard = ({
 
   const data = getData();
   const bonusCount = getBonusCount();
+
+  // Que sistema (y que columnas) se usan depende de los datos del clan que se
+  // esta viendo en esta temporada.
+  const newRanking = hasNewRanking(
+    activePage === "main" ? currentSeason.mainClan : currentSeason.secondaryClan
+  );
+  const visibleCols = newRanking ? colsNew : colsLegacy;
+  const setVisibleCols = newRanking ? setColsNew : setColsLegacy;
 
   return (
     <div className="min-h-screen bg-surface-950 text-txt-mid p-4 md:p-6">
@@ -315,7 +326,7 @@ const Dashboard = ({
           <option value="threeRate">3★ Hitrate</option>
           <option value="missAtk">Missed Attacks</option>
         </select>
-        {sortBy === "default" && (
+        {sortBy === "default" && newRanking && (
           <p className="text-xs text-txt-dim mb-4">
             Default order: fewest missed attacks first (nobody with a missed attack
             ranks above someone with none), then highest net stars. Ties in net
@@ -324,12 +335,20 @@ const Dashboard = ({
             break a tie.
           </p>
         )}
+        {sortBy === "default" && !newRanking && (
+          <p className="text-xs text-txt-dim mb-4">
+            Default order: fewest missed attacks first, then highest net stars
+            {activePage !== "main" ? ", then lowest avg. distance," : ","} then
+            highest 3★ rate, then highest net destruction.
+          </p>
+        )}
 
         <ColumnSelector
           visibleCols={visibleCols}
           setVisibleCols={setVisibleCols}
           showColSelector={showColSelector}
           setShowColSelector={setShowColSelector}
+          showHitsColumn={newRanking}
         />
 
         <ClanTabs

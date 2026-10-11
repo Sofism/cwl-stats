@@ -26,3 +26,30 @@ export const comparePlayers = (a, b) =>
   (b.netDest || 0) - (a.netDest || 0);
 
 export const sortPlayers = (players) => players.slice().sort(comparePlayers);
+
+/**
+ * Hay DOS sistemas de orden, y cual se usa depende de los datos de cada clan
+ * en cada temporada (Santi: las temporadas anteriores se siguen viendo tal
+ * cual; el sistema nuevo vale para lo que se alimenta de la API):
+ *  - nuevo: los jugadores traen `sameTh` (lo escribe el sync de la API y el
+ *    pegado del bot cuando incluye las columnas Dips/Reaches).
+ *  - anterior: sin ese dato.
+ */
+export const hasNewRanking = (players) =>
+  (players || []).some((p) => p.sameTh !== undefined);
+
+/**
+ * Orden anterior, tal cual estaba: missed, net stars, (solo clan secundario)
+ * menor distancia media, 3★% y net destruction.
+ */
+export const compareLegacy = (clanKey) => (a, b) => {
+  if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
+  if (b.netStars !== a.netStars) return b.netStars - a.netStars;
+  if (clanKey !== "main" && a.avgDistance !== b.avgDistance) return a.avgDistance - b.avgDistance;
+  if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
+  return b.netDest - a.netDest;
+};
+
+/** clanKey: "main" | "secondary". Elige el sistema segun los datos. */
+export const sortForDisplay = (players, clanKey) =>
+  hasNewRanking(players) ? sortPlayers(players) : players.slice().sort(compareLegacy(clanKey));

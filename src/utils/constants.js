@@ -71,6 +71,26 @@ export const BASE_BONUSES_30V30 = {
   "Bronze III": 2,
 };
 
+// Columnas por defecto de las temporadas que se ordenan con el sistema
+// ANTERIOR (sin sameTh): exactamente las de antes. Se guardan en la clave
+// original `cwl-visible-cols`, asi que lo que tenias elegido se conserva.
+export const LEGACY_VISIBLE_COLS = {
+  th: false,
+  wars: true,
+  missAtk: true,
+  missDef: false,
+  netStars: true,
+  netPercent: false,
+  threeRate: true,
+  starGain: true,
+  percentGain: false,
+  starGive: true,
+  percentGive: false,
+  sameOrHigherTh: false,
+};
+
+// Columnas por defecto del sistema NUEVO: las que entran en el calculo del
+// orden (wars, missed, net stars, hits >= TH y 3★%) siempre se ven.
 export const DEFAULT_VISIBLE_COLS = {
   th: false,
   wars: true,

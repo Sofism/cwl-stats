@@ -114,6 +114,18 @@ Estos límites condicionan el diseño. No son suposiciones.
   guardadas antes no los tienen: se muestra "—" y cuentan como 0 al ordenar
   hasta que se resincronicen/repeguen. Ojo: el bot y la API pueden clasificar
   algún ataque distinto (p. ej. Wiki_Ziki: bot 4 reaches + 1 dip, API 5 superiores).
+- **Dos sistemas de orden coexisten** (`sortForDisplay` en `sortPlayers.js`):
+  el nuevo se usa cuando los jugadores del clan traen `sameTh` (datos de la
+  API, o pegado del bot con las columnas Dips/Reaches); si no, se usa el
+  anterior tal cual (missed, net stars, solo en el secundario menor distancia
+  media, 3★%, net destruction), con sus columnas de siempre. Así las
+  temporadas anteriores no cambian. Cada sistema recuerda sus columnas en su
+  propia clave: `cwl-visible-cols` (anterior) y `cwl-visible-cols-v2` (nuevo).
+- `avgDistance` (posición propia − posición del objetivo): **+ es bueno**
+  (atacó bases más fuertes), **− es malo** (atacó bases más débiles). OJO: el
+  orden ANTERIOR del clan secundario desempata por la distancia más baja
+  primero, es decir, premia la negativa; se dejó tal cual para no cambiar las
+  temporadas antiguas, pero va al revés que este criterio.
 - Las columnas visibles se guardan en `cwl-visible-cols-v2` (se versiona para
   poder reiniciar las preferencias cuando cambian las columnas del orden).
 - `avgDistance` = **posición propia − posición del objetivo**. Confirmado

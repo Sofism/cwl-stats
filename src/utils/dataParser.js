@@ -1,4 +1,4 @@
-import { comparePlayers } from "./sortPlayers";
+import { sortForDisplay } from "./sortPlayers";
 
 // Nombres de columna (case-insensitive) que puede usar el bot para cada
 // dato que necesitamos. Se busca POR NOMBRE en la fila de cabecera, no por
@@ -153,6 +153,6 @@ export const parseData = (text, clan) => {
     });
   }
 
-  // Orden por defecto compartido: ver sortPlayers.js.
-  return data.sort(comparePlayers);
+  // Orden por defecto compartido (nuevo o anterior segun traiga sameTh): ver sortPlayers.js.
+  return sortForDisplay(data, clan === "Main" ? "main" : "secondary");
 };

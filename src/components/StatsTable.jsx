@@ -177,11 +177,9 @@ const StatsTable = memo(({
                             {p.avgDistance !== 0 && (
                               <span
  className={`text-xs ${
-                                  p.avgDistance < 0
-                                    ? "text-azure-400"
-                                    : "text-orange-400"
+                                  p.avgDistance < 0 ? "text-bad-400" : "text-ok-400"
                                 }`}
-                                title={`Avg Distance: ${p.avgDistance.toFixed(1)}`}
+                                title={`Avg. target distance ${p.avgDistance.toFixed(1)}: own position minus target position. + = attacked stronger (higher-ranked) bases, − = weaker ones.`}
                               >
                                 ({p.avgDistance > 0 ? "+" : ""}
                                 {p.avgDistance.toFixed(1)})
