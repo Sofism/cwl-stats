@@ -38,13 +38,17 @@ const groupWarWinner = (war) => {
   return null;
 };
 
-/** Clasificacion de los 8 clanes con las guerras TERMINADAS que se pasen. */
+// Puntos de CWL: 1 por estrella + 10 por guerra GANADA (el bonus del empate
+// no esta verificado: se asume 0). Copia de src/utils/cwlSync.js.
+const WAR_WIN_POINTS = 10;
+
+/** Clasificacion de los 8 clanes: puntos (estrellas + 10 por victoria), luego destruccion. */
 const rankGroupClans = (group, completedWars) => {
   if (!group.clans) return [];
   const totals = new Map(
     group.clans.map((c) => [
       c.tag,
-      { tag: c.tag, name: c.name, wins: 0, losses: 0, draws: 0, played: 0, stars: 0, destruction: 0 },
+      { tag: c.tag, name: c.name, wins: 0, losses: 0, draws: 0, played: 0, stars: 0, destruction: 0, points: 0 },
     ])
   );
 
@@ -71,8 +75,12 @@ const rankGroupClans = (group, completedWars) => {
     }
   });
 
+  totals.forEach((t) => {
+    t.points = t.stars + t.wins * WAR_WIN_POINTS;
+  });
+
   return Array.from(totals.values())
-    .sort((a, b) => b.wins - a.wins || b.stars - a.stars || b.destruction - a.destruction)
+    .sort((a, b) => b.points - a.points || b.destruction - a.destruction)
     .map((c, i) => ({ ...c, rank: i + 1 }));
 };
 

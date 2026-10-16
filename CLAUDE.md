@@ -165,6 +165,50 @@ Estos límites condicionan el diseño. No son suposiciones.
 - Límite a vigilar: Upstash free admite ~1 MB por petición y las temporadas
   ocupan ~250 KB (+25 KB/mes).
 
+### Clasificación del grupo de CWL
+
+Puntos = **estrellas + 10 por cada guerra ganada**; desempate por destrucción
+total (`rankGroupClans` en `src/utils/cwlSync.js`, copia en
+`api/_lib/cwlAggregate.js`). Antes se ordenaba por victorias primero, que no
+es lo que hace el juego. **Sin verificar:** el bonus de un empate (se asume 0)
+y el desempate exacto; contrastar con la pantalla del juego si llega a
+importar. La pestaña "Live" cuenta además las guerras en curso con su
+marcador actual (provisional: quien va por delante cuenta como ganador). En
+"Rounds" cada lado muestra bases aguantadas (no caídas en 3★, o sea 2★ o
+menos) y hit rate (ataques 3★ sobre ataques usados).
+
+### Captura de guerras normales (fiabilidad)
+
+La API solo expone la guerra ACTUAL, y con guerras seguidas la anterior
+desaparece en cuanto empieza la siguiente. Una auditoría contra el `warlog`
+oficial (octubre 2026) mostró que solo 4 de 13 guerras estaban completas. Reglas
+actuales de `api/sync.js` / `normalWarStore.js`:
+
+- `getCurrentWar` **lanza error** ante cualquier respuesta que no sea 200
+  (proxy dormido, 429, 5xx, registro privado = 403); solo devuelve `null`
+  cuando la API dice `notInWar`. Un fallo puntual ya no se toma por "no hay
+  guerra"; el error sale en el indicador "Last sync" y se reintenta.
+- Si aparece una guerra NUEVA y la anterior no se llegó a ver terminada, la
+  anterior se guarda con su última foto (`recoveredFromFallback`), no se
+  descarta (salvo que nunca tuviera ataques).
+- Si la guerra desaparece ANTES de su `endTime`, se espera una ejecución más
+  (`missingSince`) antes de rescatarla.
+- Un registro completo **sustituye** a uno parcial de la misma guerra
+  (`finalizeIfNew` devuelve `saved` / `upgraded` / `false`).
+- Los datos por jugador de las guerras ya perdidas no se pueden recuperar
+  (el `warlog` solo da resúmenes). Muchas guerras terminan 135★–135★ (empate
+  real entre clanes que se 3-estrellan entre sí); no es un fallo.
+
+### Diagnóstico: `/api/status`
+
+`/api/status?secret=<CRON_SECRET>` dice en lenguaje llano si la configuración
+está bien: variables (requeridas / opcionales), Redis, proxy de Clash,
+registro de guerras legible, cron-job.org (clave válida, trabajos activos,
+últimas ejecuciones), última sincronización y si la guerra en curso tiene sus
+comprobaciones puntuales. Con `&test=1` prueba el anclaje creando y borrando un
+trabajo desactivado. Nunca devuelve claves. La respuesta de `/api/sync` incluye
+`anchoring` y, si falla crear un trabajo, el motivo (`scheduleError`).
+
 ### Sync automático de CWL
 
 `api/sync.js` (el mismo cron de guerras normales) llama a

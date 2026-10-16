@@ -275,16 +275,24 @@ const groupWarWinner = (war) => {
   return null; // empate exacto: no se cuenta como ganada para nadie
 };
 
+// Puntos de CWL: 1 por estrella conseguida + 10 de bonus por cada guerra
+// GANADA. El bonus del empate no esta verificado: aqui se asume que no da
+// puntos (confirmar con la clasificacion del juego si llega a darse un empate
+// exacto, que es rarisimo).
+const WAR_WIN_POINTS = 10;
+
 /**
- * Clasifica los 8 clanes del grupo por (guerras ganadas, estrellas totales,
- * destrucción total) usando SOLO las guerras ya terminadas que se pasen.
+ * Clasifica los 8 clanes del grupo por PUNTOS (estrellas + 10 por guerra
+ * ganada) y, en caso de empate, por destruccion total, con las guerras que se
+ * pasen. Para la clasificacion oficial se pasan solo las TERMINADAS; para la
+ * "en vivo" tambien las que estan en curso, tratando como ganador a quien va
+ * por delante ahora mismo (provisional).
  *
- * ATENCIÓN: sin verificar contra la API real no puedo garantizar al 100%
- * que el criterio de desempate de Supercell sea exactamente este orden
- * (guerras > estrellas > destrucción). Es el orden documentado más
- * habitual, pero conviene confirmarlo con una temporada real.
+ * ATENCION: el orden de puntos y el desempate por destruccion es el
+ * documentado habitualmente, pero no esta contrastado con la pantalla del
+ * juego en una liga con empates a puntos.
  */
-const rankGroupClans = (group, completedWars) => {
+const rankGroupClans = (group, wars) => {
   if (!group.clans) return [];
 
   const totals = new Map(
@@ -300,11 +308,12 @@ const rankGroupClans = (group, completedWars) => {
         played: 0,
         stars: 0,
         destruction: 0,
+        points: 0,
       },
     ])
   );
 
-  completedWars.forEach((war) => {
+  wars.forEach((war) => {
     [war.clan, war.opponent].forEach((side) => {
       const t = totals.get(side.tag);
       if (!t) return;
@@ -327,8 +336,12 @@ const rankGroupClans = (group, completedWars) => {
     }
   });
 
+  totals.forEach((t) => {
+    t.points = t.stars + t.wins * WAR_WIN_POINTS;
+  });
+
   return Array.from(totals.values())
-    .sort((a, b) => b.wins - a.wins || b.stars - a.stars || b.destruction - a.destruction)
+    .sort((a, b) => b.points - a.points || b.destruction - a.destruction)
     .map((c, i) => ({ ...c, rank: i + 1 }));
 };
 
@@ -363,6 +376,19 @@ export const getCwlGroupOverview = async (clanTag) => {
   const completedWars = [...warsByTag.values()].filter((w) => w && isCompletedWar(w));
   const standings = rankGroupClans(group, completedWars);
 
+  // Clasificacion EN VIVO: ademas de las terminadas cuentan las guerras en
+  // curso con su marcador actual (provisional: quien va por delante cuenta
+  // como ganador). `change` = puestos que sube (+) o baja (-) respecto a la
+  // oficial; `live` = el clan tiene una guerra en curso ahora mismo.
+  const inWarWars = [...warsByTag.values()].filter((w) => w && isLiveWar(w));
+  const officialRank = new Map(standings.map((c) => [c.tag, c.rank]));
+  const liveTags = new Set(inWarWars.flatMap((w) => [w.clan.tag, w.opponent.tag]));
+  const liveStandings = rankGroupClans(group, [...completedWars, ...inWarWars]).map((c) => ({
+    ...c,
+    change: (officialRank.get(c.tag) || c.rank) - c.rank,
+    live: liveTags.has(c.tag),
+  }));
+
   const rounds = group.rounds.map((round, i) => ({
     round: i + 1,
     matches: round.warTags
@@ -375,6 +401,31 @@ export const getCwlGroupOverview = async (clanTag) => {
         const attacksUsed = (side) =>
           (side.members || []).reduce((n, m) => n + (m.attacks || []).length, 0);
 
+        // Por cada lado: defensas aguantadas (bases que NO han caido en 3★,
+        // o sea 2★ o menos) y hit rate (ataques que fueron 3★ sobre los
+        // ataques ya usados). En una guerra en curso son cifras parciales.
+        const sideStats = (side, enemy) => {
+          const bestAgainst = new Map();
+          (enemy.members || [])
+            .flatMap((m) => m.attacks || [])
+            .forEach((a) => {
+              const cur = bestAgainst.get(a.defenderTag);
+              if (cur === undefined || a.stars > cur) bestAgainst.set(a.defenderTag, a.stars);
+            });
+          const tripled = [...bestAgainst.values()].filter((st) => st >= 3).length;
+          const used = attacksUsed(side);
+          const triples = (side.members || [])
+            .flatMap((m) => m.attacks || [])
+            .filter((a) => a.stars === 3).length;
+          return {
+            basesHeld: (side.members || []).length - tripled,
+            basesTotal: (side.members || []).length,
+            triples,
+            attacksMade: used,
+            hitRate: used > 0 ? (triples / used) * 100 : null,
+          };
+        };
+
         return {
           warTag: t,
           state: war.state,
@@ -386,6 +437,7 @@ export const getCwlGroupOverview = async (clanTag) => {
             stars: war.clan.stars || 0,
             destruction: war.clan.destructionPercentage || 0,
             attacksLeft: war.teamSize - attacksUsed(war.clan),
+            ...sideStats(war.clan, war.opponent),
           },
           clanB: {
             tag: war.opponent.tag,
@@ -394,13 +446,14 @@ export const getCwlGroupOverview = async (clanTag) => {
             stars: war.opponent.stars || 0,
             destruction: war.opponent.destructionPercentage || 0,
             attacksLeft: war.teamSize - attacksUsed(war.opponent),
+            ...sideStats(war.opponent, war.clan),
           },
         };
       })
       .filter(Boolean),
   }));
 
-  return { ourTag: tag, groupState: group.state, standings, rounds };
+  return { ourTag: tag, groupState: group.state, standings, liveStandings, rounds };
 };
 
 /**

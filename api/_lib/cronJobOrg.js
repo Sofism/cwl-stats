@@ -53,7 +53,14 @@ const parseApiDate = (raw) => {
  * si la llamada falla (best-effort: si falla, el cron habitual sigue
  * siendo la red de seguridad).
  */
+// Ultimo motivo por el que fallo crear un trabajo (null si fue bien). Antes
+// un fallo (clave invalida, plan sin cupo...) era silencioso y el anclaje
+// simplemente no existia; ahora sync.js lo guarda y /api/status lo muestra.
+let lastScheduleError = null;
+const getLastScheduleError = () => lastScheduleError;
+
 const scheduleOneTimeCheck = async (url, when) => {
+  lastScheduleError = null;
   try {
     const res = await apiFetch("/jobs", {
       method: "PUT",
@@ -73,11 +80,71 @@ const scheduleOneTimeCheck = async (url, when) => {
         },
       }),
     });
-    if (!res || !res.ok) return null;
+    if (!res) {
+      lastScheduleError = "CRONJOB_API_KEY is not set";
+      return null;
+    }
+    if (!res.ok) {
+      let body = "";
+      try {
+        body = await res.text();
+      } catch (e) {
+        // sin cuerpo
+      }
+      lastScheduleError = `cron-job.org answered ${res.status} ${body}`.slice(0, 300);
+      console.error("cron-job.org job creation failed:", lastScheduleError);
+      return null;
+    }
     const data = await res.json();
     return data.jobId ?? null;
-  } catch {
+  } catch (err) {
+    lastScheduleError = `request failed: ${err.message}`;
+    console.error("cron-job.org job creation failed:", lastScheduleError);
     return null;
+  }
+};
+
+/** Lista los trabajos de la cuenta de cron-job.org: { jobs } o { error }. */
+const listJobs = async () => {
+  try {
+    const res = await apiFetch("/jobs");
+    if (!res) return { error: "CRONJOB_API_KEY is not set" };
+    const body = await res.json().catch(() => null);
+    if (!res.ok) return { error: `HTTP ${res.status} ${JSON.stringify(body)}`.slice(0, 300) };
+    return { jobs: (body && body.jobs) || [] };
+  } catch (err) {
+    return { error: `request failed: ${err.message}` };
+  }
+};
+
+/**
+ * Prueba de extremo a extremo del anclaje: crea un trabajo DESACTIVADO (no
+ * llega a ejecutarse nunca) con el mismo formato que usa el sync y lo borra
+ * enseguida. Demuestra que la clave puede crear y borrar trabajos.
+ */
+const selfTest = async (url) => {
+  const steps = [];
+  try {
+    const created = await apiFetch("/jobs", {
+      method: "PUT",
+      body: JSON.stringify({
+        job: {
+          url,
+          enabled: false,
+          title: "cwl-stats self-test (safe to delete)",
+          schedule: { timezone: "UTC", expiresAt: 0, minutes: [0], hours: [0], mdays: [1], months: [1], wdays: [-1] },
+        },
+      }),
+    });
+    if (!created) return { ok: false, steps: ["CRONJOB_API_KEY is not set"] };
+    const body = await created.json().catch(() => null);
+    if (!created.ok) return { ok: false, steps: [`create failed: HTTP ${created.status} ${JSON.stringify(body)}`.slice(0, 300)] };
+    steps.push(`create ok (job ${body.jobId})`);
+    const del = await apiFetch(`/jobs/${body.jobId}`, { method: "DELETE" });
+    steps.push(del && del.ok ? "delete ok" : `delete failed (HTTP ${del && del.status}) - remove job ${body.jobId} by hand`);
+    return { ok: !!(del && del.ok), steps };
+  } catch (err) {
+    return { ok: false, steps: [...steps, `request failed: ${err.message}`] };
   }
 };
 
@@ -92,4 +159,11 @@ const deleteScheduledJob = async (jobId) => {
   }
 };
 
-module.exports = { parseApiDate, scheduleOneTimeCheck, deleteScheduledJob };
+module.exports = {
+  parseApiDate,
+  scheduleOneTimeCheck,
+  deleteScheduledJob,
+  getLastScheduleError,
+  listJobs,
+  selfTest,
+};

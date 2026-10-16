@@ -35,13 +35,21 @@ const getClanMembers = async (clanTag) => {
 };
 
 // Estados posibles: notInWar | preparation | inWar | warEnded
+//
+// Devuelve null SOLO si la API contesta que el clan no esta en guerra
+// (state "notInWar"). Cualquier otra respuesta que no sea 200 (proxy dormido
+// o caido, 429, 5xx, registro de guerras privado = 403...) LANZA error: antes
+// se devolvia null y el cron lo tomaba por "la guerra ha desaparecido",
+// guardandola a medias a mitad de batalla.
 const getCurrentWar = async (clanTag) => {
   const tag = normalizeTag(clanTag);
-  const response = await proxyFetch(`clans/${encodeURIComponent(tag)}/currentwar`);
-  if (!response.ok) return null;
-  const data = await response.json();
-  if (!data || data.state === "notInWar") return null;
-  return data;
+  const r = await proxyGet(`clans/${encodeURIComponent(tag)}/currentwar`);
+  if (!r.ok) {
+    const reason = r.data && r.data.reason ? ` ${r.data.reason}` : "";
+    throw new Error(`currentwar request failed (${r.status}${reason})`);
+  }
+  if (!r.data || r.data.state === "notInWar") return null;
+  return r.data;
 };
 
 const getPlayer = async (playerTag) => {
@@ -85,4 +93,5 @@ module.exports = {
   getClanInfo,
   getLeagueGroup,
   getLeagueWar,
+  proxyGet,
 };

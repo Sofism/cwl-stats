@@ -10,14 +10,38 @@ const readJson = async (key, fallback) => {
   return typeof data === "string" ? JSON.parse(data) : data;
 };
 
-/** Guarda `record` en el historico del clan si su warKey no estaba ya. */
+const attackCount = (record) =>
+  ((record && record.us && record.us.players) || []).reduce(
+    (n, p) => n + (p.attacks || []).length,
+    0
+  );
+
+/**
+ * Guarda `record` en el historico del clan.
+ *  - Si su warKey no estaba, se guarda ("saved").
+ *  - Si ya estaba pero era una foto de RESCATE (recoveredFromFallback, a
+ *    medias) y el nuevo registro es completo, o un rescate con mas ataques,
+ *    lo sustituye ("upgraded"): antes la version completa se tiraba por
+ *    "duplicada" y se quedaba la parcial.
+ *  - En cualquier otro caso no hace nada (false).
+ */
 const finalizeIfNew = async (tag, record) => {
   if (!record) return false;
   const finalized = await readJson(finalizedKey(tag), []);
-  if (finalized.some((w) => w.warKey === record.warKey)) return false;
-  finalized.push(record);
+  const i = finalized.findIndex((w) => w.warKey === record.warKey);
+  if (i === -1) {
+    finalized.push(record);
+    await redis.set(finalizedKey(tag), JSON.stringify(finalized));
+    return "saved";
+  }
+  const existing = finalized[i];
+  const better =
+    existing.recoveredFromFallback &&
+    (!record.recoveredFromFallback || attackCount(record) > attackCount(existing));
+  if (!better) return false;
+  finalized[i] = record;
   await redis.set(finalizedKey(tag), JSON.stringify(finalized));
-  return true;
+  return "upgraded";
 };
 
 // Los jugadores salen del clan por minutos u horas y vuelven; la API solo

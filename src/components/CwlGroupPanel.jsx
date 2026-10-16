@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Trophy, Swords } from "lucide-react";
+import { Trophy, Swords, Activity, ArrowUp, ArrowDown } from "lucide-react";
 import { getCwlGroupOverview } from "../utils/cwlSync";
 
 const ClanBadge = ({ badge, name }) =>
@@ -35,11 +35,104 @@ const StandingCard = ({ clan, isUs }) => (
         <div className="text-txt-dim uppercase tracking-wide">Draws</div>
       </div>
     </div>
-    <div className="flex justify-between text-xs text-txt-low mt-3 pt-3 border-t border-line">
+    <div className="flex justify-between items-baseline text-xs text-txt-low mt-3 pt-3 border-t border-line">
       <span>{clan.stars}★</span>
       <span>{clan.destruction.toFixed(1)}%</span>
+      <span className="font-mono text-sm text-txt-hi" title="Stars + 10 per war won">
+        {clan.points} pts
+      </span>
     </div>
   </div>
+);
+
+/**
+ * Clasificacion en vivo en forma de listado: cuenta las guerras en curso con
+ * su marcador de AHORA como si acabaran ya. `change` compara con la
+ * clasificacion oficial (solo rondas terminadas).
+ */
+const LiveStandings = ({ clans, ourTag }) => {
+  const anyLive = clans.some((c) => c.live);
+  return (
+    <div>
+      <p className="text-xs text-txt-dim mb-3">
+        {anyLive
+          ? "Provisional: battles in progress count with their current score, as if they ended now (whoever is ahead is counted as the winner). Points = stars + 10 per war won."
+          : "No battle in progress right now, so this is the same as Standings. Points = stars + 10 per war won."}
+      </p>
+      <div className="border border-line rounded-md overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-950 text-txt-low">
+              <tr className="text-center">
+                <th className="p-3 text-left">#</th>
+                <th className="p-3 text-left">Clan</th>
+                <th className="p-3">W-L-D</th>
+                <th className="p-3">★</th>
+                <th className="p-3">%</th>
+                <th className="p-3 text-accent-400">Pts</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {clans.map((c) => (
+                <tr
+                  key={c.tag}
+                  className={`text-center ${c.tag === ourTag ? "bg-accent-900/20" : ""}`}
+                >
+                  <td className="p-3 text-left whitespace-nowrap">
+                    <span className="font-mono text-txt-hi">{c.rank}</span>
+                    {c.change > 0 && (
+                      <span className="ml-2 inline-flex items-center text-xs text-ok-400">
+                        <ArrowUp className="w-3 h-3" />
+                        {c.change}
+                      </span>
+                    )}
+                    {c.change < 0 && (
+                      <span className="ml-2 inline-flex items-center text-xs text-bad-400">
+                        <ArrowDown className="w-3 h-3" />
+                        {Math.abs(c.change)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3 text-left">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ClanBadge badge={c.badge} name={c.name} />
+                      <span className="font-semibold text-txt-hi truncate">{c.name}</span>
+                      {c.live && (
+                        <span
+                          className="inline-block w-2 h-2 rounded-full bg-accent-400 shrink-0"
+                          title="Battle in progress"
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-3 font-mono whitespace-nowrap">
+                    {c.wins}-{c.losses}-{c.draws}
+                  </td>
+                  <td className="p-3 font-mono">{c.stars}</td>
+                  <td className="p-3 font-mono text-txt-low">{c.destruction.toFixed(1)}</td>
+                  <td className="p-3 font-mono font-semibold text-accent-400">{c.points}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Defensas aguantadas (bases que no cayeron en 3★, es decir 2★ o menos) y
+ * hit rate (ataques 3★ sobre ataques usados) de un lado de una guerra.
+ */
+const SideStats = ({ side, right = false }) => (
+  <span
+    className={`text-[10px] text-txt-dim font-mono flex-1 ${right ? "text-right" : ""}`}
+    title="Held = bases not 3-starred (2★ or less). 3★ = attacks that were 3-stars out of attacks used."
+  >
+    held {side.basesHeld}/{side.basesTotal} · 3★ {side.triples}/{side.attacksMade}
+    {side.hitRate !== null ? ` (${Math.round(side.hitRate)}%)` : ""}
+  </span>
 );
 
 /** Un emparejamiento de una ronda (dos clanes cualesquiera del grupo). */
@@ -71,6 +164,10 @@ const MatchCard = ({ match, ourTag }) => {
         <span className="text-[10px] text-txt-dim font-mono flex-1 text-right">
           {match.clanB.attacksLeft} atk left
         </span>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-1">
+        <SideStats side={match.clanA} />
+        <SideStats side={match.clanB} right />
       </div>
       <div className="text-center text-[10px] text-txt-dim uppercase tracking-wider mt-2">
         {match.state === "warEnded" ? "Ended" : match.state === "inWar" ? "Battle day" : "Preparation"}
@@ -112,29 +209,25 @@ const CwlGroupPanel = ({ clanTag }) => {
 
   return (
     <div className="mt-6">
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setTab("standings")}
-          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors ${
-            tab === "standings"
-              ? "bg-accent-900 border border-accent-400 text-txt-hi"
-              : "border border-line text-txt-low hover:border-line-strong"
-          }`}
-        >
-          <Trophy className="w-4 h-4" />
-          Standings
-        </button>
-        <button
-          onClick={() => setTab("rounds")}
-          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors ${
-            tab === "rounds"
-              ? "bg-accent-900 border border-accent-400 text-txt-hi"
-              : "border border-line text-txt-low hover:border-line-strong"
-          }`}
-        >
-          <Swords className="w-4 h-4" />
-          Rounds
-        </button>
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {[
+          { key: "standings", label: "Standings", icon: Trophy },
+          { key: "live", label: "Live", icon: Activity },
+          { key: "rounds", label: "Rounds", icon: Swords },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors ${
+              tab === key
+                ? "bg-accent-900 border border-accent-400 text-txt-hi"
+                : "border border-line text-txt-low hover:border-line-strong"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        ))}
       </div>
 
       {tab === "standings" && (
@@ -144,6 +237,8 @@ const CwlGroupPanel = ({ clanTag }) => {
           ))}
         </div>
       )}
+
+      {tab === "live" && <LiveStandings clans={overview.liveStandings} ourTag={overview.ourTag} />}
 
       {tab === "rounds" && (
         <div className="space-y-4">

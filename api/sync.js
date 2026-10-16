@@ -1,7 +1,12 @@
 const redis = require("./redis");
 const { getClanMembers, getCurrentWar, getPlayer, normalizeTag } = require("./_lib/cocProxy");
 const { buildNormalWarRecord } = require("./_lib/normalWarStats");
-const { parseApiDate, scheduleOneTimeCheck, deleteScheduledJob } = require("./_lib/cronJobOrg");
+const {
+  parseApiDate,
+  scheduleOneTimeCheck,
+  deleteScheduledJob,
+  getLastScheduleError,
+} = require("./_lib/cronJobOrg");
 const { readJson, finalizeIfNew, touchRoster } = require("./_lib/normalWarStore");
 const { syncCwlForClan } = require("./_lib/cwlSyncServer");
 
@@ -44,6 +49,26 @@ const captureOptOuts = async (clanTag) => {
 };
 
 /**
+ * Guarda como registro (marcado `recoveredFromFallback`) la ULTIMA foto que
+ * se tomo de una guerra que nunca llegamos a ver en estado warEnded, y limpia
+ * su progreso y sus comprobaciones programadas. Una foto sin un solo ataque
+ * (p. ej. solo se vio en preparacion) no es una guerra jugada: se descarta.
+ */
+const finalizeFromSnapshot = async (tag, progress) => {
+  const record = buildNormalWarRecord(progress.lastWar, tag, progress.optOutTags);
+  if (record) {
+    record.recoveredFromFallback = true;
+    record.fallbackReason = `never observed as warEnded; last seen state was "${progress.lastSeenState}"`;
+  }
+  const hasAttacks = (record?.us?.players || []).some((pl) => pl.attacks.length > 0);
+  const saved = hasAttacks ? await finalizeIfNew(tag, record) : false;
+  await deleteScheduledJob(progress.scheduledFollowUp?.jobId);
+  await deleteScheduledJob(progress.scheduledPreEnd?.jobId);
+  await redis.del(progressKey(tag));
+  return { hasAttacks, saved, warKey: progress.warKey };
+};
+
+/**
  * Sincroniza UN clan. Se llama una vez por invocacion por cada clan que
  * corresponda procesar (ver `handler` mas abajo sobre por que conviene
  * separarlos en dos llamadas del scheduler externo).
@@ -65,34 +90,35 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
     console.error("Roster snapshot error:", err);
   }
 
+  // Lanza error si la API/el proxy fallan (ver getCurrentWar): un fallo
+  // puntual NO debe tomarse por "no hay guerra". El error llega al handler,
+  // que lo anota en el indicador "Last sync", y la proxima ejecucion reintenta.
   const war = await getCurrentWar(tag);
   const progress = await readJson(progressKey(tag), null);
 
   if (!war) {
     if (progress?.lastWar) {
-      // La guerra que seguiamos desaparecio de currentwar SIN pasar por
-      // warEnded (la API de Clash solo expone la guerra actual). En vez de
-      // perderla del todo, se rescata con la ULTIMA foto que se guardo
-      // mientras seguia viva: puede faltarle algun ataque de los ultimos
-      // minutos si la ultima foto fue en "inWar", pero es mucho mejor que
-      // nada. Se marca explicitamente para poder distinguirla despues.
-      const record = buildNormalWarRecord(progress.lastWar, tag, progress.optOutTags);
-      if (record) {
-        record.recoveredFromFallback = true;
-        record.fallbackReason = `never observed as warEnded; last seen state was "${progress.lastSeenState}"`;
+      // La API dice "notInWar" pero la guerra que seguiamos aun no deberia
+      // haber terminado: puede ser un glitch. Se espera UNA ejecucion mas
+      // antes de darla por desaparecida; si reaparece, el progreso se
+      // reescribe sin la marca y todo sigue normal.
+      const endDate = parseApiDate(progress.lastWar.endTime);
+      if (endDate && endDate.getTime() > Date.now() && !progress.missingSince) {
+        await redis.set(progressKey(tag), JSON.stringify({ ...progress, missingSince: Date.now() }));
+        return {
+          clan: label,
+          status: "no-war (war vanished before its end time; waiting one more run to confirm)",
+          warKey: progress.warKey,
+        };
       }
-      // Foto sin un solo ataque (p. ej. solo se vio en preparacion): no es
-      // una guerra jugada, guardarla solo contaminaria las estadisticas.
-      const hasAttacks = (record?.us?.players || []).some((pl) => pl.attacks.length > 0);
-      const saved = hasAttacks ? await finalizeIfNew(tag, record) : false;
-      await deleteScheduledJob(progress.scheduledFollowUp?.jobId);
-      await deleteScheduledJob(progress.scheduledPreEnd?.jobId);
-      await redis.del(progressKey(tag));
+      const out = await finalizeFromSnapshot(tag, progress);
       return {
         clan: label,
-        status: !hasAttacks
+        status: !out.hasAttacks
           ? "no-war (discarded previous war: no attacks were ever recorded)"
-          : saved
+          : out.saved === "upgraded"
+          ? "no-war (replaced an earlier partial copy with the last snapshot)"
+          : out.saved
           ? "no-war (recovered previous war from last snapshot, may be incomplete)"
           : "no-war (previous war already finalized)",
         warKey: progress.warKey,
@@ -101,7 +127,16 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
     return { clan: label, status: "no-war" };
   }
 
+  // Guerra NUEVA mientras seguiamos otra que nunca llegamos a ver terminada
+  // (guerras seguidas: la anterior desaparece de currentwar en cuanto empieza
+  // la siguiente). Antes se descartaba sin mas; ahora se guarda con su
+  // ultima foto, marcada como parcial.
   const warKey = war.preparationStartTime || war.startTime;
+  let previous = null;
+  if (progress?.lastWar && progress.warKey !== warKey) {
+    previous = await finalizeFromSnapshot(tag, progress);
+  }
+
   const isSameWar = progress?.warKey === warKey;
   let optOutTags = isSameWar ? progress.optOutTags : null;
 
@@ -125,6 +160,7 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
   // comprobacion puntual en cron-job.org poco despues de ese instante, en
   // vez de fiarlo todo a la cadencia fija del cron externo. Solo se crea
   // una vez por warKey (isSameWar + ya tenia scheduledFollowUp = no-op).
+  let scheduleError = null;
   let scheduledFollowUp = isSameWar ? progress.scheduledFollowUp : null;
   if (!scheduledFollowUp && war.endTime && baseUrl && clanKey) {
     const endDate = parseApiDate(war.endTime);
@@ -133,6 +169,7 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
       const followUpUrl = `${baseUrl}/api/sync?clan=${clanKey}&secret=${encodeURIComponent(process.env.CRON_SECRET)}`;
       const jobId = await scheduleOneTimeCheck(followUpUrl, when);
       if (jobId) scheduledFollowUp = { warKey, jobId };
+      else scheduleError = getLastScheduleError();
     }
   }
 
@@ -148,6 +185,7 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
         const preEndUrl = `${baseUrl}/api/sync?clan=${clanKey}&secret=${encodeURIComponent(process.env.CRON_SECRET)}`;
         const jobId = await scheduleOneTimeCheck(preEndUrl, when);
         if (jobId) scheduledPreEnd = { warKey, jobId };
+        else scheduleError = getLastScheduleError();
       }
     }
   }
@@ -157,11 +195,23 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
   // (ver arriba), esta es la red de la que se puede rescatar.
   await redis.set(
     progressKey(tag),
-    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state, scheduledFollowUp, scheduledPreEnd })
+    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state, scheduledFollowUp, scheduledPreEnd, scheduleError })
   );
 
   if (war.state !== "warEnded") {
-    return { clan: label, status: `tracking (${war.state})`, warKey };
+    return {
+      clan: label,
+      status: `tracking (${war.state})`,
+      warKey,
+      // Comprobaciones puntuales programadas en cron-job.org para esta guerra.
+      anchoring: !process.env.CRONJOB_API_KEY
+        ? "disabled: CRONJOB_API_KEY is not set"
+        : scheduledFollowUp || scheduledPreEnd
+        ? `scheduled (${[scheduledPreEnd && "before end", scheduledFollowUp && "after end"].filter(Boolean).join(" + ")})`
+        : `not scheduled${scheduleError ? `: ${scheduleError}` : ""}`,
+      // Si al aparecer esta guerra se guardo la anterior (guerras seguidas).
+      ...(previous ? { previous } : {}),
+    };
   }
 
   const record = buildNormalWarRecord(war, tag, optOutTags);
@@ -174,9 +224,15 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
 
   return {
     clan: label,
-    status: saved ? "finalized" : "already-finalized",
+    status:
+      saved === "upgraded"
+        ? "finalized (replaced an earlier partial copy)"
+        : saved
+        ? "finalized"
+        : "already-finalized",
     warKey,
     result: record.result,
+    ...(previous ? { previous } : {}),
   };
 };
 
