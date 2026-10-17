@@ -199,6 +199,24 @@ actuales de `api/sync.js` / `normalWarStore.js`:
   (el `warlog` solo da resúmenes). Muchas guerras terminan 135★–135★ (empate
   real entre clanes que se 3-estrellan entre sí); no es un fallo.
 
+### Log de ataques de guerras normales
+
+El log por defecto es una **línea de tiempo cronológica** de todos los ataques
+(los dos bandos), en `NormalWarTimeline.jsx`. El `order` de la API es el número
+global del ataque; los ataques propios (`attacks`) no lo guardaban al
+principio, pero cada ataque aparece también como DEFENSA del otro bando con su
+`order` y `attackerTag`, y de ahí se reconstruye (`buildTimeline` en
+`src/utils/normalWarLog.js`). Las guerras guardadas antes de guardar `order`
+en las defensas (2 de las primeras) no se pueden ordenar: se avisa. Desde ahora
+`attacks` también guarda `order`. Pulsar el nombre de un jugador (en el log, en
+las tarjetas o en Clan stats) abre su ficha (`NormalWarPlayerCard.jsx`): sus
+números acumulados y, guerra a guerra, sus ataques y sus defensas en orden de
+llegada (rojo = el golpe que tumbó la base, gris = golpes posteriores).
+**Clan stats nunca se ordena por nombre** (decisión de Santi): se ordena por la
+métrica elegida y, a igualdad, por las demás de ataque y defensa
+(`compareClanStats`); un empate total conserva el orden de entrada. El
+selector de jugador del log sí es alfabético (es una lista para buscar).
+
 ### Diagnóstico: `/api/status`
 
 `/api/status?secret=<CRON_SECRET>` dice en lenguaje llano si la configuración

@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { X, Swords, ListChecks, BarChart3, ChevronUp, ChevronDown } from "lucide-react";
 import { aggregateNormalWarStats, isEmptyWar } from "../utils/normalWarStats";
+import {
+  buildTimeline,
+  attackOrderIndex,
+  playerHistory,
+  compareClanStats,
+} from "../utils/normalWarLog";
+import NormalWarTimeline from "./NormalWarTimeline";
+import NormalWarPlayerCard from "./NormalWarPlayerCard";
 
 const parseApiDate = (raw) => {
   if (!raw) return null;
@@ -52,27 +60,45 @@ const SyncStatus = ({ lastSync }) => {
   );
 };
 
-/** Tarjeta de un jugador en el log de ataques de una guerra concreta. */
-const AttackLogCard = ({ player, hasDetail }) => (
-  <div className="border border-line rounded-md p-4">
-    <div className="flex items-center justify-between mb-3">
-      <span className="font-semibold text-txt-hi flex items-center gap-2">
-        <OptDot optedOut={player.optedOut} />
-        {player.name}
-      </span>
-      <span className="text-xs text-txt-dim">TH{player.th}</span>
-    </div>
+/**
+ * Tarjeta de un jugador en una guerra concreta. Ataques y defensas van en
+ * orden cronologico, con el numero de ataque (#) cuando se conoce.
+ */
+const AttackLogCard = ({ player, orderIndex, onSelectPlayer }) => {
+  const byOrder = (x, y) => (x.order ?? 1e9) - (y.order ?? 1e9);
+  const attacks = (player.attacks || [])
+    .map((a) => ({
+      ...a,
+      order: a.order ?? orderIndex.get(`${player.tag}|${a.opponentTag}|${a.stars}|${a.destruction}`),
+    }))
+    .sort(byOrder);
+  const defenses = (player.defenses || []).slice().sort(byOrder);
+  return (
+    <div className="border border-line rounded-md p-4">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => onSelectPlayer(player.tag || player.name)}
+          className="font-semibold text-txt-hi flex items-center gap-2 hover:text-accent-400 text-left"
+          title="Open this player's card"
+        >
+          <OptDot optedOut={player.optedOut} />
+          {player.name}
+        </button>
+        <span className="text-xs text-txt-dim">TH{player.th}</span>
+      </div>
 
-    {hasDetail ? (
       <div className="grid grid-cols-2 gap-3">
         <div>
           <div className="text-xs text-accent-400 uppercase tracking-wide mb-1">Offense</div>
-          {(player.attacks || []).length === 0 ? (
+          {attacks.length === 0 ? (
             <p className="text-xs text-bad-400">No attacks used</p>
           ) : (
-            player.attacks.map((a, i) => (
-              <div key={i} className="text-xs text-txt-mid flex justify-between">
-                <span>{a.stars}★ {a.destruction}%{a.fresh ? "" : " (cleanup)"}</span>
+            attacks.map((a, i) => (
+              <div key={i} className="text-xs text-txt-mid flex justify-between gap-2">
+                <span>
+                  {a.order != null && <span className="font-mono text-txt-dim mr-1">#{a.order}</span>}
+                  {a.stars}★ {a.destruction}%{a.fresh ? "" : " (cleanup)"}
+                </span>
                 <span className="text-txt-dim">vs TH{a.opponentTh ?? "?"}</span>
               </div>
             ))
@@ -80,32 +106,24 @@ const AttackLogCard = ({ player, hasDetail }) => (
         </div>
         <div>
           <div className="text-xs text-bad-400 uppercase tracking-wide mb-1">Defense</div>
-          {(player.defenses || []).length === 0 ? (
+          {defenses.length === 0 ? (
             <p className="text-xs text-ok-400">Not attacked</p>
           ) : (
-            player.defenses.map((d, i) => (
-              <div key={i} className="text-xs text-txt-mid flex justify-between">
-                <span>{d.stars}★ {d.destruction}%{d.fresh ? "" : " (cleanup)"}</span>
+            defenses.map((d, i) => (
+              <div key={i} className="text-xs text-txt-mid flex justify-between gap-2">
+                <span>
+                  {d.order != null && <span className="font-mono text-txt-dim mr-1">#{d.order}</span>}
+                  {d.stars}★ {d.destruction}%{d.fresh ? "" : " (cleanup)"}
+                </span>
                 <span className="text-txt-dim">from TH{d.attackerTh ?? "?"}</span>
               </div>
             ))
           )}
         </div>
       </div>
-    ) : (
-      <div className="grid grid-cols-2 gap-3 text-xs">
-        <div>
-          <div className="text-accent-400 uppercase tracking-wide mb-1">Offense</div>
-          <p className="text-txt-mid">{player.offStars}★ · {player.offDest?.toFixed(1)}%</p>
-        </div>
-        <div>
-          <div className="text-bad-400 uppercase tracking-wide mb-1">Defense</div>
-          <p className="text-txt-mid">{player.defStars}★ · {player.defDest?.toFixed(1)}%</p>
-        </div>
-      </div>
-    )}
-  </div>
-);
+    </div>
+  );
+};
 
 /** Barra fina + % grande + n/total; "—" si no hay muestra suficiente. */
 const RateCell = ({ rate, num, den, tone }) => {
@@ -149,9 +167,10 @@ const SortTh = ({ label, sub, col, sort, onSort, className = "" }) => {
 /**
  * Tabla del clan: tres metricas que se leen de un vistazo (3★ rate, defense
  * rate, missed wars), cada una ordenable. Los jugadores sin muestra en la
- * columna ordenada van siempre al final, sea cual sea la direccion.
+ * columna ordenada van siempre al final, sea cual sea la direccion. Pulsar un
+ * nombre abre la ficha del jugador en el log.
  */
-const ClanStatsTable = ({ data, optByTag }) => {
+const ClanStatsTable = ({ data, optByTag, onOpenPlayer }) => {
   const [sort, setSort] = useState({ key: "threeRate", dir: "desc" });
 
   const onSort = (key) =>
@@ -159,15 +178,9 @@ const ClanStatsTable = ({ data, optByTag }) => {
       s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }
     );
 
-  const sorted = data.slice().sort((a, b) => {
-    const av = a[sort.key];
-    const bv = b[sort.key];
-    if (av == null && bv == null) return a.name.localeCompare(b.name);
-    if (av == null) return 1;
-    if (bv == null) return -1;
-    if (av !== bv) return sort.dir === "desc" ? bv - av : av - bv;
-    return a.name.localeCompare(b.name);
-  });
+  // Por la columna elegida y, a igualdad, por las demas metricas de ataque y
+  // defensa (ver compareClanStats). Nunca por nombre.
+  const sorted = data.slice().sort(compareClanStats(sort));
 
   return (
     <div className="border border-line rounded-md overflow-hidden">
@@ -188,10 +201,14 @@ const ClanStatsTable = ({ data, optByTag }) => {
             {sorted.map((p) => (
               <tr key={p.tag || p.name} className="hover:bg-surface-700/30 text-center">
                 <td className="p-3 text-left sticky left-0 z-10 bg-surface-950 whitespace-nowrap">
-                  <span className="inline-flex items-center gap-2 font-semibold text-txt-hi">
+                  <button
+                    onClick={() => onOpenPlayer(p.tag || p.name)}
+                    className="inline-flex items-center gap-2 font-semibold text-txt-hi hover:text-accent-400"
+                    title="Open this player's card"
+                  >
                     <OptDot optedOut={optByTag[p.tag]} />
                     {p.name}
-                  </span>
+                  </button>
                   <span className="ml-2 text-xs text-txt-dim">TH{p.th || "?"}</span>
                 </td>
                 <td className="p-3">
@@ -239,6 +256,10 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   const [loadingSaved, setLoadingSaved] = useState(true);
   const [selectedWarKey, setSelectedWarKey] = useState(null);
   const [defenseFilter, setDefenseFilter] = useState("all");
+  const [logView, setLogView] = useState("timeline");
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [sideFilter, setSideFilter] = useState("all");
+  const [resultFilter, setResultFilter] = useState("all");
 
   useEffect(() => {
     if (!clanTag) return;
@@ -302,7 +323,64 @@ const NormalWarsView = ({ clanNames, onClose }) => {
     if (defenseFilter === "none") return defs.length === 0;
     return true;
   };
-  const visiblePlayers = (selectedWar?.us?.players || []).filter(matchesDefense);
+
+  // --- Log de ataques ---
+  const timeline = buildTimeline(selectedWar);
+  const orderIndex = attackOrderIndex(timeline);
+  const ourTags = new Set((selectedWar?.us?.players || []).map((p) => p.tag));
+
+  // Eventos del log cronologico tras los filtros (bando, resultado y jugador).
+  const events = timeline.events.filter((e) => {
+    if (sideFilter === "us" && e.side !== "us") return false;
+    if (sideFilter === "them" && e.side !== "them") return false;
+    if (resultFilter === "triple" && e.stars !== 3) return false;
+    if (resultFilter === "held" && e.stars === 3) return false;
+    if (selectedPlayer) {
+      const involved = e.side === "us" ? e.attacker : e.defender;
+      if ((involved.tag || involved.name) !== selectedPlayer) return false;
+    }
+    return true;
+  });
+
+  // Jugadores para el selector: los que han salido en alguna guerra, los
+  // actuales del clan (si se conocen) y siempre el seleccionado. Alfabetico a
+  // proposito: es una lista para BUSCAR a alguien, no un ranking.
+  const playerOptions = (() => {
+    const m = new Map();
+    logWars.forEach((w) =>
+      (w.us?.players || []).forEach((pl) => {
+        const key = pl.tag || pl.name;
+        if (activeSet && pl.tag && !activeSet.has(pl.tag) && key !== selectedPlayer) return;
+        m.set(key, { key, name: pl.name, th: pl.th });
+      })
+    );
+    return Array.from(m.values()).sort((x, y) => String(x.name).localeCompare(String(y.name)));
+  })();
+
+  // Ficha del jugador: historial en todas las guerras y sus numeros
+  // acumulados (los mismos que Clan stats, sobre las guerras guardadas).
+  const statsByKey = new Map(
+    aggregateNormalWarStats(savedWars).map((p) => [p.tag || p.name, p])
+  );
+  const history = selectedPlayer ? playerHistory(logWars, selectedPlayer) : [];
+
+  // Vista "By player": una tarjeta por jugador, por orden del primer ataque.
+  const firstOrder = (pl) => {
+    const orders = (pl.attacks || [])
+      .map((a) => a.order ?? orderIndex.get(`${pl.tag}|${a.opponentTag}|${a.stars}|${a.destruction}`))
+      .filter((o) => typeof o === "number");
+    return orders.length ? Math.min(...orders) : Infinity;
+  };
+  const visiblePlayers = (selectedWar?.us?.players || [])
+    .filter(matchesDefense)
+    .filter((pl) => !selectedPlayer || (pl.tag || pl.name) === selectedPlayer)
+    .slice()
+    .sort((x, y) => firstOrder(x) - firstOrder(y));
+
+  const openPlayer = (key) => {
+    setSelectedPlayer(key);
+    setTab("attacks");
+  };
 
   return (
     <div className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto p-4 md:p-6">
@@ -353,7 +431,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
               </div>
             ) : (
               <>
-                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <div className="flex flex-col sm:flex-row gap-3 mb-3">
                   <select
                     value={selectedWarKey || ""}
                     onChange={(e) => setSelectedWarKey(e.target.value)}
@@ -368,16 +446,91 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                     ))}
                   </select>
                   <select
-                    value={defenseFilter}
-                    onChange={(e) => setDefenseFilter(e.target.value)}
+                    value={selectedPlayer || ""}
+                    onChange={(e) => setSelectedPlayer(e.target.value || null)}
                     className="sm:w-64 bg-surface-800 border border-line rounded px-3 py-2 text-txt-hi text-sm"
                   >
-                    <option value="all">Defense: all players</option>
-                    <option value="held">Defense: held (not 3★)</option>
-                    <option value="triple">Defense: 3-starred</option>
-                    <option value="none">Defense: not attacked</option>
+                    <option value="">Player: all</option>
+                    {playerOptions.map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.name} (TH{o.th || "?"})
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <div className="flex gap-1">
+                    {[
+                      { key: "timeline", label: "Timeline" },
+                      { key: "players", label: "By player" },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setLogView(key)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                          logView === key
+                            ? "border border-accent-400 text-accent-400"
+                            : "border border-line text-txt-low hover:border-line-strong"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {logView === "timeline" ? (
+                    <>
+                      <select
+                        value={sideFilter}
+                        onChange={(e) => setSideFilter(e.target.value)}
+                        className="bg-surface-800 border border-line rounded px-3 py-1.5 text-txt-hi text-sm"
+                      >
+                        <option value="all">Attacks: both sides</option>
+                        <option value="us">Attacks: ours</option>
+                        <option value="them">Attacks: theirs</option>
+                      </select>
+                      <select
+                        value={resultFilter}
+                        onChange={(e) => setResultFilter(e.target.value)}
+                        className="bg-surface-800 border border-line rounded px-3 py-1.5 text-txt-hi text-sm"
+                      >
+                        <option value="all">Result: any</option>
+                        <option value="triple">Result: 3★ only</option>
+                        <option value="held">Result: under 3★ (base held)</option>
+                      </select>
+                    </>
+                  ) : (
+                    <select
+                      value={defenseFilter}
+                      onChange={(e) => setDefenseFilter(e.target.value)}
+                      className="bg-surface-800 border border-line rounded px-3 py-1.5 text-txt-hi text-sm"
+                    >
+                      <option value="all">Defense: all players</option>
+                      <option value="held">Defense: held (not 3★)</option>
+                      <option value="triple">Defense: 3-starred</option>
+                      <option value="none">Defense: not attacked</option>
+                    </select>
+                  )}
+                </div>
+
+                {selectedPlayer && history.length > 0 && (
+                  <NormalWarPlayerCard
+                    stats={statsByKey.get(selectedPlayer)}
+                    history={history}
+                    optedOut={optByTag[selectedPlayer]}
+                    selectedWarKey={selectedWarKey}
+                    onSelectWar={setSelectedWarKey}
+                    onClear={() => setSelectedPlayer(null)}
+                  />
+                )}
+                {selectedPlayer && history.length === 0 && (
+                  <div className="border border-line rounded-md p-3 mb-3 text-xs text-txt-low">
+                    This player has no recorded wars.{" "}
+                    <button className="underline" onClick={() => setSelectedPlayer(null)}>
+                      Clear
+                    </button>
+                  </div>
+                )}
 
                 {selectedWar && selectedWar !== liveWar && (isEmptyWar(selectedWar) || selectedWar.recoveredFromFallback) && (
                   <div className="border border-line rounded-md p-3 mb-3 text-xs text-txt-low">
@@ -386,17 +539,43 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                       : "This war was rescued from a snapshot taken before it ended, so some attacks may be missing. It doesn't count toward Missed wars."}
                   </div>
                 )}
-                {selectedWar && visiblePlayers.length === 0 && (
-                  <div className="border border-line rounded-md p-6 text-center text-txt-low text-sm">
-                    No players match this defense filter.
-                  </div>
+
+                {selectedWar && logView === "timeline" && (
+                  <>
+                    {!timeline.hasOrder && timeline.events.length > 0 && (
+                      <div className="border border-line rounded-md p-3 mb-3 text-xs text-txt-low">
+                        The order of attacks was not recorded for this older war, so the list below is not
+                        chronological.
+                      </div>
+                    )}
+                    <NormalWarTimeline
+                      events={events}
+                      hasOrder={timeline.hasOrder}
+                      ourTags={ourTags}
+                      selectedKey={selectedPlayer}
+                      onSelectPlayer={openPlayer}
+                    />
+                  </>
                 )}
-                {selectedWar && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {visiblePlayers.map((p) => (
-                      <AttackLogCard key={p.tag || p.name} player={p} hasDetail />
-                    ))}
-                  </div>
+
+                {selectedWar && logView === "players" && (
+                  <>
+                    {visiblePlayers.length === 0 && (
+                      <div className="border border-line rounded-md p-6 text-center text-txt-low text-sm">
+                        No players match this filter.
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {visiblePlayers.map((p) => (
+                        <AttackLogCard
+                          key={p.tag || p.name}
+                          player={p}
+                          orderIndex={orderIndex}
+                          onSelectPlayer={openPlayer}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </>
             )}
@@ -451,7 +630,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   <span className="text-ok-400">green</span> in, <span className="text-bad-400">red</span> out.
                   Players who left the clan more than 12 h ago are hidden.
                 </p>
-                <ClanStatsTable data={clanStats} optByTag={optByTag} />
+                <ClanStatsTable data={clanStats} optByTag={optByTag} onOpenPlayer={openPlayer} />
               </>
             )}
           </div>

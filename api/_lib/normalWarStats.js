@@ -44,6 +44,8 @@ const buildRoster = (members, opposingMembers, attacksMade, freshMade, attacksFa
         stars: a.stars,
         destruction: a.destructionPercentage,
         fresh: freshMade.get(a.defenderTag) === a.order,
+        // Orden global del ataque en la guerra: permite el log cronologico.
+        order: a.order,
         opponentTag: a.defenderTag,
         opponentTh: opponent ? opponent.townhallLevel : null,
       };
