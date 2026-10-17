@@ -154,6 +154,18 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               </div>
             </div>
           ))}
+          {(accent !== "rust" || alertColor !== "amber" || dataColor !== "azure") && (
+            <button
+              onClick={() => {
+                pickRole("accent", "rust");
+                pickRole("alert", "amber");
+                pickRole("data", "azure");
+              }}
+              className="text-xs text-txt-low hover:text-txt-hi border border-line-strong rounded-md px-3 py-1.5"
+            >
+              Reset colours to default
+            </button>
+          )}
           {dataColor === accent && (
             <p className="text-xs text-amber-400">
               Data and primary colours match — data will not stand out from the buttons.
