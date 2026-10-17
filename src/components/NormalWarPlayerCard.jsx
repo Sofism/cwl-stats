@@ -27,7 +27,12 @@ const pct = (rate) => (rate == null ? "—" : `${Math.round(rate)}%`);
  * @param {object} stats   fila de aggregateNormalWarStats para este jugador
  * @param {Array}  history playerHistory(...) de este jugador
  */
-const NormalWarPlayerCard = ({ stats, history, optedOut, selectedWarKey, onSelectWar, onClear }) => {
+const NormalWarPlayerCard = ({ stats, history, optedOut, selectedWarKey, onSelectWar, onClear, noDataWars = [] }) => {
+  // Guerras con datos y guerras oficiales "sin datos" juntas, por fecha de fin.
+  const rows = [
+    ...history.map((h) => ({ type: "data", h, endTime: h.war.endTime || h.war.warKey })),
+    ...noDataWars.map((w) => ({ type: "nodata", w, endTime: w.endTime })),
+  ].sort((a, b) => String(b.endTime).localeCompare(String(a.endTime)));
   const attacksMade = history.reduce((n, h) => n + h.attacks.length, 0);
   const stars = history.reduce((n, h) => n + h.attacks.reduce((s, a) => s + a.stars, 0), 0);
   const triples = history.reduce((n, h) => n + h.attacks.filter((a) => a.stars === 3).length, 0);
@@ -85,7 +90,29 @@ const NormalWarPlayerCard = ({ stats, history, optedOut, selectedWarKey, onSelec
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {history.map((h) => {
+              {rows.map((row) => {
+                if (row.type === "nodata") {
+                  return (
+                    <tr
+                      key={row.w.warKey}
+                      onClick={() => onSelectWar(row.w.warKey)}
+                      className={`cursor-pointer hover:bg-surface-700/30 ${
+                        row.w.warKey === selectedWarKey ? "bg-accent-900/20" : ""
+                      }`}
+                    >
+                      <td className="p-2 whitespace-nowrap align-top">
+                        <div className="text-txt-dim">{fmtDate(row.w.endTime)}</div>
+                        <div className="text-[10px] text-txt-dim truncate max-w-[9rem]">
+                          {row.w.them?.name ? `vs ${row.w.them.name}` : ""}
+                        </div>
+                      </td>
+                      <td className="p-2 align-top text-txt-dim text-xs" colSpan={2}>
+                        no player data for this war
+                      </td>
+                    </tr>
+                  );
+                }
+                const h = row.h;
                 // Tras el primer triple la base ya habia caido: esos golpes
                 // se pintan apagados, no cuentan como defensa.
                 const firstTriple = h.defenses.findIndex((d) => d.stars === 3);

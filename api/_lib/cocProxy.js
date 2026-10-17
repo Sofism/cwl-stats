@@ -52,6 +52,17 @@ const getCurrentWar = async (clanTag) => {
   return r.data;
 };
 
+/**
+ * Historial OFICIAL de guerras del clan (solo resumenes: resultado, estrellas,
+ * destruccion, ataques usados; nunca datos por jugador). Devuelve null si
+ * falla o el registro es privado, para no confundirlo con "sin guerras".
+ * Sin "?limit=": la API ya devuelve un historial largo y se recorta aqui.
+ */
+const getWarLog = async (clanTag) => {
+  const r = await proxyGet(`clans/${encodeURIComponent(normalizeTag(clanTag))}/warlog`);
+  return r.ok && r.data ? r.data.items || [] : null;
+};
+
 const getPlayer = async (playerTag) => {
   const tag = normalizeTag(playerTag);
   const response = await proxyFetch(`players/${encodeURIComponent(tag)}`);
@@ -94,4 +105,5 @@ module.exports = {
   getLeagueGroup,
   getLeagueWar,
   proxyGet,
+  getWarLog,
 };

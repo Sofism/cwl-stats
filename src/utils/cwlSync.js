@@ -352,6 +352,36 @@ const calculateGroupPosition = (group, wars, clanTag) => {
 };
 
 /**
+ * Grupo de CWL + TODAS sus guerras (hasta ~30 peticiones), con una cache de
+ * 30 s por clan. Antes la vista en vivo (rondas) y el panel de clasificacion
+ * (standings) descargaban las mismas guerras cada uno por su cuenta, y el
+ * inicio otra vez: ~60 peticiones por apertura. Ahora se comparten.
+ * `force` (botones Refresh) se salta la cache. Nunca se usa para sincronizar
+ * datos de temporada (syncCwlData siempre pide lo ultimo).
+ */
+const CWL_CACHE_MS = 30 * 1000;
+const cwlCache = new Map();
+
+const loadCwlGroup = (tag, force = false) => {
+  const hit = cwlCache.get(tag);
+  if (!force && hit && Date.now() - hit.at < CWL_CACHE_MS) return hit.promise;
+
+  const promise = (async () => {
+    const group = await getCurrentWarLeagueGroup(tag);
+    if (!group || !group.rounds) return null;
+    const uniqueTags = [...new Set(group.rounds.flatMap((round) => round.warTags))].filter(
+      (t) => t && t !== "#0"
+    );
+    const entries = await Promise.all(uniqueTags.map(async (t) => [t, await getClanWarLeagueWar(t)]));
+    return { group, warsByTag: new Map(entries) };
+  })();
+  cwlCache.set(tag, { at: Date.now(), promise });
+  // Un fallo no se queda en la cache: el siguiente intento vuelve a pedir.
+  promise.catch(() => cwlCache.delete(tag));
+  return promise;
+};
+
+/**
  * Vista de todo el grupo de CWL para el "en vivo" que se ve en el propio
  * juego: clasificación de los 8 clanes y el emparejamiento de CADA ronda
  * con TODOS los clanes (no solo el nuestro). syncCwlData/getCurrentCwlWar
@@ -359,19 +389,11 @@ const calculateGroupPosition = (group, wars, clanTag) => {
  * clan; esta función hace su propia pasada porque el filtrado es distinto
  * (aquí interesan las 4 guerras de cada ronda, no solo la nuestra).
  */
-export const getCwlGroupOverview = async (clanTag) => {
+export const getCwlGroupOverview = async (clanTag, { force = false } = {}) => {
   const tag = normalizeTag(clanTag);
-  const group = await getCurrentWarLeagueGroup(tag);
-  if (!group || !group.rounds) return null;
-
-  const uniqueTags = [
-    ...new Set(group.rounds.flatMap((round) => round.warTags)),
-  ].filter((t) => t && t !== "#0");
-
-  const entries = await Promise.all(
-    uniqueTags.map(async (t) => [t, await getClanWarLeagueWar(t)])
-  );
-  const warsByTag = new Map(entries);
+  const loaded = await loadCwlGroup(tag, force);
+  if (!loaded) return null;
+  const { group, warsByTag } = loaded;
 
   const completedWars = [...warsByTag.values()].filter((w) => w && isCompletedWar(w));
   const standings = rankGroupClans(group, completedWars);
@@ -569,10 +591,11 @@ const buildRoundDetail = (raw, us, them) => {
  * Devuelve un array vacio si el clan no esta en CWL. Cada elemento incluye
  * `round` (1-7) ademas de todo lo que ya devuelve buildRoundDetail.
  */
-export const getCwlRounds = async (clanTag) => {
+export const getCwlRounds = async (clanTag, { force = false } = {}) => {
   const tag = normalizeTag(clanTag);
-  const group = await getCurrentWarLeagueGroup(tag);
-  if (!group || !group.rounds) return [];
+  const loaded = await loadCwlGroup(tag, force);
+  if (!loaded) return [];
+  const { group, warsByTag } = loaded;
 
   const roundEntries = group.rounds
     .map((round, i) => ({ round: i + 1, warTags: round.warTags.filter((t) => t && t !== "#0") }))
@@ -580,7 +603,7 @@ export const getCwlRounds = async (clanTag) => {
 
   const results = await Promise.all(
     roundEntries.map(async ({ round, warTags }) => {
-      const wars = (await Promise.all(warTags.map((t) => getClanWarLeagueWar(t)))).filter(Boolean);
+      const wars = warTags.map((t) => warsByTag.get(t)).filter(Boolean);
       const ourWar = wars.find((war) => war.clan?.tag === tag || war.opponent?.tag === tag);
       if (!ourWar) return null;
       const isHome = ourWar.clan?.tag === tag;
@@ -601,8 +624,8 @@ export const getCwlRounds = async (clanTag) => {
  * Devuelve null si el clan no esta en CWL o si no hay ninguna ronda
  * abierta en este momento (p. ej. entre rondas).
  */
-export const getCurrentCwlWar = async (clanTag) => {
-  const rounds = await getCwlRounds(clanTag);
+export const getCurrentCwlWar = async (clanTag, opts) => {
+  const rounds = await getCwlRounds(clanTag, opts);
   return (
     rounds.find((r) => r.state === "inWar") ||
     rounds.find((r) => r.state === "preparation") ||

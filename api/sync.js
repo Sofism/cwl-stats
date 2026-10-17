@@ -26,26 +26,29 @@ const CLAN_CONFIG_KEY = "cwl-clan-config";
 const progressKey = (tag) => `normal-wars-progress:${tag}`;
 
 /**
- * Quien tiene warPreference "out" AHORA MISMO. Es la misma logica que
- * captureOptOutsForWar en src/utils/homeStatus.js, movida al servidor para
- * que la foto sea compartida entre dispositivos y no dependa de que
- * alguien tenga la app abierta cuando empieza la guerra.
+ * Quien tiene warPreference "out" AHORA MISMO. Se llama UNA sola vez por
+ * guerra, la primera vez que el cron la ve, y el resultado se congela en el
+ * progreso (optOutTags): no se vuelve a consultar aunque alguien cambie su
+ * estado a mitad de guerra, porque lo que interesa es quien estaba en rojo al
+ * EMPEZAR. Es la unica fuente: la app ya no lo calcula por su cuenta.
  *
  * De 6 en 6: la API limita por segundo (~10 req/s), no por cuota mensual.
  */
 const captureOptOuts = async (clanTag) => {
   const members = await getClanMembers(clanTag);
-  const outTags = [];
+  const players = [];
   for (let i = 0; i < members.length; i += 6) {
     const chunk = members.slice(i, i + 6);
     const results = await Promise.allSettled(chunk.map((m) => getPlayer(m.tag)));
     results.forEach((r, idx) => {
       if (r.status === "fulfilled" && r.value?.warPreference === "out") {
-        outTags.push(chunk[idx].tag);
+        players.push({ tag: chunk[idx].tag, name: chunk[idx].name });
       }
     });
   }
-  return outTags;
+  // Los jugadores opt-out NO estan en la alineacion de la guerra, asi que sus
+  // nombres hay que guardarlos aqui (la guerra solo trae a los que juegan).
+  return { tags: players.map((p) => p.tag), players, total: members.length };
 };
 
 /**
@@ -139,6 +142,9 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
 
   const isSameWar = progress?.warKey === warKey;
   let optOutTags = isSameWar ? progress.optOutTags : null;
+  let optOutCapturedAt = isSameWar ? progress.optOutCapturedAt : null;
+  let optOutPlayers = isSameWar ? progress.optOutPlayers : null;
+  let optOutTotal = isSameWar ? progress.optOutTotal : null;
 
   if (optOutTags === null || optOutTags === undefined) {
     // Guerra nueva para nosotros (o primera vez que corre el cron): se
@@ -152,7 +158,11 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
     // "ahora mismo": la API no expone cuando cambio warPreference, asi que
     // no hay forma de reconstruir el estado real de ese momento. Solo
     // afecta a la primera guerra vista tras activar el cron.
-    optOutTags = await captureOptOuts(tag);
+    const captured = await captureOptOuts(tag);
+    optOutTags = captured.tags;
+    optOutPlayers = captured.players;
+    optOutTotal = captured.total;
+    optOutCapturedAt = Date.now();
   }
 
   // Anclaje: en cuanto se conoce el endTime real de la guerra (disponible
@@ -195,7 +205,7 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
   // (ver arriba), esta es la red de la que se puede rescatar.
   await redis.set(
     progressKey(tag),
-    JSON.stringify({ warKey, optOutTags, lastWar: war, lastSeenState: war.state, scheduledFollowUp, scheduledPreEnd, scheduleError })
+    JSON.stringify({ warKey, optOutTags, optOutPlayers, optOutTotal, optOutCapturedAt, lastWar: war, lastSeenState: war.state, scheduledFollowUp, scheduledPreEnd, scheduleError })
   );
 
   if (war.state !== "warEnded") {
@@ -303,11 +313,17 @@ export default async function handler(req, res) {
       // clan falla de forma independiente (un timeout de red en uno no
       // debe impedir que el otro se procese ni tumbar la respuesta).
       let result;
-      try {
-        result = await syncClan(tag, label, clanKey, baseUrl);
-      } catch (err) {
-        console.error(`Sync error for ${label}:`, err);
-        result = { clan: label, status: "error", error: err.message };
+      if (clanKey === "secondary") {
+        // El clan secundario solo juega CWL: no tiene guerras normales que
+        // seguir, asi que no se piden ni sus miembros ni su guerra actual.
+        result = { clan: label, status: "skipped (normal wars are tracked for the main clan only)" };
+      } else {
+        try {
+          result = await syncClan(tag, label, clanKey, baseUrl);
+        } catch (err) {
+          console.error(`Sync error for ${label}:`, err);
+          result = { clan: label, status: "error", error: err.message };
+        }
       }
       // CWL: se crea la temporada sola cuando aparece el grupo y cada ronda
       // se incorpora al terminar. Va DESPUES de las guerras normales y con

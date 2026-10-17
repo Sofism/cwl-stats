@@ -11,8 +11,6 @@ import CurrentWarView from "./CurrentWarView";
 import NormalWarsView from "./NormalWarsView";
 import {
   getHomeStatus,
-  getCachedOptOuts,
-  captureOptOutsForWar,
 } from "../utils/homeStatus";
 import { getWarLog, getCurrentStreak } from "../utils/cocApi";
 
@@ -158,7 +156,17 @@ const WarHistoryDropdown = ({ clanTag, opponentTag, opponentName }) => {
 };
 
 /** Panel de una guerra (CWL o normal). Misma forma para las dos. */
-const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts, showHistory, clanTag, isCwl }) => {
+const WarPanel = ({
+  title,
+  war,
+  onOpen,
+  optOuts,
+  loadingOptOuts,
+  optOutsPending,
+  showHistory,
+  clanTag,
+  isCwl,
+}) => {
   const [showPending, setShowPending] = useState(false);
   const isPrep = war.state === "preparation";
   const target = parseApiDate(isPrep ? war.startTime : war.endTime);
@@ -286,14 +294,16 @@ const WarPanel = ({ title, war, onOpen, optOuts, loadingOptOuts, showHistory, cl
         </div>
       )}
 
-      {(optOuts || loadingOptOuts) && (
+      {(optOuts || loadingOptOuts || optOutsPending) && (
         <div className="pt-3 mt-3 border-t border-line">
           <div className="flex items-center gap-2 mb-2">
             <ShieldOff className="w-3.5 h-3.5 text-txt-dim" />
             <span className="font-mono text-[11px] tracking-wider text-txt-dim uppercase">
               {loadingOptOuts
                 ? "Checking war preferences…"
-                : `Opted out at war start · ${optOuts.players.length} of ${optOuts.total}`}
+                : !optOuts
+                ? "War preferences not recorded yet — the sync takes them when it first sees the war"
+                : `Opted out at war start · ${optOuts.players.length}${optOuts.total ? ` of ${optOuts.total}` : ""}`}
             </span>
           </div>
           {optOuts && optOuts.players.length > 0 && (
@@ -363,36 +373,53 @@ const SeasonSelector = ({
   const seasonsByYear = getSeasonsByYear();
   const years = Object.keys(seasonsByYear).sort((a, b) => b - a);
 
-  const loadStatus = React.useCallback(() => {
+  const loadStatus = React.useCallback((force = false) => {
     if (!statusClanTag) return;
     setLoadingStatus(true);
-    getHomeStatus(statusClanTag)
+    getHomeStatus(statusClanTag, { force })
       .then(setStatus)
       .finally(() => setLoadingStatus(false));
   }, [statusClanTag]);
 
   useEffect(() => {
-    loadStatus();
+    loadStatus(false);
   }, [loadStatus]);
 
-  // La lista de "war opted out" se congela por guerra: si ya hay foto de
-  // esta guerra se reutiliza; si es una guerra nueva se calcula una vez.
-  // Va en segundo plano para no bloquear la carga del home.
+  // "Opted out at war start": la foto la toma y congela el cron la primera
+  // vez que ve la guerra (api/sync.js); aqui solo se lee de Redis, sin
+  // peticiones a Clash. Calcularla desde el navegador a mitad de guerra daria
+  // un dato falso (alguien pudo cambiar su estado), asi que si el cron aun no
+  // la ha tomado se indica que esta pendiente.
   const warKey = status?.regularWar?.warKey;
+  const [optOutsPending, setOptOutsPending] = useState(false);
   useEffect(() => {
     if (!warKey || !statusClanTag) {
       setOptOuts(null);
-      return;
+      setOptOutsPending(false);
+      return undefined;
     }
-    const cached = getCachedOptOuts(warKey);
-    if (cached) {
-      setOptOuts(cached);
-      return;
-    }
+    let cancelled = false;
     setLoadingOptOuts(true);
-    captureOptOutsForWar(statusClanTag, warKey)
-      .then(setOptOuts)
-      .finally(() => setLoadingOptOuts(false));
+    fetch(`/api/war-optouts?clanTag=${encodeURIComponent(statusClanTag)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const ok = data && data.warKey === warKey && Array.isArray(data.players);
+        setOptOuts(ok ? data : null);
+        setOptOutsPending(!ok);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOptOuts(null);
+          setOptOutsPending(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingOptOuts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [warKey, statusClanTag]);
 
   const handleDeleteConfirm = () => {
@@ -425,7 +452,7 @@ const SeasonSelector = ({
               </button>
             )}
             <button
-              onClick={loadStatus}
+              onClick={() => loadStatus(true)}
               disabled={loadingStatus}
               className="border border-line-strong rounded px-3 py-2 text-sm text-txt-low hover:text-txt-hi transition-colors flex items-center gap-2 disabled:opacity-50"
             >
@@ -486,6 +513,7 @@ const SeasonSelector = ({
                 war={status.regularWar}
                 optOuts={optOuts}
                 loadingOptOuts={loadingOptOuts}
+                optOutsPending={optOutsPending}
                 showHistory
                 clanTag={statusClanTag}
               />

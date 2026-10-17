@@ -1,5 +1,5 @@
 const redis = require("./redis");
-const { normalizeTag, getCurrentWar, getClanMembers } = require("./_lib/cocProxy");
+const { normalizeTag, getCurrentWar, getClanMembers, getWarLog } = require("./_lib/cocProxy");
 const { touchRoster, activeTagsFromSeen } = require("./_lib/normalWarStore");
 const { buildNormalWarRecord } = require("./_lib/normalWarStats");
 
@@ -53,6 +53,40 @@ export default async function handler(req, res) {
       console.error("Sync status error:", e);
     }
 
+    // Historial oficial: permite listar las guerras de las que no hay datos
+    // por jugador (no capturadas o a medias) con su resultado. Solo
+    // guerras normales: las lineas de CWL del historial (1 ataque por
+    // miembro, estrellas por encima del maximo de una guerra) se descartan.
+    let warlog = null;
+    try {
+      const items = await getWarLog(tag);
+      if (items) {
+        warlog = items
+          .filter((it) => it.attacksPerMember !== 1 && (it.clan?.stars || 0) <= (it.teamSize || 0) * 3)
+          .slice(0, 60)
+          .map((it) => ({
+            endTime: it.endTime,
+            result: it.result,
+            teamSize: it.teamSize,
+            attacksPerMember: it.attacksPerMember || 2,
+            us: {
+              stars: it.clan?.stars || 0,
+              destruction: it.clan?.destructionPercentage || 0,
+              attacks: it.clan?.attacks ?? null,
+              expEarned: it.clan?.expEarned ?? null,
+            },
+            them: {
+              tag: it.opponent?.tag,
+              name: it.opponent?.name,
+              stars: it.opponent?.stars || 0,
+              destruction: it.opponent?.destructionPercentage || 0,
+            },
+          }));
+      }
+    } catch (e) {
+      console.error("War log error:", e);
+    }
+
     let live = null;
     try {
       const progress = await redis.get(`normal-wars-progress:${tag}`);
@@ -76,7 +110,7 @@ export default async function handler(req, res) {
       console.error("Live war error:", e);
     }
 
-    return res.status(200).json({ wars, live, activeTags, lastSync });
+    return res.status(200).json({ wars, live, activeTags, lastSync, warlog });
   } catch (err) {
     console.error("Get normal wars error:", err);
     return res.status(500).json({ error: "Failed", details: err.message });

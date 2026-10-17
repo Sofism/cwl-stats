@@ -177,6 +177,30 @@ marcador actual (provisional: quien va por delante cuenta como ganador). En
 "Rounds" cada lado muestra bases aguantadas (no caídas en 3★, o sea 2★ o
 menos) y hit rate (ataques 3★ sobre ataques usados).
 
+### Cómo se obtienen los datos (todo es sondeo, no hay avisos)
+
+La API de Clash **no tiene webhooks ni avisos de cambios**: todo se obtiene
+preguntando. Las peticiones salen de (1) el cron de cron-job.org, cada hora
+por clan (+ 2 ejecuciones puntuales por guerra, antes y después del final), y
+(2) el navegador, solo cuando alguien abre una pantalla o pulsa Refresh/Sync
+now. No hay temporizadores que consulten a Clash. Un clan normal gasta ~3
+peticiones por ejecución (miembros, guerra actual, grupo de CWL), pero **el
+clan secundario no juega guerras normales y se salta esa parte** (solo
+sincroniza CWL).
+
+- **Opt-outs:** se capturan UNA vez por guerra, la primera vez que el cron la
+  ve (~51 peticiones), y se congelan en el progreso (`optOutTags`,
+  `optOutPlayers`, `optOutTotal`, `optOutCapturedAt`). No se vuelven a
+  consultar aunque alguien cambie su estado a mitad de guerra (lo que importa
+  es quién estaba en rojo al empezar). La app los lee de `/api/war-optouts`
+  (solo Redis) y **no los calcula por su cuenta**: si el cron aún no la ha
+  visto, la tarjeta dice que está pendiente.
+- **Vista en vivo de CWL:** el grupo y sus ~28 guerras se descargan UNA vez y
+  se comparten 30 s entre la vista de rondas, el panel de clasificación y el
+  inicio (`loadCwlGroup` en `cwlSync.js`); Refresh se salta la caché.
+- El grupo de CWL de un clan **desaparece de la API** unos días después de
+  acabar la liga (comprobado: el de daddy's dolls ya daba 404 el 17 de octubre).
+
 ### Captura de guerras normales (fiabilidad)
 
 La API solo expone la guerra ACTUAL, y con guerras seguidas la anterior
@@ -216,6 +240,20 @@ llegada (rojo = el golpe que tumbó la base, gris = golpes posteriores).
 métrica elegida y, a igualdad, por las demás de ataque y defensa
 (`compareClanStats`); un empate total conserva el orden de entrada. El
 selector de jugador del log sí es alfabético (es una lista para buscar).
+
+### Guerras sin datos por jugador (historial oficial)
+
+`/api/get-normal-wars` devuelve también `warlog`: el historial OFICIAL de Clash
+(`clans/{tag}/warlog`, ~120 entradas; solo resúmenes: resultado, estrellas,
+destrucción, ataques usados; se descartan las líneas de CWL). La UI
+(`src/utils/normalWarOfficial.js`) lo empareja por hora de fin (±3 h) con las
+guerras guardadas, **desde la primera guerra capturada** (las anteriores no
+se listan): las que no tienen registro, o lo tienen vacío, salen en el
+desplegable como "(no player data)" con una tarjeta de resumen
+(`NormalWarOfficialSummary`). Si los ataques capturados de una guerra
+rescatada igualan los que el historial oficial dice que usó el clan, esa guerra
+se trata como COMPLETA (cuenta para missed wars). Clan stats muestra la línea de
+cobertura ("X of Y wars have player data").
 
 ### Diagnóstico: `/api/status`
 

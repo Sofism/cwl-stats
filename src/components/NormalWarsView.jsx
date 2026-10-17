@@ -9,6 +9,8 @@ import {
 } from "../utils/normalWarLog";
 import NormalWarTimeline from "./NormalWarTimeline";
 import NormalWarPlayerCard from "./NormalWarPlayerCard";
+import NormalWarOfficialSummary from "./NormalWarOfficialSummary";
+import { matchOfficial, isRescuedButComplete } from "../utils/normalWarOfficial";
 
 const parseApiDate = (raw) => {
   if (!raw) return null;
@@ -250,6 +252,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   const [liveWar, setLiveWar] = useState(null);
   const [activeTags, setActiveTags] = useState(null);
   const [lastSync, setLastSync] = useState(null);
+  const [warlog, setWarlog] = useState(null);
   const [statsDefense, setStatsDefense] = useState("all");
   const [statsOpt, setStatsOpt] = useState("all");
   const [statsRange, setStatsRange] = useState("all");
@@ -279,6 +282,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
         const live = data.live && !wars.some((w) => w.warKey === data.live.warKey) ? data.live : null;
         setLiveWar(live);
         setLastSync(data.lastSync || null);
+        setWarlog(Array.isArray(data.warlog) ? data.warlog : null);
         setActiveTags(Array.isArray(data.activeTags) ? data.activeTags : null);
         setSelectedWarKey((live || wars[0])?.warKey || null);
       })
@@ -290,8 +294,28 @@ const NormalWarsView = ({ clanNames, onClose }) => {
     };
   }, [clanTag]);
 
-  const logWars = liveWar ? [liveWar, ...savedWars] : savedWars;
+  // Historial oficial de Clash: guerras sin datos por jugador (no capturadas
+  // o vacias) y los totales oficiales de las parciales.
+  const official = matchOfficial(savedWars, warlog);
+  const dataWars = [
+    ...(liveWar ? [liveWar] : []),
+    ...savedWars.filter((w) => !official.hiddenEmpty.has(w.warKey)),
+  ];
+  // Listado del desplegable: las guerras con datos y las "sin datos", por
+  // fecha de fin (la guerra en vivo siempre primero).
+  const logWars = [
+    ...(liveWar ? [liveWar] : []),
+    ...[...dataWars.filter((w) => w !== liveWar), ...official.noData].sort((a, b) =>
+      String(b.endTime || b.warKey).localeCompare(String(a.endTime || a.warKey))
+    ),
+  ];
   const selectedWar = logWars.find((w) => w.warKey === selectedWarKey) || null;
+  const selectedIsOfficial = !!selectedWar?.official;
+  const selectedOfficialItem = selectedIsOfficial
+    ? selectedWar.item
+    : selectedWar
+    ? official.officialByWarKey.get(selectedWar.warKey)
+    : null;
   // Opt-in de la guerra mas reciente (en curso si la hay): es la foto que
   // congela el cron al empezar cada guerra, no el estado de este instante.
   const optByTag = {};
@@ -304,7 +328,9 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   // savedWars ya viene de mas reciente a mas antigua, asi que slice = ultimas N.
   const activeSet = activeTags ? new Set(activeTags) : null;
   const rangedWars = statsRange === "all" ? savedWars : savedWars.slice(0, Number(statsRange));
-  const clanStats = aggregateNormalWarStats(rangedWars).filter((p) => {
+  const clanStats = aggregateNormalWarStats(rangedWars, {
+    officialByWarKey: official.officialByWarKey,
+  }).filter((p) => {
     if (activeSet && !activeSet.has(p.tag)) return false;
     if (statsOpt === "in" && optByTag[p.tag] !== false) return false;
     if (statsOpt === "out" && optByTag[p.tag] !== true) return false;
@@ -347,7 +373,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   // proposito: es una lista para BUSCAR a alguien, no un ranking.
   const playerOptions = (() => {
     const m = new Map();
-    logWars.forEach((w) =>
+    dataWars.forEach((w) =>
       (w.us?.players || []).forEach((pl) => {
         const key = pl.tag || pl.name;
         if (activeSet && pl.tag && !activeSet.has(pl.tag) && key !== selectedPlayer) return;
@@ -360,9 +386,12 @@ const NormalWarsView = ({ clanNames, onClose }) => {
   // Ficha del jugador: historial en todas las guerras y sus numeros
   // acumulados (los mismos que Clan stats, sobre las guerras guardadas).
   const statsByKey = new Map(
-    aggregateNormalWarStats(savedWars).map((p) => [p.tag || p.name, p])
+    aggregateNormalWarStats(savedWars, { officialByWarKey: official.officialByWarKey }).map((p) => [
+      p.tag || p.name,
+      p,
+    ])
   );
-  const history = selectedPlayer ? playerHistory(logWars, selectedPlayer) : [];
+  const history = selectedPlayer ? playerHistory(dataWars, selectedPlayer) : [];
 
   // Vista "By player": una tarjeta por jugador, por orden del primer ataque.
   const firstOrder = (pl) => {
@@ -439,9 +468,13 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   >
                     {logWars.map((w) => (
                       <option key={w.warKey} value={w.warKey}>
-                        {`${w === liveWar ? "LIVE · " : ""}${isEmptyWar(w) ? "(no data) " : w.recoveredFromFallback ? "(partial) " : ""}${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
-                          w.them?.name ? ` vs ${w.them.name}` : ""
-                        }`}
+                        {w.official
+                          ? `(no player data) ${parseApiDate(w.endTime)?.toLocaleDateString() || ""}${
+                              w.them?.name ? ` vs ${w.them.name}` : ""
+                            }`
+                          : `${w === liveWar ? "LIVE · " : ""}${isEmptyWar(w) ? "(no data) " : w.recoveredFromFallback && !isRescuedButComplete(w, official.officialByWarKey.get(w.warKey)) ? "(partial) " : ""}${w.startTime ? parseApiDate(w.startTime)?.toLocaleDateString() : w.warKey}${
+                              w.them?.name ? ` vs ${w.them.name}` : ""
+                            }`}
                       </option>
                     ))}
                   </select>
@@ -459,7 +492,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   </select>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 mb-4">
+                <div className={`flex flex-wrap items-center gap-3 mb-4 ${selectedIsOfficial ? "hidden" : ""}`}>
                   <div className="flex gap-1">
                     {[
                       { key: "timeline", label: "Timeline" },
@@ -521,6 +554,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                     selectedWarKey={selectedWarKey}
                     onSelectWar={setSelectedWarKey}
                     onClear={() => setSelectedPlayer(null)}
+                    noDataWars={official.noData}
                   />
                 )}
                 {selectedPlayer && history.length === 0 && (
@@ -532,15 +566,31 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   </div>
                 )}
 
-                {selectedWar && selectedWar !== liveWar && (isEmptyWar(selectedWar) || selectedWar.recoveredFromFallback) && (
+                {selectedIsOfficial && (
+                  <NormalWarOfficialSummary item={selectedWar.item} ourName={clanLabel} />
+                )}
+                {!selectedIsOfficial &&
+                  selectedOfficialItem &&
+                  selectedWar.recoveredFromFallback &&
+                  !isRescuedButComplete(selectedWar, selectedOfficialItem) && (
+                  <NormalWarOfficialSummary
+                    item={selectedOfficialItem}
+                    ourName={clanLabel}
+                    captured={timeline.events.filter((e) => e.side === "us").length || selectedWar.us.players.reduce((n, p) => n + (p.attacks || []).length, 0)}
+                  />
+                )}
+
+                {selectedWar && !selectedIsOfficial && selectedWar !== liveWar && (isEmptyWar(selectedWar) || selectedWar.recoveredFromFallback) && (
                   <div className="border border-line rounded-md p-3 mb-3 text-xs text-txt-low">
                     {isEmptyWar(selectedWar)
                       ? "This war has no recorded attacks (likely captured only during preparation). It is excluded from Clan stats."
+                      : isRescuedButComplete(selectedWar, selectedOfficialItem)
+                      ? "This war was rescued from a snapshot, but Clash's official log confirms every attack used was captured, so it counts as complete."
                       : "This war was rescued from a snapshot taken before it ended, so some attacks may be missing. It doesn't count toward Missed wars."}
                   </div>
                 )}
 
-                {selectedWar && logView === "timeline" && (
+                {selectedWar && !selectedIsOfficial && logView === "timeline" && (
                   <>
                     {!timeline.hasOrder && timeline.events.length > 0 && (
                       <div className="border border-line rounded-md p-3 mb-3 text-xs text-txt-low">
@@ -558,7 +608,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   </>
                 )}
 
-                {selectedWar && logView === "players" && (
+                {selectedWar && !selectedIsOfficial && logView === "players" && (
                   <>
                     {visiblePlayers.length === 0 && (
                       <div className="border border-line rounded-md p-6 text-center text-txt-low text-sm">
@@ -630,6 +680,14 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                   <span className="text-ok-400">green</span> in, <span className="text-bad-400">red</span> out.
                   Players who left the clan more than 12 h ago are hidden.
                 </p>
+                {official.coverage && (
+                  <p className="text-xs text-txt-dim mb-3">
+                    Based on the {official.coverage.complete + official.coverage.partial} of{" "}
+                    {official.coverage.total} wars that have player data since capturing started (
+                    {official.coverage.complete} complete, {official.coverage.partial} partial;{" "}
+                    {official.coverage.none} have none).
+                  </p>
+                )}
                 <ClanStatsTable data={clanStats} optByTag={optByTag} onOpenPlayer={openPlayer} />
               </>
             )}

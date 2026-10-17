@@ -21,7 +21,7 @@
 export const isEmptyWar = (war) =>
   !(war.us?.players || []).some((pl) => (pl.attacks || []).length > 0);
 
-export const aggregateNormalWarStats = (wars) => {
+export const aggregateNormalWarStats = (wars, { officialByWarKey } = {}) => {
   const byKey = new Map();
 
   // Clave: el tag; el nombre solo como respaldo si un registro no lo trae.
@@ -51,7 +51,13 @@ export const aggregateNormalWarStats = (wars) => {
     if (isEmptyWar(war)) return;
     // Rescatada de una foto parcial: los ataques que constan valen, pero
     // "no ataco" no se puede afirmar (pudo atacar despues de la foto).
-    const partial = !!war.recoveredFromFallback;
+    // ...salvo que el historial oficial confirme que no faltaba ningun ataque
+    // (ataques capturados >= ataques usados): entonces es una guerra completa.
+    const captured = (war.us?.players || []).reduce((n, pl) => n + (pl.attacks || []).length, 0);
+    const off = officialByWarKey && officialByWarKey.get(war.warKey);
+    const partial =
+      !!war.recoveredFromFallback &&
+      !(off && off.us && off.us.attacks != null && captured >= off.us.attacks);
     (war.us?.players || []).forEach((pl) => {
       const p = getPlayer(pl.tag, pl.name, pl.th);
       p.wars += 1;

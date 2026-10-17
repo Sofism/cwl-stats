@@ -47,7 +47,7 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
   const clanTag = activeClan === "main" ? clanNames?.mainTag : clanNames?.secondaryTag;
   const clanName = activeClan === "main" ? clanNames?.main : clanNames?.secondary;
 
-  const load = useCallback(() => {
+  const load = useCallback((force = false) => {
     if (!clanTag) {
       setError("No clan tag configured. Add it in Settings.");
       setLoading(false);
@@ -55,7 +55,7 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
     }
     setLoading(true);
     setError(null);
-    getCwlRounds(clanTag)
+    getCwlRounds(clanTag, { force })
       .then((data) => {
         setRounds(data);
         if (data.length === 0) {
@@ -76,7 +76,7 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
   }, [clanTag]);
 
   useEffect(() => {
-    load();
+    load(false);
   }, [load]);
 
   const war = rounds.find((r) => r.round === selectedRound) || null;
@@ -123,7 +123,7 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
           </h2>
           <div className="flex gap-2">
             <button
-              onClick={load}
+              onClick={() => load(true)}
               disabled={loading}
  className="px-3 py-2 border border-line-strong rounded-md hover:border-accent-400 disabled:opacity-50 flex items-center gap-2 text-sm text-txt-hi"
             >
