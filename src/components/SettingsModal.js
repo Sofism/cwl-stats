@@ -19,11 +19,13 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
       return fallback;
     }
   };
-  const [accent, setAccentState] = useState(() => readRole("accent", "lime"));
-  const [alertColor, setAlertState] = useState(() => readRole("alert", "rust"));
+  const [accent, setAccentState] = useState(() => readRole("accent", "rust"));
+  const [alertColor, setAlertState] = useState(() => readRole("alert", "amber"));
+  const [dataColor, setDataState] = useState(() => readRole("data", "azure"));
 
   const pickRole = (role, id) => {
     if (role === "accent") setAccentState(id);
+    else if (role === "data") setDataState(id);
     else setAlertState(id);
     if (typeof window.setPaletteRole === "function") {
       window.setPaletteRole(role, id);
@@ -123,6 +125,8 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
           {[
             { role: "accent", label: "Primary colour", value: accent,
               hint: "Buttons, links and interactive elements." },
+            { role: "data", label: "Data colour", value: dataColor,
+              hint: "Our clan's numbers, charts and highlights (never red or orange, those mean trouble)." },
             { role: "alert", label: "Alert colour", value: alertColor,
               hint: "Missing attacks and pending threats." },
           ].map((row) => (
@@ -150,6 +154,11 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               </div>
             </div>
           ))}
+          {dataColor === accent && (
+            <p className="text-xs text-amber-400">
+              Data and primary colours match — data will not stand out from the buttons.
+            </p>
+          )}
           {accent === alertColor && (
             <p className="text-xs text-amber-400">
               Both roles use the same colour — alerts will not stand out.

@@ -7,7 +7,7 @@ const {
   deleteScheduledJob,
   getLastScheduleError,
 } = require("./_lib/cronJobOrg");
-const { readJson, finalizeIfNew, touchRoster } = require("./_lib/normalWarStore");
+const { readJson, finalizeIfNew, touchRoster, finalizedKey } = require("./_lib/normalWarStore");
 const { syncCwlForClan } = require("./_lib/cwlSyncServer");
 const { refreshBadgesIfDue } = require("./_lib/clanBadges");
 
@@ -88,8 +88,10 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
   // Foto del roster para la gracia de "ha salido del clan" (ver
   // touchRoster). Es una peticion mas por ejecucion; si falla no debe
   // impedir el resto del sync.
+  let roster = [];
   try {
-    await touchRoster(tag, await getClanMembers(tag));
+    roster = await getClanMembers(tag);
+    await touchRoster(tag, roster);
   } catch (err) {
     console.error("Roster snapshot error:", err);
   }
@@ -99,6 +101,24 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
   // que lo anota en el indicador "Last sync", y la proxima ejecucion reintenta.
   const war = await getCurrentWar(tag);
   const progress = await readJson(progressKey(tag), null);
+
+  // Guerras cuyo progreso se creo ANTES de guardar los nombres de los opt-out
+  // solo tienen tags: se completan con los nombres del roster actual (ya
+  // descargado arriba, sin peticiones extra). Quien ya no esta en el clan
+  // conserva el tag.
+  if (progress && Array.isArray(progress.optOutTags) && !progress.optOutPlayers && roster.length > 0) {
+    const names = new Map(roster.map((m) => [m.tag, m.name]));
+    // Quien ya no esta en el clan: se busca su nombre en las guerras guardadas.
+    if (progress.optOutTags.some((t) => !names.has(t))) {
+      const past = await readJson(finalizedKey(tag), []);
+      past.forEach((w) =>
+        (w.us?.players || []).forEach((p) => {
+          if (p.tag && p.name && !names.has(p.tag)) names.set(p.tag, p.name);
+        })
+      );
+    }
+    progress.optOutPlayers = progress.optOutTags.map((t) => ({ tag: t, name: names.get(t) || t }));
+  }
 
   if (!war) {
     if (progress?.lastWar) {
@@ -225,6 +245,8 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
       clan: label,
       status: `tracking (${war.state})`,
       warKey,
+      // Primera vez que se ve esta guerra: es cuando se refresca la insignia.
+      warStarted: !isSameWar,
       // Comprobaciones puntuales programadas en cron-job.org para esta guerra.
       anchoring: !process.env.CRONJOB_API_KEY
         ? "disabled: CRONJOB_API_KEY is not set"
@@ -318,14 +340,6 @@ export default async function handler(req, res) {
       targets.push([config.secondaryTag, config.secondary || "Secondary", "secondary"]);
     }
 
-    // Insignias de los clanes para la UI: una vez al dia, desde aqui (nunca en
-    // la carga de la app). Con tope de tiempo para no comerse el de la funcion.
-    try {
-      if (Date.now() - startedAt < 2000) await refreshBadgesIfDue(config);
-    } catch (err) {
-      console.error("Badges error:", err.message);
-    }
-
     const results = [];
     for (const [tag, label, clanKey] of targets) {
       // Secuencial a proposito: no duplicar carga sobre el proxy a la vez
@@ -378,6 +392,20 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error("Sync status write error:", e);
       }
+    }
+
+    // Insignias de los clanes para la UI (ver api/_lib/clanBadges.js): solo si
+    // empezo una guerra para algun clan, o si falta alguna. Nunca en la carga
+    // de la app, y con tope de tiempo para no comerse el de la funcion.
+    try {
+      const started = [];
+      results.forEach((r, i) => {
+        const clanKey = targets[i] && targets[i][2];
+        if (clanKey && (r.warStarted || (r.cwl && r.cwl.newLeague))) started.push(clanKey);
+      });
+      if (Date.now() - startedAt < 6000) await refreshBadgesIfDue(config, { clans: started });
+    } catch (err) {
+      console.error("Badges error:", err.message);
     }
 
     return res.status(200).json({ ok: true, results });

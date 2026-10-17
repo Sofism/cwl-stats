@@ -97,8 +97,11 @@ const fetchCwlResult = async (clanTag, clanLabel, deadline, anchor) => {
     // Liga nueva: las comprobaciones puntuales de la anterior ya no sirven.
     for (const a of Object.values(state.anchors)) await deleteScheduledJob(a.jobId);
   }
-  if (!state || state.season !== key) state = { season: key, wars: {}, teamSize: null, anchors: {} };
-  let stateChanged = false;
+  const newLeague = !state || state.season !== key;
+  if (newLeague) state = { season: key, wars: {}, teamSize: null, anchors: {} };
+  // Una liga recien vista se guarda siempre (aunque aun no haya guerras que
+  // anotar): si no, se volveria a tomar por nueva en cada ejecucion.
+  let stateChanged = newLeague;
 
   const allTags = group.rounds.flatMap((r) => r.warTags).filter((t) => t && t !== "#0");
   const pending = allTags.filter((t) => !(state.wars[t] && state.wars[t].ended));
@@ -197,6 +200,7 @@ const fetchCwlResult = async (clanTag, clanLabel, deadline, anchor) => {
     isComplete: ourEnded.length >= group.rounds.length,
     partial,
     anchors: Object.keys(state.anchors).length,
+    newLeague,
   };
 };
 
@@ -330,6 +334,7 @@ const syncCwlForClan = async ({ tag, clanKey, deadline, baseUrl }) => {
     rounds: `${result.roundsCompleted}/${result.roundsTotal}`,
     players: result.players.length,
     roundChecks: result.anchors,
+    newLeague: result.newLeague,
   };
 };
 

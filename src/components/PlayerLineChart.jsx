@@ -4,7 +4,7 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine
 } from "recharts";
 
-// El acento vive en una variable CSS (--accent-400) para poder cambiarlo
+// El acento vive en una variable CSS (--data-400) para poder cambiarlo
 // desde Ajustes. Recharts necesita un color literal, asi que se lee del
 // documento en tiempo de render.
 const cssVar = (name, fallback) => {
@@ -28,7 +28,7 @@ const CustomTooltip = ({ active, payload, label, metric }) => {
   const m = METRICS.find(m => m.key === metric);
   return (
     <div className="bg-surface-950 border border-line rounded-md p-3 text-sm">
-      <p className="font-semibold text-accent-400 mb-1">{label}</p>
+      <p className="font-semibold text-data-400 mb-1">{label}</p>
       <p className="text-txt-mid">{m?.label}: <span className="text-txt-hi font-semibold">{m?.format(payload[0].value)}</span></p>
     </div>
   );
@@ -89,17 +89,17 @@ const PlayerLineChart = ({ evolution, playerName }) => {
           <Tooltip content={<CustomTooltip metric={metric} />} />
           <ReferenceLine
             y={avg}
-            stroke={cssVar("accent-600", "#71882c")}
+            stroke={cssVar("data-600", "#346798")}
             strokeDasharray="4 4"
-            label={{ value: `Avg: ${currentMetric?.format(avg)}`, fill: cssVar("accent-400", "#a8c74e"), fontSize: 11, position: "insideTopRight" }}
+            label={{ value: `Avg: ${currentMetric?.format(avg)}`, fill: cssVar("data-400", "#5b9dd9"), fontSize: 11, position: "insideTopRight" }}
           />
           <Line
             type="monotone"
             dataKey={metric}
-            stroke={cssVar("accent-400", "#a8c74e")}
+            stroke={cssVar("data-400", "#5b9dd9")}
             strokeWidth={2}
-            dot={{ fill: cssVar("accent-400", "#a8c74e"), r: 4 }}
-            activeDot={{ r: 6, fill: cssVar("accent-300", "#c3dd74") }}
+            dot={{ fill: cssVar("data-400", "#5b9dd9"), r: 4 }}
+            activeDot={{ r: 6, fill: cssVar("data-300", "#8dbfeb") }}
           />
         </LineChart>
       </ResponsiveContainer>

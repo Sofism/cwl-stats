@@ -36,7 +36,7 @@ const CustomTooltip = ({ active, payload, label, metric }) => {
   return (
     <div className="bg-surface-950 border border-line rounded-md p-3 text-sm">
       <p className="font-semibold text-txt-hi mb-1">{label}</p>
-      <p className="text-accent-400">{m?.label}: <span className="text-txt-hi font-semibold">{m?.format(payload[0].value)}</span></p>
+      <p className="text-data-400">{m?.label}: <span className="text-txt-hi font-semibold">{m?.format(payload[0].value)}</span></p>
     </div>
   );
 };

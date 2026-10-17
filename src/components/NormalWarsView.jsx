@@ -93,7 +93,7 @@ const AttackLogCard = ({ player, orderIndex, onSelectPlayer, war }) => {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-xs text-accent-400 uppercase tracking-wide mb-1">Offense</div>
+          <div className="text-xs text-data-400 uppercase tracking-wide mb-1">Offense</div>
           {attacks.length === 0 ? (
             <p className="text-xs text-bad-400">No attacks used</p>
           ) : (
@@ -136,7 +136,7 @@ const AttackLogCard = ({ player, orderIndex, onSelectPlayer, war }) => {
 /** Barra fina + % grande + n/total; "—" si no hay muestra suficiente. */
 const RateCell = ({ rate, num, den, tone }) => {
   if (rate == null) return <span className="text-txt-dim">—</span>;
-  const bar = tone === "ok" ? "bg-ok-400" : "bg-accent-400";
+  const bar = tone === "ok" ? "bg-ok-400" : "bg-data-400";
   return (
     <div className="min-w-[96px]">
       <div className="flex items-baseline justify-center gap-1.5">

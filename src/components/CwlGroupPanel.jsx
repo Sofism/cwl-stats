@@ -13,7 +13,7 @@ const ClanBadge = ({ badge, name }) =>
 const StandingCard = ({ clan, isUs }) => (
   <div
     className={`border rounded-md p-4 ${
-      isUs ? "border-accent-400 bg-accent-900/20" : "border-line"
+      isUs ? "border-data-400 bg-data-900/20" : "border-line"
     }`}
   >
     <div className="flex items-center gap-3 mb-3">
@@ -69,14 +69,14 @@ const LiveStandings = ({ clans, ourTag }) => {
                 <th className="p-3">W-L-D</th>
                 <th className="p-3">★</th>
                 <th className="p-3">%</th>
-                <th className="p-3 text-accent-400">Pts</th>
+                <th className="p-3 text-data-400">Pts</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {clans.map((c) => (
                 <tr
                   key={c.tag}
-                  className={`text-center ${c.tag === ourTag ? "bg-accent-900/20" : ""}`}
+                  className={`text-center ${c.tag === ourTag ? "bg-data-900/20" : ""}`}
                 >
                   <td className="p-3 text-left whitespace-nowrap">
                     <span className="font-mono text-txt-hi">{c.rank}</span>
@@ -99,7 +99,7 @@ const LiveStandings = ({ clans, ourTag }) => {
                       <span className="font-semibold text-txt-hi truncate">{c.name}</span>
                       {c.live && (
                         <span
-                          className="inline-block w-2 h-2 rounded-full bg-accent-400 shrink-0"
+                          className="inline-block w-2 h-2 rounded-full bg-data-400 shrink-0"
                           title="Battle in progress"
                         />
                       )}
@@ -110,7 +110,7 @@ const LiveStandings = ({ clans, ourTag }) => {
                   </td>
                   <td className="p-3 font-mono">{c.stars}</td>
                   <td className="p-3 font-mono text-txt-low">{c.destruction.toFixed(1)}</td>
-                  <td className="p-3 font-mono font-semibold text-accent-400">{c.points}</td>
+                  <td className="p-3 font-mono font-semibold text-data-400">{c.points}</td>
                 </tr>
               ))}
             </tbody>
@@ -141,7 +141,7 @@ const MatchCard = ({ match, ourTag }) => {
   return (
     <div
       className={`border rounded-md p-3 ${
-        involvesUs ? "border-accent-400 bg-accent-900/20" : "border-line"
+        involvesUs ? "border-data-400 bg-data-900/20" : "border-line"
       }`}
     >
       <div className="flex items-center justify-between gap-2">

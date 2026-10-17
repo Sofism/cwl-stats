@@ -58,6 +58,16 @@
               // series de graficos). Nunca en superficies grandes ni en
               // botones primarios.
               amber: { 400: "#d9a441", 900: "#2a2110" },
+              // COLOR DE DATOS (azul por defecto, ajustable): lo "nuestro" y los
+              // numeros neutros (3★ rate, puntos, graficas, "us"). El acento
+              // (rust) queda para la interfaz; verde/rojo solo para bien/mal.
+              data: {
+                300: "rgb(var(--data-300) / <alpha-value>)",
+                400: "rgb(var(--data-400) / <alpha-value>)",
+                500: "rgb(var(--data-500) / <alpha-value>)",
+                600: "rgb(var(--data-600) / <alpha-value>)",
+                900: "rgb(var(--data-900) / <alpha-value>)",
+              },
               // Color de alerta, tambien ajustable desde Ajustes.
               rust: {
                 300: "rgb(var(--alert-300) / <alpha-value>)",
@@ -130,15 +140,30 @@
       };
       window.setAccent = function (name) { window.setPaletteRole("accent", name); };
       window.setAlert = function (name) { window.setPaletteRole("alert", name); };
+      window.setData = function (name) { window.setPaletteRole("data", name); };
       // Se aplican antes de pintar para evitar un parpadeo de color.
       (function () {
-        var accent = "lime", alert = "rust";
+        // Por defecto: acento rust (la marca del clan es naranja) y aviso amber
+        // (si fueran el mismo color, los avisos no destacarian).
+        var accent = "rust", alert = "amber", data = "azure";
         try {
-          accent = localStorage.getItem("cwl-accent") || "lime";
-          alert = localStorage.getItem("cwl-alert") || "rust";
+          accent = localStorage.getItem("cwl-accent") || accent;
+          alert = localStorage.getItem("cwl-alert") || alert;
+          data = localStorage.getItem("cwl-data") || data;
+          // Migracion UNICA: los valores por defecto anteriores (lime / rust) se
+          // guardaban en localStorage solo por abrir la pagina, asi que en un
+          // dispositivo ya usado el nuevo por defecto nunca llegaria a verse.
+          if (!localStorage.getItem("cwl-palette-v2")) {
+            if (accent === "lime") accent = "rust";
+            localStorage.setItem("cwl-palette-v2", "1");
+          }
         } catch (e) {}
+        // Nunca el mismo color para acento y aviso.
+        if (accent === alert) alert = accent === "amber" ? "azure" : "amber";
+        if (data === accent) data = accent === "azure" ? "lime" : "azure";
         window.setAccent(accent);
         window.setAlert(alert);
+        window.setData(data);
       })();
     </script>
   </head>

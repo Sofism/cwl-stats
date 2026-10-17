@@ -202,13 +202,17 @@ menos) y hit rate (ataques 3★ sobre ataques usados).
   `favicon-192.png`) y `apple-touch-icon.png` (cuadrado, iOS aplica su máscara);
   enlazados en `public/index.html`. A 16–32 px el logo se lee bien.
 - **Insignias del juego** (`ClanCrest.jsx`): para distinguir los dos clanes en
-  las pestañas. Las refresca el **cron** (`api/_lib/clanBadges.js`, llamado desde
-  `api/sync.js`): una vez al día, 2 peticiones, guardadas en la config
+  las pestañas. Las pide el **cron** (`api/_lib/clanBadges.js`, llamado desde
+  `api/sync.js`) **solo cuando hace falta**, sin refresco diario: (a) al EMPEZAR
+  una guerra (guerra normal nueva para el clan principal, o liga de CWL nueva
+  para el clan que la juega; solo se pide la insignia de ese clan, 1 petición), y
+  (b) si falta alguna (primera vez o tras cambiar un tag). Se guardan en la config
   (`mainBadge`, `secondaryBadge`, `badgesAt`) y viajan con `clanNames`. **Nunca en
   la lectura de `/api/clan-config`**: pedirlas ahí dejaba la carga de la app
   esperando (con el proxy dormido, hasta un minuto). Si Clash falla se reintenta
-  pasados 10 min. El nivel del clan va DENTRO de la imagen, por eso no se copian
-  como archivo. Si un tag cambia en Ajustes, se descarta su insignia.
+  pasados 10 min. El nivel va DENTRO de la imagen (sube con la XP de guerra), así
+  que puede ir un par de días por detrás: se actualiza al empezar la siguiente
+  guerra. Si un tag cambia en Ajustes, se descarta su insignia.
 
 ### Cómo se obtienen los datos (todo es sondeo, no hay avisos)
 
@@ -359,11 +363,23 @@ sci-fi (se probó Orbitron y se descartó).
 - `txt-hi/mid/low/dim` — cuatro niveles de texto.
 - `accent-*` — color principal, **ajustable por el usuario** en Ajustes.
 - `alert-*` (alias `rust-*`) — color de aviso, **también ajustable**.
+- `data-*` — color de **datos** (azul por defecto, **ajustable** en Ajustes): lo
+  "nuestro" y los números neutros (3★ rate, puntos, gráficas, chip "us", resaltado
+  de nuestro clan). **Regla:** `accent` (rust) solo para la interfaz (botones,
+  pestañas, iconos, hover); `data` para datos neutros; `ok`/`bad` (verde/rojo)
+  solo para bien/mal. El naranja/rosa/rojo en datos se lee como fallo.
 - `ok-*` / `bad-*` — semánticos, fijos.
 - `amber` / `azure` / `lime` — realces puntuales.
 - `void/ink/signal/steel` — **alias legacy** remapeados a los nuevos
   valores. Existen para no romper componentes sin migrar. No usar en
   código nuevo.
+
+**Colores por defecto:** acento **rust** (la marca del clan es naranja) y aviso
+**amber**; nunca el mismo color para los dos (`public/index.html` lo fuerza). Hay
+una migración única (`cwl-palette-v2`): los valores por defecto antiguos
+(lime/rust) se guardaban en localStorage solo por abrir la página, y sin ella el
+nuevo por defecto no se vería en un dispositivo ya usado. Una elección hecha a
+mano (p. ej. azure) no se toca.
 
 **Acento ajustable:** `accent` y `alert` se definen como
 `rgb(var(--accent-400) / <alpha-value>)`. `window.setPaletteRole(role,

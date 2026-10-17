@@ -72,7 +72,7 @@ const NormalWarTimeline = ({ events, hasOrder, hasTiming, war, ourTags, selected
                   <td className="p-3">
                     <span
                       className={`inline-block text-[10px] font-semibold uppercase tracking-wide mr-2 px-1.5 py-0.5 rounded border ${
-                        ours ? "border-accent-400 text-accent-400" : "border-bad-400 text-bad-400"
+                        ours ? "border-data-400 text-data-400" : "border-bad-400 text-bad-400"
                       }`}
                     >
                       {ours ? "us" : "them"}

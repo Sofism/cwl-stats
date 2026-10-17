@@ -441,7 +441,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[
-                  { label: "Seasons", value: filteredSeasons.length, color: "text-accent-400" },
+                  { label: "Seasons", value: filteredSeasons.length, color: "text-data-400" },
                   { label: "Players", value: historicalData.length, color: "text-ok-400" },
                   {
                     label: "Avg 3★ Rate",
@@ -539,11 +539,11 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                             </td>
                           )}
                           {visibleCols.threeRate && (
-                            <td className="p-3 text-accent-400 font-semibold">{p.threeRate.toFixed(1)}%</td>
+                            <td className="p-3 text-data-400 font-semibold">{p.threeRate.toFixed(1)}%</td>
                           )}
                           {visibleCols.offStars && <td className="p-3 text-ok-400">{p.totalOffStars}</td>}
                           {visibleCols.defStars && <td className="p-3 text-bad-400">{p.totalDefStars}</td>}
-                          {visibleCols.seasonsCount && <td className="p-3 text-accent-400">{p.seasonsCount}</td>}
+                          {visibleCols.seasonsCount && <td className="p-3 text-data-400">{p.seasonsCount}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -580,7 +580,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                         const totalMissAtk = combined.reduce((s, p) => s + p.missAtk, 0);
                         return (
                           <tr key={i} className="border-t border-line hover:bg-surface-700/30">
-                            <td className="p-3 font-semibold text-accent-400">{season.name}</td>
+                            <td className="p-3 font-semibold text-data-400">{season.name}</td>
                             <td className="p-3">
                               <LeagueTrend
                                 season={season}
@@ -630,7 +630,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     { label: "Stars Gained", value: selectedPlayer.totalOffStars, color: "text-ok-400" },
                     { label: "Stars Given", value: selectedPlayer.totalDefStars, color: "text-bad-400" },
                     { label: "Net Stars", value: `${selectedPlayer.netStars >= 0 ? "+" : ""}${selectedPlayer.netStars}`, color: selectedPlayer.netStars >= 0 ? "text-ok-400" : "text-bad-400" },
-                    { label: "Avg 3★ Rate", value: `${selectedPlayer.threeRate.toFixed(1)}%`, color: "text-accent-400" },
+                    { label: "Avg 3★ Rate", value: `${selectedPlayer.threeRate.toFixed(1)}%`, color: "text-data-400" },
                     { label: "Total Wars", value: selectedPlayer.totalWars, color: "text-txt-low" },
                     { label: "Missed Attacks", value: selectedPlayer.totalMissAtk, color: selectedPlayer.totalMissAtk > 0 ? "text-bad-400" : "text-ok-400" },
                     { label: "Net Destruction", value: `${selectedPlayer.netDest >= 0 ? "+" : ""}${selectedPlayer.netDest.toFixed(1)}%`, color: selectedPlayer.netDest >= 0 ? "text-ok-400" : "text-bad-400" },
@@ -666,7 +666,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                     <tbody>
                       {getPlayerEvolution(selectedPlayer.key).map((s, i) => (
                         <tr key={i} className="border-t border-line hover:bg-surface-700/30">
-                          <td className="p-3 font-semibold text-accent-400 sticky left-0 z-10 bg-surface-950">{s.season}</td>
+                          <td className="p-3 font-semibold text-data-400 sticky left-0 z-10 bg-surface-950">{s.season}</td>
                           <td className="p-3">{s.wars}</td>
                           <td className="p-3">
                             {s.missAtk > 0
@@ -683,7 +683,7 @@ const HistoricalView = ({ seasons, clanNames, onClose }) => {
                               {s.netDest >= 0 ? "+" : ""}{s.netDest.toFixed(1)}%
                             </span>
                           </td>
-                          <td className="p-3 text-accent-400">{s.threeRate.toFixed(1)}%</td>
+                          <td className="p-3 text-data-400">{s.threeRate.toFixed(1)}%</td>
                           <td className="p-3 text-ok-400">{s.offStars}</td>
                           <td className="p-3 text-bad-400">{s.defStars}</td>
                         </tr>

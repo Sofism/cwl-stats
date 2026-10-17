@@ -213,7 +213,7 @@ const StatsTable = memo(({
                         </td>
                       )}
                       {visibleCols.threeRate && (
-                        <td className="p-3 text-accent-400 font-semibold">
+                        <td className="p-3 text-data-400 font-semibold">
                           {p.threeRate.toFixed(1)}%
                         </td>
                       )}

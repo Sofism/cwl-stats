@@ -221,7 +221,7 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
 
               <div className="grid grid-cols-3 items-center gap-4">
                 <div className="text-right">
-                  <p className="font-semibold text-accent-300 truncate">
+                  <p className="font-semibold text-data-300 truncate">
                     {war.us.name || clanName}
                   </p>
                   <p className="text-3xl font-semibold text-txt-hi">{war.us.stars}★</p>
