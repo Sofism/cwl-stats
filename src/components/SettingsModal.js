@@ -7,6 +7,7 @@ const ACCENT_OPTIONS = [
   { id: "amber", label: "Amber", swatch: "#d9a441" },
   { id: "rust", label: "Rust", swatch: "#e0754a" },
   { id: "violet", label: "Violet", swatch: "#927dd6" },
+  { id: "slate", label: "Neutral", swatch: "#d4d4d8" },
 ];
 
 const SettingsModal = ({ clanNames, onSave, onClose }) => {
@@ -19,7 +20,7 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
       return fallback;
     }
   };
-  const [accent, setAccentState] = useState(() => readRole("accent", "rust"));
+  const [accent, setAccentState] = useState(() => readRole("accent", "slate"));
   const [alertColor, setAlertState] = useState(() => readRole("alert", "amber"));
   const [dataColor, setDataState] = useState(() => readRole("data", "azure"));
 
@@ -154,10 +155,10 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               </div>
             </div>
           ))}
-          {(accent !== "rust" || alertColor !== "amber" || dataColor !== "azure") && (
+          {(accent !== "slate" || alertColor !== "amber" || dataColor !== "azure") && (
             <button
               onClick={() => {
-                pickRole("accent", "rust");
+                pickRole("accent", "slate");
                 pickRole("alert", "amber");
                 pickRole("data", "azure");
               }}

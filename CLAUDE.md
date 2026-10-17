@@ -361,11 +361,11 @@ sci-fi (se probó Orbitron y se descartó).
   viene de escalones de gris, **no** de bordes por todas partes.
 - `line` / `line-strong` — bordes hairline.
 - `txt-hi/mid/low/dim` — cuatro niveles de texto.
-- `accent-*` — color principal, **ajustable por el usuario** en Ajustes.
+- `accent-*` — color de la interfaz (neutro por defecto), **ajustable por el usuario** en Ajustes.
 - `alert-*` (alias `rust-*`) — color de aviso, **también ajustable**.
 - `data-*` — color de **datos** (azul por defecto, **ajustable** en Ajustes): lo
   "nuestro" y los números neutros (3★ rate, puntos, gráficas, chip "us", resaltado
-  de nuestro clan). **Regla:** `accent` (rust) solo para la interfaz (botones,
+  de nuestro clan). **Regla:** `accent` solo para la interfaz (botones,
   pestañas, iconos, hover); `data` para datos neutros; `ok`/`bad` (verde/rojo)
   solo para bien/mal. El naranja/rosa/rojo en datos se lee como fallo.
 - `ok-*` / `bad-*` — semánticos, fijos.
@@ -374,12 +374,15 @@ sci-fi (se probó Orbitron y se descartó).
   valores. Existen para no romper componentes sin migrar. No usar en
   código nuevo.
 
-**Colores por defecto:** acento **rust** (la marca del clan es naranja) y aviso
-**amber**; nunca el mismo color para los dos (`public/index.html` lo fuerza). Hay
-una migración única (`cwl-palette-v2`): los valores por defecto antiguos
-(lime/rust) se guardaban en localStorage solo por abrir la página, y sin ella el
-nuevo por defecto no se vería en un dispositivo ya usado. Una elección hecha a
-mano (p. ej. azure) no se toca.
+**Colores por defecto:** interfaz **neutra** (`slate`, sin matiz), datos en
+**azul**, aviso en **amber**. Los colores del logo (naranja/rosa) viven solo en el
+logo: en la interfaz se leían como alarma (se probó rust y se descartó). Nunca el
+mismo color para acento y aviso, ni para acento y datos (`public/index.html` lo
+fuerza). Hay una migración única (`cwl-palette-v3`): los defectos antiguos
+(lime, luego rust) se guardaban en localStorage solo por abrir la página, y sin
+ella el nuevo por defecto no se vería en un dispositivo ya usado. Una elección
+hecha a mano (azure, violet...) no se toca. Ajustes tiene "Reset colours to
+default".
 
 **Acento ajustable:** `accent` y `alert` se definen como
 `rgb(var(--accent-400) / <alpha-value>)`. `window.setPaletteRole(role,
