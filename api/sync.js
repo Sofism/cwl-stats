@@ -1,6 +1,6 @@
 const redis = require("./redis");
 const { getClanMembers, getCurrentWar, getPlayer, normalizeTag } = require("./_lib/cocProxy");
-const { buildNormalWarRecord } = require("./_lib/normalWarStats");
+const { buildNormalWarRecord, trackAttackTimes } = require("./_lib/normalWarStats");
 const {
   parseApiDate,
   scheduleOneTimeCheck,
@@ -9,6 +9,7 @@ const {
 } = require("./_lib/cronJobOrg");
 const { readJson, finalizeIfNew, touchRoster } = require("./_lib/normalWarStore");
 const { syncCwlForClan } = require("./_lib/cwlSyncServer");
+const { refreshBadgesIfDue } = require("./_lib/clanBadges");
 
 // Margen tras el endTime real antes de la comprobacion puntual: da tiempo a
 // que el estado de la guerra en la API de Clash termine de asentarse.
@@ -58,7 +59,7 @@ const captureOptOuts = async (clanTag) => {
  * (p. ej. solo se vio en preparacion) no es una guerra jugada: se descarta.
  */
 const finalizeFromSnapshot = async (tag, progress) => {
-  const record = buildNormalWarRecord(progress.lastWar, tag, progress.optOutTags);
+  const record = buildNormalWarRecord(progress.lastWar, tag, progress.optOutTags, progress.attackSeen);
   if (record) {
     record.recoveredFromFallback = true;
     record.fallbackReason = `never observed as warEnded; last seen state was "${progress.lastSeenState}"`;
@@ -177,7 +178,11 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
     if (endDate) {
       const when = new Date(endDate.getTime() + FOLLOW_UP_BUFFER_MS);
       const followUpUrl = `${baseUrl}/api/sync?clan=${clanKey}&secret=${encodeURIComponent(process.env.CRON_SECRET)}`;
-      const jobId = await scheduleOneTimeCheck(followUpUrl, when);
+      const jobId = await scheduleOneTimeCheck(
+        followUpUrl,
+        when,
+        `cwl-stats · ${clanKey} · war check 5 min AFTER end (auto, deletes itself)`
+      );
       if (jobId) scheduledFollowUp = { warKey, jobId };
       else scheduleError = getLastScheduleError();
     }
@@ -193,19 +198,26 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
       const when = new Date(endDate.getTime() - PRE_END_MARGIN_MS);
       if (when.getTime() > Date.now() + 60 * 1000) {
         const preEndUrl = `${baseUrl}/api/sync?clan=${clanKey}&secret=${encodeURIComponent(process.env.CRON_SECRET)}`;
-        const jobId = await scheduleOneTimeCheck(preEndUrl, when);
+        const jobId = await scheduleOneTimeCheck(
+          preEndUrl,
+          when,
+          `cwl-stats · ${clanKey} · war check 10 min BEFORE end (auto, deletes itself)`
+        );
         if (jobId) scheduledPreEnd = { warKey, jobId };
         else scheduleError = getLastScheduleError();
       }
     }
   }
 
+  // Momento en que vimos cada ataque por primera vez (la API no da la hora).
+  const attackSeen = trackAttackTimes(isSameWar ? progress.attackSeen : null, war, !isSameWar);
+
   // Foto de seguridad en CADA ejecucion mientras la guerra sigue viva, no
   // solo al final: si el estado warEnded se nos escapa entre dos ticks
   // (ver arriba), esta es la red de la que se puede rescatar.
   await redis.set(
     progressKey(tag),
-    JSON.stringify({ warKey, optOutTags, optOutPlayers, optOutTotal, optOutCapturedAt, lastWar: war, lastSeenState: war.state, scheduledFollowUp, scheduledPreEnd, scheduleError })
+    JSON.stringify({ warKey, attackSeen, optOutTags, optOutPlayers, optOutTotal, optOutCapturedAt, lastWar: war, lastSeenState: war.state, scheduledFollowUp, scheduledPreEnd, scheduleError })
   );
 
   if (war.state !== "warEnded") {
@@ -224,7 +236,7 @@ const syncClan = async (clanTag, label, clanKey, baseUrl) => {
     };
   }
 
-  const record = buildNormalWarRecord(war, tag, optOutTags);
+  const record = buildNormalWarRecord(war, tag, optOutTags, attackSeen);
   if (!record) return { clan: label, status: "error-building-record", warKey };
 
   const saved = await finalizeIfNew(tag, record);
@@ -306,6 +318,14 @@ export default async function handler(req, res) {
       targets.push([config.secondaryTag, config.secondary || "Secondary", "secondary"]);
     }
 
+    // Insignias de los clanes para la UI: una vez al dia, desde aqui (nunca en
+    // la carga de la app). Con tope de tiempo para no comerse el de la funcion.
+    try {
+      if (Date.now() - startedAt < 2000) await refreshBadgesIfDue(config);
+    } catch (err) {
+      console.error("Badges error:", err.message);
+    }
+
     const results = [];
     for (const [tag, label, clanKey] of targets) {
       // Secuencial a proposito: no duplicar carga sobre el proxy a la vez
@@ -334,6 +354,7 @@ export default async function handler(req, res) {
         result.cwl = await syncCwlForClan({
           tag,
           clanKey,
+          baseUrl,
           deadline: startedAt + CWL_TIME_BUDGET_MS,
         });
       } catch (err) {

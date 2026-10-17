@@ -6,6 +6,7 @@ import {
   attackOrderIndex,
   playerHistory,
   compareClanStats,
+  warClock,
 } from "../utils/normalWarLog";
 import NormalWarTimeline from "./NormalWarTimeline";
 import NormalWarPlayerCard from "./NormalWarPlayerCard";
@@ -41,7 +42,8 @@ const timeAgo = (ms) => {
   return h < 48 ? `${h} h ago` : `${Math.floor(h / 24)} d ago`;
 };
 
-const STALE_SYNC_MS = 3 * 60 * 60 * 1000;
+// 90 min: vale tanto para un cron cada hora (con margen) como cada 15 minutos.
+const STALE_SYNC_MS = 90 * 60 * 1000;
 
 /** Verde si el cron corrio hace poco; rojo si lleva horas sin hacerlo o fallo. */
 const SyncStatus = ({ lastSync }) => {
@@ -66,7 +68,7 @@ const SyncStatus = ({ lastSync }) => {
  * Tarjeta de un jugador en una guerra concreta. Ataques y defensas van en
  * orden cronologico, con el numero de ataque (#) cuando se conoce.
  */
-const AttackLogCard = ({ player, orderIndex, onSelectPlayer }) => {
+const AttackLogCard = ({ player, orderIndex, onSelectPlayer, war }) => {
   const byOrder = (x, y) => (x.order ?? 1e9) - (y.order ?? 1e9);
   const attacks = (player.attacks || [])
     .map((a) => ({
@@ -101,7 +103,9 @@ const AttackLogCard = ({ player, orderIndex, onSelectPlayer }) => {
                   {a.order != null && <span className="font-mono text-txt-dim mr-1">#{a.order}</span>}
                   {a.stars}★ {a.destruction}%{a.fresh ? "" : " (cleanup)"}
                 </span>
-                <span className="text-txt-dim">vs TH{a.opponentTh ?? "?"}</span>
+                <span className="text-txt-dim" title={warClock(a.seenAt, war)?.title}>
+                  {warClock(a.seenAt, war)?.left || `vs TH${a.opponentTh ?? "?"}`}
+                </span>
               </div>
             ))
           )}
@@ -117,7 +121,9 @@ const AttackLogCard = ({ player, orderIndex, onSelectPlayer }) => {
                   {d.order != null && <span className="font-mono text-txt-dim mr-1">#{d.order}</span>}
                   {d.stars}★ {d.destruction}%{d.fresh ? "" : " (cleanup)"}
                 </span>
-                <span className="text-txt-dim">from TH{d.attackerTh ?? "?"}</span>
+                <span className="text-txt-dim" title={warClock(d.seenAt, war)?.title}>
+                  {warClock(d.seenAt, war)?.left || `from TH${d.attackerTh ?? "?"}`}
+                </span>
               </div>
             ))
           )}
@@ -598,9 +604,17 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                         chronological.
                       </div>
                     )}
+                    {!timeline.hasTiming && timeline.events.length > 0 && selectedWar !== liveWar && (
+                      <div className="border border-line rounded-md p-3 mb-3 text-xs text-txt-low">
+                        Attack times were not recorded for this war. The game's API gives no timestamps: from
+                        now on each attack is timed by our hourly checks (within about an hour).
+                      </div>
+                    )}
                     <NormalWarTimeline
                       events={events}
                       hasOrder={timeline.hasOrder}
+                      hasTiming={timeline.hasTiming}
+                      war={selectedWar}
                       ourTags={ourTags}
                       selectedKey={selectedPlayer}
                       onSelectPlayer={openPlayer}
@@ -622,6 +636,7 @@ const NormalWarsView = ({ clanNames, onClose }) => {
                           player={p}
                           orderIndex={orderIndex}
                           onSelectPlayer={openPlayer}
+                          war={selectedWar}
                         />
                       ))}
                     </div>

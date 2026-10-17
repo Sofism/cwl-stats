@@ -10,6 +10,7 @@ import { sortForDisplay, hasNewRanking } from "../utils/sortPlayers";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
 import { runCwlSync, applyCwlSyncResult } from "../utils/cwlSync";
 import HistoricalView from "./HistoricalView";
+import BrandLogo from "./BrandLogo";
 import CurrentWarView from "./CurrentWarView";
 import { Trash2, ArrowLeft, Trophy,
   Swords, RefreshCw,
@@ -231,9 +232,12 @@ const Dashboard = ({
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-4xl font-semibold tracking-wide text-txt-hi">
+            <div className="flex items-center gap-3">
+              <BrandLogo className="w-12 h-12" />
+              <h1 className="text-4xl font-semibold tracking-wide text-txt-hi">
               CWL Performance
-            </h1>
+              </h1>
+            </div>
             <select
               value={currentSeason.id}
               onChange={(e) => {

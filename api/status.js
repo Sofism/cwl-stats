@@ -1,6 +1,6 @@
 const redis = require('./redis');
 const { normalizeTag, getClanInfo, proxyGet } = require('./_lib/cocProxy');
-const { listJobs, selfTest } = require('./_lib/cronJobOrg');
+const { listJobs, selfTest, renameJob } = require('./_lib/cronJobOrg');
 
 /**
  * Pagina de diagnostico: dice en lenguaje llano si todo lo que necesita la
@@ -24,6 +24,54 @@ const ago = (ms) => {
   const h = Math.round(min / 60);
   return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} days ago`;
 };
+
+
+const pad = (n) => String(n).padStart(2, '0');
+
+/** Horario de un trabajo de cron-job.org en lenguaje llano. */
+const describeSchedule = (sch) => {
+  if (!sch) return { kind: 'unknown', text: 'unknown schedule' };
+  const any = (a) => !a || a.length === 0 || (a.length === 1 && a[0] === -1);
+  const mins = sch.minutes || [];
+  if (!any(sch.mdays) && !any(sch.months)) {
+    return { kind: 'one-time', text: `once, ${pad(sch.mdays[0])}/${pad(sch.months[0])} at ${pad((sch.hours || [0])[0])}:${pad(mins[0] || 0)} UTC` };
+  }
+  if (any(sch.hours)) {
+    if (mins.length === 1) return { kind: 'recurring', text: `every hour at :${pad(mins[0])}` };
+    const step = mins.length > 1 ? mins[1] - mins[0] : null;
+    const even = step && mins.every((m, i) => m === mins[0] + i * step);
+    return { kind: 'recurring', text: even && 60 % step === 0 ? `every ${step} minutes` : `every hour at minutes ${mins.join(', ')}` };
+  }
+  return { kind: 'recurring', text: `at hours ${(sch.hours || []).join(', ')} UTC, minute ${mins.join(', ')}` };
+};
+
+/** Que es cada trabajo: clan (por la URL), tipo, horario, estado y titulo sugerido. */
+const describeJobs = (jobs, purposeById) =>
+  jobs.map((j) => {
+    const clanMatch = /[?&]clan=(main|secondary)/.exec(String(j.url || ''));
+    const clan = clanMatch ? clanMatch[1] : 'both';
+    const sch = describeSchedule(j.schedule);
+    const purpose =
+      sch.kind === 'one-time'
+        ? purposeById.get(Number(j.jobId)) || 'one-time check (could not match it to a war)'
+        : `regular sync of the ${clan === 'main' ? 'main clan (normal wars + CWL)' : clan === 'secondary' ? 'secondary clan (CWL only)' : 'both clans'}`;
+    return {
+      id: j.jobId,
+      title: j.title || '',
+      clan,
+      kind: sch.kind,
+      schedule: sch.text,
+      purpose,
+      enabled: !!j.enabled,
+      lastStatus: j.lastStatus,
+      nextRun: j.nextExecution ? new Date(j.nextExecution * 1000).toISOString() : null,
+      suggestedTitle: `cwl-stats · ${clan} · ${sch.kind === 'recurring' ? `sync ${sch.text}` : purpose}`,
+    };
+  });
+
+const summarizeJob = (j) =>
+  `#${j.id} [${j.enabled ? 'on' : 'OFF'}] ${j.clan} · ${j.schedule} → ${j.purpose}` +
+  `${j.title ? ` (title: "${j.title}")` : ' (no title)'}${j.nextRun ? ` · next: ${j.nextRun.slice(0, 16).replace('T', ' ')} UTC` : ''}${j.labeled ? ` · ${j.labeled}` : ''}`;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -132,10 +180,10 @@ export default async function handler(req, res) {
       if (!last) {
         add('Last sync', false, 'never ran', 'required', 'Check that the cron-job.org jobs exist and call /api/sync?clan=main&secret=...');
       } else {
-        const fresh = Date.now() - last.at < 3 * 60 * 60 * 1000;
+        const fresh = Date.now() - last.at < 90 * 60 * 1000;
         add('Last sync', fresh && last.status !== 'error',
           `${ago(last.at)} - ${last.status}${last.error ? ` (${last.error})` : ''}; CWL: ${last.cwl || '-'}${last.cwlError ? ` (${last.cwlError})` : ''}`,
-          'required', fresh ? 'See the error above.' : 'Older than 3 hours: the cron is not running.');
+          'required', fresh ? 'See the error above.' : 'Older than 90 minutes: the cron is not running.');
       }
       const progress = await readJson(`normal-wars-progress:${tag}`, null);
       if (progress && progress.lastWar) {
@@ -153,6 +201,50 @@ export default async function handler(req, res) {
       }
     }
 
+    // Que es cada trabajo de cron-job.org, en lenguaje llano (sin URLs ni claves).
+    // Con &label=1 se ponen titulos a los que no tienen (nunca se pisa uno
+    // que hayas puesto tu).
+    let jobsReport = null;
+    if (env.CRONJOB_API_KEY && config) {
+      const listed = await listJobs();
+      if (!listed.error) {
+        const purposeById = new Map();
+        for (const tagKey of ['mainTag', 'secondaryTag']) {
+          if (!config[tagKey]) continue;
+          const tag = normalizeTag(config[tagKey]);
+          const prog = await readJson(`normal-wars-progress:${tag}`, null);
+          if (prog && prog.scheduledPreEnd) purposeById.set(Number(prog.scheduledPreEnd.jobId), 'normal war: check 10 min before the end');
+          if (prog && prog.scheduledFollowUp) purposeById.set(Number(prog.scheduledFollowUp.jobId), 'normal war: check 5 min after the end');
+          const st = await readJson(`cwl-state:${tag}`, null);
+          if (st && st.anchors) Object.values(st.anchors).forEach((a) => purposeById.set(Number(a.jobId), 'CWL: check 3 min after a round ends'));
+        }
+        jobsReport = describeJobs(listed.jobs.filter((j) => String(j.url || '').includes('/api/sync')), purposeById);
+        if (req.query && req.query.label) {
+          for (const j of jobsReport) {
+            // Se renombran los que no tienen titulo o llevan uno generico (job1,
+            // job2...). Un titulo puesto a mano que diga algo, no se toca.
+            if (j.title && !/^job\s*\d*$/i.test(j.title.trim())) continue;
+            const r = await renameJob(j.id, j.suggestedTitle);
+            j.labeled = r.ok ? 'renamed to: ' + j.suggestedTitle : 'could not rename (' + r.error + ')';
+          }
+        }
+      }
+    }
+
+    // Comprobaciones puntuales de fin de ronda de CWL (solo mientras hay liga).
+    if (config && env.CRONJOB_API_KEY) {
+      for (const [label, tagKey] of [['main', 'mainTag'], ['secondary', 'secondaryTag']]) {
+        if (!config[tagKey]) continue;
+        const st = await readJson(`cwl-state:${normalizeTag(config[tagKey])}`, null);
+        const n = st && st.anchors ? Object.keys(st.anchors).length : 0;
+        if (st && (n > 0 || st.anchorError)) {
+          add(`CWL round checks (${label})`, !st.anchorError || n > 0,
+            n > 0 ? `${n} scheduled for the open round(s)` : `none scheduled: ${st.anchorError}`,
+            'required', 'See the reason above; the next hourly run tries again.');
+        }
+      }
+    }
+
     const problems = checks.filter((c) => !c.ok && c.level === 'required');
     const warnings = checks.filter((c) => !c.ok && c.level === 'optional');
     return res.status(200).json({
@@ -160,6 +252,7 @@ export default async function handler(req, res) {
       problems: problems.map((c) => `${c.name}: ${c.detail}. ${c.fix || ''}`.trim()),
       optional: warnings.map((c) => `${c.name}: ${c.detail}. ${c.fix || ''}`.trim()),
       checks: checks.map((c) => `${c.ok ? 'OK ' : c.level === 'optional' ? 'TIP' : 'BAD'}  ${c.name}: ${c.detail}`),
+      ...(jobsReport ? { cronJobs: jobsReport.map(summarizeJob) } : {}),
     });
   } catch (err) {
     console.error('Status error:', err);

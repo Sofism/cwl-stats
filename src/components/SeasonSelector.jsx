@@ -4,6 +4,8 @@ import {
   RefreshCw, ChevronRight, ShieldOff, ListChecks, Flame,
 } from "lucide-react";
 import NewSeasonModal from "./NewSeasonModal";
+import BrandLogo from "./BrandLogo";
+import ClanCrest from "./ClanCrest";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SettingsModal from "./SettingsModal";
 import HistoricalView from "./HistoricalView";
@@ -435,10 +437,13 @@ const SeasonSelector = ({
 
         {/* Cabecera */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-line mb-6">
-          <div>
-            <h1 className="text-2xl font-semibold text-txt-hi">CWL Stats Tracker</h1>
-            <div className="font-mono text-xs tracking-[0.1em] text-txt-dim uppercase mt-1">
-              {clanNames?.main || "Main"} · {clanNames?.secondary || "Secondary"}
+          <div className="flex items-center gap-3">
+            <BrandLogo />
+            <div>
+              <h1 className="text-2xl font-semibold text-txt-hi">CWL Stats Tracker</h1>
+              <div className="font-mono text-xs tracking-[0.1em] text-txt-dim uppercase mt-1">
+                {clanNames?.main || "Main"} · {clanNames?.secondary || "Secondary"}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -482,7 +487,10 @@ const SeasonSelector = ({
                     : "bg-surface-800 border-2 border-line hover:bg-surface-700 text-txt-mid"
                 }`}
               >
-                {key === "main" ? clanNames?.main || "Main" : clanNames?.secondary || "Secondary"}
+                <span className="inline-flex items-center justify-center gap-2">
+                  <ClanCrest url={key === "main" ? clanNames?.mainBadge : clanNames?.secondaryBadge} />
+                  {key === "main" ? clanNames?.main || "Main" : clanNames?.secondary || "Secondary"}
+                </span>
               </button>
             ))}
           </div>

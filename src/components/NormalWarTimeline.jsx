@@ -1,4 +1,5 @@
 import React from "react";
+import { warClock } from "../utils/normalWarLog";
 
 /** ★★☆: estrellas conseguidas en ambar, las que faltan apagadas. */
 export const Stars = ({ n }) => (
@@ -17,7 +18,7 @@ export const Stars = ({ n }) => (
  * defensor, estrellas y %, y si fue el primer golpe a esa base ("clean") o
  * un repaso ("cleanup"). Los nombres de NUESTROS jugadores abren su ficha.
  */
-const NormalWarTimeline = ({ events, hasOrder, ourTags, selectedKey, onSelectPlayer }) => {
+const NormalWarTimeline = ({ events, hasOrder, hasTiming, war, ourTags, selectedKey, onSelectPlayer }) => {
   if (events.length === 0) {
     return (
       <div className="border border-line rounded-md p-6 text-center text-txt-low text-sm">
@@ -53,6 +54,11 @@ const NormalWarTimeline = ({ events, hasOrder, ourTags, selectedKey, onSelectPla
               <th className="p-3">Defender</th>
               <th className="p-3 text-center">Result</th>
               <th className="p-3 text-center">Hit</th>
+              {hasTiming && (
+                <th className="p-3 text-right" title="Time left on the war clock when the attack was seen (±1 h)">
+                  War clock
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -90,6 +96,14 @@ const NormalWarTimeline = ({ events, hasOrder, ourTags, selectedKey, onSelectPla
                       <span className="text-txt-dim">cleanup</span>
                     )}
                   </td>
+                  {hasTiming && (
+                    <td className="p-3 text-right whitespace-nowrap font-mono text-xs text-txt-low">
+                      {(() => {
+                        const c = warClock(e.seenAt, war);
+                        return c ? <span title={c.title}>{c.left}</span> : <span className="text-txt-dim">—</span>;
+                      })()}
+                    </td>
+                  )}
                 </tr>
               );
             })}

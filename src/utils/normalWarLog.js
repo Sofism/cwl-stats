@@ -36,6 +36,7 @@ export const buildTimeline = (war) => {
         destruction: d.destruction,
         fresh: d.fresh,
         attackerTh: d.attackerTh,
+        seenAt: d.seenAt,
       })
     )
   );
@@ -51,13 +52,14 @@ export const buildTimeline = (war) => {
         destruction: d.destruction,
         fresh: d.fresh,
         attackerTh: d.attackerTh,
+        seenAt: d.seenAt,
       })
     )
   );
 
   const hasOrder = events.length > 0 && events.every((e) => typeof e.order === "number");
   if (hasOrder) events.sort((a, b) => a.order - b.order);
-  return { events, hasOrder };
+  return { events, hasOrder, hasTiming: events.some((e) => typeof e.seenAt === "number") };
 };
 
 /**
@@ -120,4 +122,38 @@ export const compareClanStats = (sort) => (a, b) => {
     if (r !== 0) return r;
   }
   return 0;
+};
+
+const parseApiDate = (raw) => {
+  if (!raw) return null;
+  const d = new Date(raw.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, "$1-$2-$3T$4:$5:$6"));
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const fmtDuration = (ms) => {
+  const totalMin = Math.max(0, Math.round(ms / 60000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+};
+
+/**
+ * Cuando se hizo un ataque respecto al RELOJ DE GUERRA. La API no da la hora
+ * de cada ataque: `seenAt` es cuando nuestro cron lo vio por primera vez, asi
+ * que el ataque ocurrio en algun punto de la hora anterior (de ahi el "~").
+ * Se devuelve el tiempo que quedaba (como la cuenta atras del juego) y el
+ * transcurrido desde que empezo la batalla. null si no hay dato.
+ */
+export const warClock = (seenAt, war) => {
+  if (typeof seenAt !== "number") return null;
+  const start = parseApiDate(war?.startTime);
+  const end = parseApiDate(war?.endTime);
+  if (!start || !end) return null;
+  const elapsed = Math.max(0, seenAt - start.getTime());
+  const remaining = Math.max(0, end.getTime() - seenAt);
+  return {
+    left: `~${fmtDuration(remaining)} left`,
+    title: `Seen by our check ${fmtDuration(elapsed)} into the battle (${fmtDuration(remaining)} on the war clock). The API gives no attack times: it happened within the hour before that check.`,
+  };
 };

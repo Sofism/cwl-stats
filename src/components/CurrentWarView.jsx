@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Swords, RefreshCw, X, Clock } from "lucide-react";
+import ClanCrest from "./ClanCrest";
 import { getCwlRounds } from "../utils/cwlSync";
 import CwlGroupPanel from "./CwlGroupPanel";
 
@@ -150,7 +151,10 @@ const CurrentWarView = ({ clanNames, initialClan = "main", onClose }) => {
                   : "bg-surface-800 border-2 border-line hover:bg-surface-700 text-txt-mid"
               }`}
             >
-              {key === "main" ? clanNames?.main || "Main" : clanNames?.secondary || "Secondary"}
+              <span className="inline-flex items-center justify-center gap-2">
+                <ClanCrest url={key === "main" ? clanNames?.mainBadge : clanNames?.secondaryBadge} />
+                {key === "main" ? clanNames?.main || "Main" : clanNames?.secondary || "Secondary"}
+              </span>
             </button>
           ))}
         </div>

@@ -177,6 +177,39 @@ marcador actual (provisional: quien va por delante cuenta como ganador). En
 "Rounds" cada lado muestra bases aguantadas (no caídas en 3★, o sea 2★ o
 menos) y hit rate (ataques 3★ sobre ataques usados).
 
+### Hora de los ataques y comprobaciones de fin de ronda
+
+- **La API no da la hora de ningún ataque**, solo su número de orden. El cron
+  anota CUÁNDO LO VIO POR PRIMERA VEZ (`trackAttackTimes` en
+  `api/_lib/normalWarStats.js`; `attackSeen` en el progreso) y el registro guarda
+  `seenAt` en ataques y defensas. Precisión: la del cron (~1 h). Si el cron vio
+  la guerra por primera vez ya en batalla, esos ataques quedan sin hora (null),
+  no se inventa. Las guerras guardadas antes no tienen hora. La UI
+  (`warClock` en `normalWarLog.js`) la muestra como tiempo que quedaba en el reloj
+  de guerra ("~20h 40m left").
+- **CWL: una comprobación puntual 3 minutos después del final de cada ronda**
+  (`cwlSyncServer.js`, `state.anchors` en `cwl-state:{tag}`), vía cron-job.org
+  como las de las guerras normales; se borran cuando la ronda queda guardada o al
+  cambiar de liga. Es para no perder la última ronda: el grupo desaparece cuando el
+  clan empieza una guerra normal. `/api/status` las muestra.
+
+### Marca del clan e insignias
+
+- **Marca (logo del clan "TN Clan")**: `public/logo.png` (cuadrado redondeado
+  al 28% de la imagen que dio Santi: las esquinas naranjas asoman a propósito, como
+  un eco de luz; el redondeo va en el PNG, no en CSS), usada en la cabecera de inicio y del Dashboard
+  (`BrandLogo.jsx`). Favicons en `public/` (`favicon.ico`, `favicon-32.png`,
+  `favicon-192.png`) y `apple-touch-icon.png` (cuadrado, iOS aplica su máscara);
+  enlazados en `public/index.html`. A 16–32 px el logo se lee bien.
+- **Insignias del juego** (`ClanCrest.jsx`): para distinguir los dos clanes en
+  las pestañas. Las refresca el **cron** (`api/_lib/clanBadges.js`, llamado desde
+  `api/sync.js`): una vez al día, 2 peticiones, guardadas en la config
+  (`mainBadge`, `secondaryBadge`, `badgesAt`) y viajan con `clanNames`. **Nunca en
+  la lectura de `/api/clan-config`**: pedirlas ahí dejaba la carga de la app
+  esperando (con el proxy dormido, hasta un minuto). Si Clash falla se reintenta
+  pasados 10 min. El nivel del clan va DENTRO de la imagen, por eso no se copian
+  como archivo. Si un tag cambia en Ajustes, se descarta su insignia.
+
 ### Cómo se obtienen los datos (todo es sondeo, no hay avisos)
 
 La API de Clash **no tiene webhooks ni avisos de cambios**: todo se obtiene
@@ -188,6 +221,12 @@ peticiones por ejecución (miembros, guerra actual, grupo de CWL), pero **el
 clan secundario no juega guerras normales y se salta esa parte** (solo
 sincroniza CWL).
 
+- **Frecuencia del cron:** un clan normal gasta ~3 peticiones por ejecución. Con
+  Upstash gratuito (500 mil comandos/mes; uso real ~5 mil/mes con el cron
+  horario) cabe sin problema un cron de **15 minutos para el clan principal**
+  (~30 mil/mes), que da la hora de los ataques con ±15 min en vez de ±1 h; el
+  secundario puede seguir cada hora. El indicador "Last sync" se pone rojo a los
+  90 minutos.
 - **Opt-outs:** se capturan UNA vez por guerra, la primera vez que el cron la
   ve (~51 peticiones), y se congelan en el progreso (`optOutTags`,
   `optOutPlayers`, `optOutTotal`, `optOutCapturedAt`). No se vuelven a
@@ -254,6 +293,15 @@ desplegable como "(no player data)" con una tarjeta de resumen
 rescatada igualan los que el historial oficial dice que usó el clan, esa guerra
 se trata como COMPLETA (cuenta para missed wars). Clan stats muestra la línea de
 cobertura ("X of Y wars have player data").
+
+### Qué es cada trabajo de cron-job.org
+
+`/api/status?secret=...` incluye `cronJobs`: cada trabajo que apunta a la app, con
+clan, tipo (regular / puntual), horario en lenguaje llano, para qué sirve (los
+puntuales se casan con la guerra o ronda que los creó) y si tiene título. Con
+`&label=1` se ponen títulos descriptivos SOLO a los que no tienen o llevan uno
+genérico (`job1`, `job2`...); nunca pisa uno puesto a mano que diga algo. Los trabajos que crea la app ya llevan título
+(`cwl-stats · main · war check 10 min BEFORE end (auto, deletes itself)`...).
 
 ### Diagnóstico: `/api/status`
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { Stars } from "./NormalWarTimeline";
+import { warClock } from "../utils/normalWarLog";
 
 const fmtDate = (raw) => {
   if (!raw) return "—";
@@ -142,8 +143,9 @@ const NormalWarPlayerCard = ({ stats, history, optedOut, selectedWarKey, onSelec
                             <span key={i} className="whitespace-nowrap text-xs">
                               <Stars n={a.stars} />
                               <span className="ml-1.5 font-mono text-txt-low">{a.destruction}%</span>
-                              <span className="ml-1.5 text-txt-dim">
+                              <span className="ml-1.5 text-txt-dim" title={warClock(a.seenAt, h.war)?.title}>
                                 vs TH{a.opponentTh ?? "?"} · {a.fresh ? "clean" : "cleanup"}
+                                {warClock(a.seenAt, h.war) ? ` · ${warClock(a.seenAt, h.war).left}` : ""}
                               </span>
                             </span>
                           ))}

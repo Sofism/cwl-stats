@@ -1,4 +1,5 @@
 import React from "react";
+import ClanCrest from "./ClanCrest";
 
 const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo, clanNames }) => {
   return (
@@ -20,9 +21,12 @@ const ClanTabs = ({ activePage, setActivePage, currentSeason, leagueInfo, clanNa
                 : "bg-surface-800 border-2 border-line"
             }`}
           >
-            <div>
-              {clanName} (
-              {currentSeason[page === "main" ? "mainClan" : "secondaryClan"].length})
+            <div className="inline-flex items-center justify-center gap-2">
+              <ClanCrest url={page === "main" ? clanNames.mainBadge : clanNames.secondaryBadge} />
+              <span>
+                {clanName} (
+                {currentSeason[page === "main" ? "mainClan" : "secondaryClan"].length})
+              </span>
             </div>
             <div className="text-xs text-txt-low mt-1">
               {leagueInfo[page].league} - Pos {leagueInfo[page].position}

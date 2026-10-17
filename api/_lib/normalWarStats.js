@@ -36,7 +36,7 @@ const didWeWin = (us, them) => {
  * tenemos forma de saber el warPreference del rival), asi que para el
  * bando contrario se pasa un Set vacio.
  */
-const buildRoster = (members, opposingMembers, attacksMade, freshMade, attacksFaced, freshFaced, optOutSet) =>
+const buildRoster = (members, opposingMembers, attacksMade, freshMade, attacksFaced, freshFaced, optOutSet, seen) =>
   (members || []).map((member) => {
     const attacks = (member.attacks || []).map((a) => {
       const opponent = (opposingMembers || []).find((m) => m.tag === a.defenderTag);
@@ -46,6 +46,8 @@ const buildRoster = (members, opposingMembers, attacksMade, freshMade, attacksFa
         fresh: freshMade.get(a.defenderTag) === a.order,
         // Orden global del ataque en la guerra: permite el log cronologico.
         order: a.order,
+        // Cuando LA VIO nuestro cron por primera vez (ver trackAttackTimes).
+        ...(seen && seen[a.order] ? { seenAt: seen[a.order] } : {}),
         opponentTag: a.defenderTag,
         opponentTh: opponent ? opponent.townhallLevel : null,
       };
@@ -60,6 +62,7 @@ const buildRoster = (members, opposingMembers, attacksMade, freshMade, attacksFa
         // Orden global dentro de la guerra: permite reconstruir cuantos
         // golpes aguanto la base antes de caer (defense rate).
         order: a.order,
+        ...(seen && seen[a.order] ? { seenAt: seen[a.order] } : {}),
         attackerTag: a.attackerTag,
         attackerTh: a.attackerTh,
       }));
@@ -80,7 +83,7 @@ const buildRoster = (members, opposingMembers, attacksMade, freshMade, attacksFa
  * @param {string} clanTag
  * @param {string[]} optOutTags - tags congelados al EMPEZAR esta guerra (solo aplica a nuestro clan)
  */
-const buildNormalWarRecord = (war, clanTag, optOutTags = []) => {
+const buildNormalWarRecord = (war, clanTag, optOutTags = [], attackSeen = null) => {
   const tag = normalizeTag(clanTag);
   const isHome = war.clan?.tag === tag;
   const us = isHome ? war.clan : war.opponent;
@@ -101,8 +104,8 @@ const buildNormalWarRecord = (war, clanTag, optOutTags = []) => {
 
   // Log de ataques completo y simetrico: quien ataco a quien desde
   // CUALQUIERA de los dos bandos, no solo el nuestro.
-  const usPlayers = buildRoster(us.members, them.members, usAttacks, freshByUs, themAttacks, freshByThem, optOutSet);
-  const themPlayers = buildRoster(them.members, us.members, themAttacks, freshByThem, usAttacks, freshByUs, new Set());
+  const usPlayers = buildRoster(us.members, them.members, usAttacks, freshByUs, themAttacks, freshByThem, optOutSet, attackSeen);
+  const themPlayers = buildRoster(them.members, us.members, themAttacks, freshByThem, usAttacks, freshByUs, new Set(), attackSeen);
 
   const win = didWeWin(us, them);
   const attacksPerMember = war.attacksPerMember || 1;
@@ -133,4 +136,28 @@ const buildNormalWarRecord = (war, clanTag, optOutTags = []) => {
   };
 };
 
-module.exports = { buildNormalWarRecord };
+/**
+ * La API NO da la hora de cada ataque, solo su numero de orden. Lo mas cerca
+ * que se puede estar es anotar cuando LO VIO nuestro cron por primera vez:
+ * el ataque se hizo en algun momento entre la ejecucion anterior y esa (hasta
+ * ~1 h de margen con el cron horario). Devuelve { orden: timestamp }.
+ *
+ * Si la guerra se vio por PRIMERA vez cuando ya estaba en batalla
+ * (firstSight), los ataques que ya existian no se pueden situar en el tiempo:
+ * se anotan como null (sin hora) en vez de inventarles la de este momento.
+ */
+const trackAttackTimes = (prevSeen, war, firstSight, now = Date.now()) => {
+  const seen = { ...(prevSeen || {}) };
+  const inBattle = war.state === "inWar" || war.state === "warEnded";
+  [war.clan, war.opponent].forEach((side) =>
+    ((side && side.members) || []).forEach((m) =>
+      (m.attacks || []).forEach((a) => {
+        if (typeof a.order !== "number" || a.order in seen) return;
+        seen[a.order] = firstSight && inBattle ? null : now;
+      })
+    )
+  );
+  return seen;
+};
+
+module.exports = { buildNormalWarRecord, trackAttackTimes };

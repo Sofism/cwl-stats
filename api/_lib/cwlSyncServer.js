@@ -22,9 +22,14 @@ const {
 const { didWeWin, rankGroupClans, aggregateCwlPlayers } = require("./cwlAggregate");
 const link = require("./cwlSeasonLink");
 const store = require("./seasonStore");
+const { parseApiDate, scheduleOneTimeCheck, deleteScheduledJob, getLastScheduleError } = require("./cronJobOrg");
 
 const stateKey = (tag) => `cwl-state:${tag}`;
 const BATCH_SIZE = 6;
+// Comprobacion puntual tras el final de cada ronda: el grupo de CWL
+// desaparece de la API en cuanto el clan empieza una guerra normal, asi que si
+// la ultima ronda termina y el cron horario aun no la ha visto, se perderia.
+const ROUND_ANCHOR_AFTER_MS = 3 * 60 * 1000;
 
 const readState = async (tag) => {
   const data = await redis.get(stateKey(tag));
@@ -75,7 +80,7 @@ const pruneWar = (war, involvesUs) => ({
  * Lanza error si el proxy o la API de Clash fallan: NO es lo mismo que "no
  * esta en CWL", y confundirlos haria creer que no hay datos.
  */
-const fetchCwlResult = async (clanTag, clanLabel, deadline) => {
+const fetchCwlResult = async (clanTag, clanLabel, deadline, anchor) => {
   const tag = normalizeTag(clanTag);
   const grp = await getLeagueGroup(tag);
   if (grp.status === 404) return null;
@@ -88,7 +93,11 @@ const fetchCwlResult = async (clanTag, clanLabel, deadline) => {
   }
 
   let state = await readState(tag);
-  if (!state || state.season !== key) state = { season: key, wars: {}, teamSize: null };
+  if (state && state.season !== key && state.anchors) {
+    // Liga nueva: las comprobaciones puntuales de la anterior ya no sirven.
+    for (const a of Object.values(state.anchors)) await deleteScheduledJob(a.jobId);
+  }
+  if (!state || state.season !== key) state = { season: key, wars: {}, teamSize: null, anchors: {} };
   let stateChanged = false;
 
   const allTags = group.rounds.flatMap((r) => r.warTags).filter((t) => t && t !== "#0");
@@ -96,6 +105,7 @@ const fetchCwlResult = async (clanTag, clanLabel, deadline) => {
 
   let liveRounds = 0;
   let partial = false;
+  const ourOpenWars = []; // guerras NUESTRAS aun sin terminar (con su hora de fin)
   for (let i = 0; i < pending.length; i += BATCH_SIZE) {
     if (deadline && Date.now() > deadline) {
       partial = true;
@@ -116,10 +126,45 @@ const fetchCwlResult = async (clanTag, clanLabel, deadline) => {
       if (war.state === "warEnded") {
         state.wars[chunk[idx]] = { ended: true, war: pruneWar(war, involvesUs) };
         stateChanged = true;
-      } else if (involvesUs && war.state === "inWar") {
-        liveRounds += 1;
+      } else if (involvesUs) {
+        if (war.state === "inWar") liveRounds += 1;
+        if (war.endTime) ourOpenWars.push({ warTag: chunk[idx], endTime: war.endTime });
       }
     });
+  }
+  // Comprobaciones puntuales de fin de ronda (cron-job.org): una por guerra
+  // nuestra todavia abierta, 3 min despues de su hora de fin; se borran en
+  // cuanto esa guerra queda guardada. Mejor esfuerzo: si falla, el cron
+  // horario sigue siendo la red de seguridad.
+  state.anchors = state.anchors || {};
+  if (anchor && anchor.baseUrl && anchor.clanKey) {
+    for (const { warTag, endTime } of ourOpenWars) {
+      if (state.anchors[warTag]) continue;
+      const end = parseApiDate(endTime);
+      if (!end) continue;
+      const when = new Date(end.getTime() + ROUND_ANCHOR_AFTER_MS);
+      if (when.getTime() < Date.now() + 60 * 1000) continue;
+      const url = `${anchor.baseUrl}/api/sync?clan=${anchor.clanKey}&secret=${encodeURIComponent(process.env.CRON_SECRET)}`;
+      const jobId = await scheduleOneTimeCheck(
+        url,
+        when,
+        `cwl-stats · ${anchor.clanKey} · CWL round check 3 min after its end (auto, deletes itself)`
+      );
+      if (jobId) {
+        state.anchors[warTag] = { jobId, endTime };
+        delete state.anchorError;
+      } else {
+        state.anchorError = getLastScheduleError();
+      }
+      stateChanged = true;
+    }
+  }
+  for (const [warTag, a] of Object.entries(state.anchors)) {
+    if (state.wars[warTag] && state.wars[warTag].ended) {
+      await deleteScheduledJob(a.jobId);
+      delete state.anchors[warTag];
+      stateChanged = true;
+    }
   }
   if (stateChanged) await redis.set(stateKey(tag), JSON.stringify(state));
 
@@ -151,6 +196,7 @@ const fetchCwlResult = async (clanTag, clanLabel, deadline) => {
     liveRounds,
     isComplete: ourEnded.length >= group.rounds.length,
     partial,
+    anchors: Object.keys(state.anchors).length,
   };
 };
 
@@ -271,9 +317,9 @@ const applyToSeasons = async (clanKey, result) => {
  * @param {"main"|"secondary"} p.clanKey
  * @param {number} p.deadline timestamp (ms) tras el cual no se piden mas guerras
  */
-const syncCwlForClan = async ({ tag, clanKey, deadline }) => {
+const syncCwlForClan = async ({ tag, clanKey, deadline, baseUrl }) => {
   const label = clanKey === "main" ? "Main" : "Secondary";
-  const result = await fetchCwlResult(tag, label, deadline);
+  const result = await fetchCwlResult(tag, label, deadline, { clanKey, baseUrl });
   if (!result) return { status: "no-group" };
   const applied = await applyToSeasons(clanKey, result);
   return {
@@ -283,6 +329,7 @@ const syncCwlForClan = async ({ tag, clanKey, deadline }) => {
     groupState: result.groupState,
     rounds: `${result.roundsCompleted}/${result.roundsTotal}`,
     players: result.players.length,
+    roundChecks: result.anchors,
   };
 };
 

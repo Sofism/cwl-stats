@@ -98,7 +98,9 @@ export default async function handler(req, res) {
         war = prog?.lastWar || null;
       }
       if (war && (war.state === "inWar" || war.state === "warEnded")) {
-        live = buildNormalWarRecord(war, tag, prog?.optOutTags || []);
+        const seen =
+          prog && prog.warKey === (war.preparationStartTime || war.startTime) ? prog.attackSeen : null;
+        live = buildNormalWarRecord(war, tag, prog?.optOutTags || [], seen);
         if (live) {
           live.state = war.state;
           // Sin foto de opt-outs del cron no se sabe: mejor sin marcador

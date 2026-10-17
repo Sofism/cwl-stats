@@ -59,7 +59,7 @@ const parseApiDate = (raw) => {
 let lastScheduleError = null;
 const getLastScheduleError = () => lastScheduleError;
 
-const scheduleOneTimeCheck = async (url, when) => {
+const scheduleOneTimeCheck = async (url, when, title) => {
   lastScheduleError = null;
   try {
     const res = await apiFetch("/jobs", {
@@ -68,6 +68,9 @@ const scheduleOneTimeCheck = async (url, when) => {
         job: {
           url,
           enabled: true,
+          // Nombre descriptivo: en el panel de cron-job.org, sin titulo, no se
+          // sabe para que sirve cada trabajo.
+          ...(title ? { title } : {}),
           schedule: {
             timezone: "UTC",
             expiresAt: 0,
@@ -114,6 +117,18 @@ const listJobs = async () => {
     return { jobs: (body && body.jobs) || [] };
   } catch (err) {
     return { error: `request failed: ${err.message}` };
+  }
+};
+
+/** Pone titulo a un trabajo existente: { ok } o { error }. */
+const renameJob = async (jobId, title) => {
+  try {
+    const res = await apiFetch(`/jobs/${jobId}`, { method: "PATCH", body: JSON.stringify({ job: { title } }) });
+    if (!res) return { error: "CRONJOB_API_KEY is not set" };
+    if (!res.ok) return { error: `HTTP ${res.status}` };
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
   }
 };
 
@@ -165,5 +180,6 @@ module.exports = {
   deleteScheduledJob,
   getLastScheduleError,
   listJobs,
+  renameJob,
   selfTest,
 };
