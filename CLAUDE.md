@@ -384,6 +384,11 @@ ella el nuevo por defecto no se vería en un dispositivo ya usado. Una elección
 hecha a mano (azure, violet...) no se toca. Ajustes tiene "Reset colours to
 default".
 
+**Inicio sin "tristeza" (tema neutro):** CTA principal sólido claro (`bg-accent-300`),
+pestaña de clan seleccionada en azul de datos, iconos de acceso en baldosa azul tenue,
+y un resumen de la última temporada (liga, posición, guerras ganadas, bonos, jugadores)
+con los números en `text-data-400` (`LatestSeasonSummary` en `SeasonSelector.jsx`).
+
 **Acento ajustable:** `accent` y `alert` se definen como
 `rgb(var(--accent-400) / <alpha-value>)`. `window.setPaletteRole(role,
 name)` cambia las variables CSS al vuelo. Las paletas están en

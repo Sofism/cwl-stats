@@ -6,6 +6,7 @@ import {
 import NewSeasonModal from "./NewSeasonModal";
 import BrandLogo from "./BrandLogo";
 import ClanCrest from "./ClanCrest";
+import { calculateBonusSlots, normalizeLeagueName } from "../utils/bonusCalculator";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import SettingsModal from "./SettingsModal";
 import HistoricalView from "./HistoricalView";
@@ -77,6 +78,71 @@ const WarLogRow = ({ war }) => (
     </span>
   </div>
 );
+
+/**
+ * Resumen de la ultima temporada de CWL: liga, posicion final, guerras
+ * ganadas y bonos de cada clan, de un vistazo. Los numeros van en el color de
+ * datos; pulsar abre la temporada.
+ */
+const LatestSeasonSummary = ({ season, clanNames, onOpen }) => {
+  if (!season) return null;
+  const info = season.leagueInfo || {};
+  const clans = [
+    { key: "main", name: clanNames?.main || "Main", badge: clanNames?.mainBadge, players: season.mainClan || [] },
+    { key: "secondary", name: clanNames?.secondary || "Secondary", badge: clanNames?.secondaryBadge, players: season.secondaryClan || [] },
+  ];
+  return (
+    <button
+      onClick={onOpen}
+      className="w-full text-left border border-line hover:border-line-strong rounded-md p-4 mb-6 transition-colors"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <Label>Latest season</Label>
+        <span className="font-mono text-xs text-txt-dim uppercase tracking-wider">{season.name}</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {clans.map(({ key, name, badge, players }) => {
+          const li = info[key] || {};
+          const hasData = players.length > 0;
+          const bonuses = hasData
+            ? calculateBonusSlots({ league: li.league, warsWon: li.warsWon, warSize: li.warSize || 15 })
+            : null;
+          return (
+            <div key={key} className="min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <ClanCrest url={badge} />
+                <span className="font-semibold text-txt-hi truncate">{name}</span>
+              </div>
+              {hasData ? (
+                <>
+                  <div className="text-sm text-txt-mid mb-2">
+                    {normalizeLeagueName(li.league)}
+                    {li.position ? <span className="text-txt-dim"> · </span> : null}
+                    {li.position ? <span className="font-mono text-data-400">#{li.position}</span> : null}
+                    {li.position ? <span className="text-txt-dim"> of 8</span> : null}
+                  </div>
+                  <div className="flex gap-6 text-xs text-txt-low">
+                    <span>
+                      <span className="font-mono text-lg text-data-400">{li.warsWon ?? 0}</span> wars won
+                    </span>
+                    <span>
+                      <span className="font-mono text-lg text-data-400">{bonuses}</span> bonuses
+                    </span>
+                    <span>
+                      <span className="font-mono text-lg text-data-400">{players.length}</span> players
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-txt-dim">No data in this season yet.</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </button>
+  );
+};
 
 /**
  * Desplegable de "que sabemos del rival" para la guerra normal en curso:
@@ -438,7 +504,7 @@ const SeasonSelector = ({
         {/* Cabecera */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-line mb-6">
           <div className="flex items-center gap-3">
-            <BrandLogo />
+            <BrandLogo className="w-14 h-14" />
             <div>
               <h1 className="text-2xl font-semibold text-txt-hi">CWL Stats Tracker</h1>
               <div className="font-mono text-xs tracking-[0.1em] text-txt-dim uppercase mt-1">
@@ -450,9 +516,9 @@ const SeasonSelector = ({
             {seasons.length > 0 && (
               <button
                 onClick={() => onSelectSeason(seasons[0])}
-                className="bg-accent-900 border-2 border-accent-400 rounded px-3 py-2 text-sm font-semibold text-txt-hi hover:bg-accent-900 transition-colors flex items-center gap-2"
+                className="bg-accent-300 border-2 border-accent-300 rounded px-3 py-2 text-sm font-semibold text-surface-950 hover:bg-txt-hi hover:border-txt-hi transition-colors flex items-center gap-2"
               >
-                <Play className="w-3.5 h-3.5 text-accent-400" />
+                <Play className="w-3.5 h-3.5" />
                 Latest CWL season
               </button>
             )}
@@ -483,7 +549,7 @@ const SeasonSelector = ({
                 onClick={() => setStatusClan(key)}
                 className={`flex-1 py-2 px-3 rounded-md text-sm font-semibold transition-colors ${
                   statusClan === key
-                    ? "bg-accent-900 border-2 border-accent-400 text-txt-hi"
+                    ? "bg-data-900/40 border-2 border-data-400 text-txt-hi"
                     : "bg-surface-800 border-2 border-line hover:bg-surface-700 text-txt-mid"
                 }`}
               >
@@ -542,31 +608,43 @@ const SeasonSelector = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <button
             onClick={() => setShowCurrentWar(true)}
-            className="border border-line hover:border-line-strong rounded-md p-4 text-left transition-colors"
+            className="border border-line hover:border-data-400/50 rounded-md p-4 text-left transition-colors"
           >
-            <Swords className="w-4 h-4 text-txt-low mb-2" />
+            <span className="inline-flex w-8 h-8 items-center justify-center rounded-md bg-data-900/50 text-data-400 mb-3">
+              <Swords className="w-4 h-4" />
+            </span>
             <div className="text-base text-txt-hi">Live war</div>
             <div className="font-mono text-xs text-txt-dim mt-1">CWL ROUND DETAIL</div>
           </button>
           <button
             onClick={() => setShowNormalWars(true)}
-            className="border border-line hover:border-line-strong rounded-md p-4 text-left transition-colors"
+            className="border border-line hover:border-data-400/50 rounded-md p-4 text-left transition-colors"
           >
-            <ListChecks className="w-4 h-4 text-txt-low mb-2" />
+            <span className="inline-flex w-8 h-8 items-center justify-center rounded-md bg-data-900/50 text-data-400 mb-3">
+              <ListChecks className="w-4 h-4" />
+            </span>
             <div className="text-base text-txt-hi">Normal wars</div>
             <div className="font-mono text-xs text-txt-dim mt-1">HISTORY & ATTACK LOG</div>
           </button>
           <button
             onClick={() => setShowHistorical(true)}
-            className="border border-line hover:border-line-strong rounded-md p-4 text-left transition-colors"
+            className="border border-line hover:border-data-400/50 rounded-md p-4 text-left transition-colors"
           >
-            <History className="w-4 h-4 text-txt-low mb-2" />
+            <span className="inline-flex w-8 h-8 items-center justify-center rounded-md bg-data-900/50 text-data-400 mb-3">
+              <History className="w-4 h-4" />
+            </span>
             <div className="text-base text-txt-hi">Historical</div>
             <div className="font-mono text-xs text-txt-dim mt-1">
               {seasons.length} SEASON{seasons.length !== 1 ? "S" : ""}
             </div>
           </button>
         </div>
+
+        <LatestSeasonSummary
+          season={seasons[0]}
+          clanNames={clanNames}
+          onOpen={() => onSelectSeason(seasons[0])}
+        />
 
         {/* Temporadas */}
         <div className="border-t border-line pt-4">
