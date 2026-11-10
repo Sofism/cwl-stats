@@ -5,7 +5,6 @@ import {
   getClanWarLeagueWar,
   normalizeTag,
 } from "./cocApi";
-import { compareDefaultOrder } from "./playerOrder";
 
 /**
  * Roster actual del clan, independiente de la CWL. Sirve para saber quién
@@ -42,146 +41,6 @@ const isLiveWar = (war) => war && war.state === "inWar";
 const didWeWin = (ourSide, theirSide) => {
   if (ourSide.stars !== theirSide.stars) return ourSide.stars > theirSide.stars;
   return ourSide.destructionPercentage > theirSide.destructionPercentage;
-};
-
-/**
- * Agrega las estadisticas por jugador a partir de guerras TERMINADAS.
- * `pairs` es una lista de { us, them } (los dos lados de cada guerra).
- * La clave es el tag, unico y estable aunque el jugador cambie de nombre.
- *
- * Se usa tanto para la temporada guardada como para la vista en vivo (de
- * nuestro clan y del rival), de modo que la formula es una sola.
- *
- * Con `withDetails` se anade ademas el detalle de cada defensa recibida;
- * se deja fuera de lo que se guarda en Redis para no inflar las temporadas.
- */
-export const aggregatePlayers = (pairs, clanLabel, { withDetails = false } = {}) => {
-  const byTag = new Map();
-
-  const getPlayer = (member) => {
-    if (!byTag.has(member.tag)) {
-      byTag.set(member.tag, {
-        tag: member.tag,
-        name: member.name,
-        clan: clanLabel,
-        th: member.townhallLevel || 0,
-        roosterDays: 0,
-        missedAttacks: 0,
-        offAttacks: [],
-        offDestTotal: 0,
-        atkSameOrHigherTh: 0,
-        defAttacks: [],
-        defenseLog: [],
-        unpunishedDefenses: 0,
-        distances: [],
-      });
-    }
-    return byTag.get(member.tag);
-  };
-
-  pairs.forEach(({ us, them }) => {
-    const enemyAttacks = (them.members || []).flatMap((m) =>
-      (m.attacks || []).map((a) => ({ a, attacker: m }))
-    );
-
-    (us.members || []).forEach((member) => {
-      const p = getPlayer(member);
-      p.roosterDays += 1;
-      p.name = member.name; // se queda con el nombre mas reciente
-      if (member.townhallLevel) p.th = member.townhallLevel; // y el TH mas reciente
-
-      const attack = (member.attacks || [])[0];
-      if (attack) {
-        p.offAttacks.push(attack.stars);
-        p.offDestTotal += attack.destructionPercentage;
-        const defender = (them.members || []).find((m) => m.tag === attack.defenderTag);
-        if (defender) {
-          // (posicion propia - posicion del objetivo). Ej: jugador en la
-          // posicion 5 atacando en 20/25/30 -> (-15,-20,-25) -> media -20.
-          p.distances.push(member.mapPosition - defender.mapPosition);
-          // Ataque a un TH igual o superior al propio (criterio de desempate).
-          if ((defender.townhallLevel || 0) >= (member.townhallLevel || 0)) {
-            p.atkSameOrHigherTh += 1;
-          }
-        }
-      } else {
-        p.missedAttacks += 1;
-      }
-
-      // Defensas: ataques del OTRO clan cuyo objetivo fue este miembro.
-      const faced = enemyAttacks.filter(({ a }) => a.defenderTag === member.tag);
-      if (faced.length > 0) {
-        faced.forEach(({ a, attacker }) => {
-          p.defAttacks.push(a);
-          if (withDetails) {
-            p.defenseLog.push({
-              stars: a.stars,
-              destruction: a.destructionPercentage,
-              attackerName: attacker.name,
-              attackerTh: attacker.townhallLevel || 0,
-              attackerPosition: attacker.mapPosition,
-              targetTh: member.townhallLevel || 0,
-              targetPosition: member.mapPosition,
-            });
-          }
-        });
-      } else {
-        p.unpunishedDefenses += 1;
-      }
-    });
-  });
-
-  return Array.from(byTag.values()).map((p) => {
-    const wars = p.roosterDays;
-    const offStars = p.offAttacks.reduce((sum, s) => sum + s, 0);
-    const offDest = p.offDestTotal;
-    const missAtk = p.missedAttacks;
-
-    const stars3 = p.offAttacks.filter((s) => s === 3).length;
-    const stars2 = p.offAttacks.filter((s) => s === 2).length;
-    const stars1 = p.offAttacks.filter((s) => s === 1).length;
-    const stars0 = p.offAttacks.filter((s) => s === 0).length;
-
-    const defStarsFaced = p.defAttacks.reduce((sum, a) => sum + a.stars, 0);
-    const defDestFaced = p.defAttacks.reduce((sum, a) => sum + a.destructionPercentage, 0);
-    const missDef = p.unpunishedDefenses;
-
-    const defStars = defStarsFaced + missDef * UNPUNISHED_DEFENSE_STARS;
-    const defDest = defDestFaced + missDef * UNPUNISHED_DEFENSE_DEST;
-
-    const avgDistance =
-      p.distances.length > 0
-        ? p.distances.reduce((sum, d) => sum + d, 0) / p.distances.length
-        : 0;
-
-    const player = {
-      name: p.name,
-      tag: p.tag,
-      clan: p.clan,
-      th: p.th,
-      missAtk,
-      offStars,
-      offDest,
-      defStars,
-      defDest,
-      netStars: offStars - defStars,
-      netDest: offDest - defDest,
-      threeRate: wars > 0 ? (stars3 / wars) * 100 : 0,
-      wars,
-      missDef,
-      stars3,
-      stars2,
-      stars1,
-      stars0,
-      avgDistance,
-      atkSameOrHigherTh: p.atkSameOrHigherTh,
-    };
-    if (withDetails) {
-      player.defCount = p.defAttacks.length;
-      player.defenseLog = p.defenseLog;
-    }
-    return player;
-  });
 };
 
 /**
@@ -237,10 +96,122 @@ export const syncCwlData = async (clanTag, clanLabel) => {
   const warsWon = completedWars.filter((w) => didWeWin(w.us, w.them)).length;
   const warSize = ourWars[0]?.raw?.teamSize || 15;
 
-  // Agregacion por jugador (solo guerras terminadas) y orden por defecto.
-  const players = aggregatePlayers(completedWars, clanLabel).sort(
-    compareDefaultOrder
-  );
+  // --- Agregación por jugador (clave = tag, único y estable aunque el
+  // jugador cambie de nombre) ---
+  const byTag = new Map();
+
+  const getPlayer = (member) => {
+    if (!byTag.has(member.tag)) {
+      byTag.set(member.tag, {
+        tag: member.tag,
+        name: member.name,
+        clan: clanLabel,
+        th: member.townhallLevel || 0,
+        roosterDays: 0,
+        missedAttacks: 0,
+        offAttacks: [],
+        defAttacks: [],
+        unpunishedDefenses: 0,
+        distances: [],
+      });
+    }
+    return byTag.get(member.tag);
+  };
+
+  // Solo entran en las estadisticas las guerras YA TERMINADAS. Una ronda en
+  // curso no suma nada hasta que cierra: mientras se juega, los ataques que
+  // faltan pueden hacerse todavia y las defensas aun pueden recibirse, asi
+  // que contarla daria numeros enganosos. La sincronizacion es "guerra a
+  // guerra": cada ronda se incorpora en cuanto acaba.
+  completedWars.forEach(({ us, them }) => {
+    us.members.forEach((member) => {
+      const p = getPlayer(member);
+      p.roosterDays += 1;
+      p.name = member.name; // se queda con el nombre más reciente
+
+      const attack = (member.attacks || [])[0];
+      if (attack) {
+        p.offAttacks.push(attack.stars);
+        p.offAttacks.destTotal = (p.offAttacks.destTotal || 0) + attack.destructionPercentage;
+        const defender = them.members.find((m) => m.tag === attack.defenderTag);
+        if (defender) {
+          // (posición propia - posición del objetivo). Ej: jugador en la
+          // posición 5 atacando en 20/25/30 -> (-15,-20,-25) -> media -20.
+          p.distances.push(member.mapPosition - defender.mapPosition);
+        }
+      } else {
+        p.missedAttacks += 1;
+      }
+
+      // Defensas: ataques del OTRO clan cuyo objetivo fue este miembro.
+      const defensesFaced = them.members
+        .flatMap((m) => m.attacks || [])
+        .filter((a) => a.defenderTag === member.tag);
+
+      if (defensesFaced.length > 0) {
+        defensesFaced.forEach((a) => p.defAttacks.push(a));
+      } else {
+        p.unpunishedDefenses += 1;
+      }
+    });
+  });
+
+  const players = Array.from(byTag.values()).map((p) => {
+    const wars = p.roosterDays;
+    const offStars = p.offAttacks.reduce((sum, s) => sum + s, 0);
+    const offDest = p.offAttacks.destTotal || 0;
+    const missAtk = p.missedAttacks;
+
+    const stars3 = p.offAttacks.filter((s) => s === 3).length;
+    const stars2 = p.offAttacks.filter((s) => s === 2).length;
+    const stars1 = p.offAttacks.filter((s) => s === 1).length;
+    const stars0 = p.offAttacks.filter((s) => s === 0).length;
+
+    const defStarsFaced = p.defAttacks.reduce((sum, a) => sum + a.stars, 0);
+    const defDestFaced = p.defAttacks.reduce((sum, a) => sum + a.destructionPercentage, 0);
+    const missDef = p.unpunishedDefenses;
+
+    const defStars = defStarsFaced + missDef * UNPUNISHED_DEFENSE_STARS;
+    const defDest = defDestFaced + missDef * UNPUNISHED_DEFENSE_DEST;
+
+    const avgDistance =
+      p.distances.length > 0
+        ? p.distances.reduce((sum, d) => sum + d, 0) / p.distances.length
+        : 0;
+
+    return {
+      name: p.name,
+      tag: p.tag,
+      clan: p.clan,
+      th: p.th,
+      missAtk,
+      offStars,
+      offDest,
+      defStars,
+      defDest,
+      netStars: offStars - defStars,
+      netDest: offDest - defDest,
+      threeRate: wars > 0 ? (stars3 / wars) * 100 : 0,
+      wars,
+      missDef,
+      stars3,
+      stars2,
+      stars1,
+      stars0,
+      avgDistance,
+    };
+  });
+
+  // Mismo criterio de orden que dataParser.js
+  players.sort((a, b) => {
+    if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
+    if (b.netStars !== a.netStars) return b.netStars - a.netStars;
+    if (clanLabel !== "Main" && a.avgDistance !== b.avgDistance) {
+      return a.avgDistance - b.avgDistance;
+    }
+    if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
+    return b.netDest - a.netDest;
+  });
 
   // Posición final dentro del grupo (provisional si aún quedan guerras).
   const position = calculateGroupPosition(group, wars, tag);
@@ -297,75 +268,6 @@ const calculateGroupPosition = (group, wars, clanTag) => {
 
   const index = ranked.findIndex((c) => c.tag === clanTag);
   return index === -1 ? null : index + 1;
-};
-
-const emptyPlayerStats = (member, clanLabel) => ({
-  name: member.name,
-  tag: member.tag,
-  clan: clanLabel,
-  th: member.townhallLevel || 0,
-  missAtk: 0,
-  offStars: 0,
-  offDest: 0,
-  defStars: 0,
-  defDest: 0,
-  netStars: 0,
-  netDest: 0,
-  threeRate: 0,
-  wars: 0,
-  missDef: 0,
-  stars3: 0,
-  stars2: 0,
-  stars1: 0,
-  stars0: 0,
-  avgDistance: 0,
-  atkSameOrHigherTh: 0,
-  defCount: 0,
-  defenseLog: [],
-});
-
-/**
- * Vista de un lado (nuestro clan o el rival) para la pantalla en vivo:
- * estadisticas acumuladas de las rondas TERMINADAS + estado en la ronda
- * actual. Funciona igual para cualquier clan del grupo porque la API da
- * todas las guerras del grupo, no solo las nuestras.
- */
-const buildSideView = (side, other, completedPairs) => {
-  const label = side.name;
-  const byTag = new Map(
-    aggregatePlayers(completedPairs, label, { withDetails: true }).map((p) => [p.tag, p])
-  );
-  const lineup = new Map((side.members || []).map((m) => [m.tag, m]));
-
-  // Jugadores de la alineacion actual que aun no tienen ninguna guerra
-  // terminada (p. ej. en la ronda 1) tambien aparecen, con todo a cero.
-  lineup.forEach((m, tag) => {
-    if (!byTag.has(tag)) byTag.set(tag, emptyPlayerStats(m, label));
-  });
-
-  return Array.from(byTag.values())
-    .map((p) => {
-      const m = lineup.get(p.tag);
-      let thisRound = null;
-      if (m) {
-        const attack = (m.attacks || [])[0] || null;
-        const target = attack
-          ? (other.members || []).find((x) => x.tag === attack.defenderTag)
-          : null;
-        thisRound = {
-          position: m.mapPosition,
-          attack: attack
-            ? {
-                stars: attack.stars,
-                destruction: attack.destructionPercentage,
-                targetPosition: target ? target.mapPosition : null,
-              }
-            : null,
-        };
-      }
-      return { ...p, th: m?.townhallLevel || p.th, thisRound };
-    })
-    .sort(compareDefaultOrder);
 };
 
 /**
@@ -458,25 +360,8 @@ export const getCurrentCwlWar = async (clanTag) => {
   const ourBasesAttacked = roster.filter((p) => p.defense).length;
   const perfectDefenses = roster.filter((p) => p.defense && p.defense.stars === 0).length;
 
-  // Guerras TERMINADAS de un clan cualquiera del grupo (para sus stats).
-  const completedPairsOf = (clanTagX) =>
-    wars
-      .filter(isCompletedWar)
-      .map((w) => {
-        if (w.clan?.tag === clanTagX) return { us: w.clan, them: w.opponent };
-        if (w.opponent?.tag === clanTagX) return { us: w.opponent, them: w.clan };
-        return null;
-      })
-      .filter(Boolean);
-  const usCompleted = completedPairsOf(us.tag);
-
   return {
     state: raw.state, // "preparation" | "inWar"
-    roundsCompleted: usCompleted.length,
-    // Stats acumuladas por jugador (solo rondas terminadas) + estado en
-    // la ronda actual, para nuestro clan y para el rival.
-    usPlayers: buildSideView(us, them, usCompleted),
-    themPlayers: buildSideView(them, us, completedPairsOf(them.tag)),
     teamSize: raw.teamSize,
     attacksPerMember,
     usAttacksUsed,

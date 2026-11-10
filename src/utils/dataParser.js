@@ -1,5 +1,3 @@
-import { compareDefaultOrder } from "./playerOrder";
-
 export const parseData = (text, clan) => {
   const lines = text.trim().split("\n");
   const data = [];
@@ -46,6 +44,23 @@ export const parseData = (text, clan) => {
     });
   }
 
-  // Orden por defecto compartido con el resto de la app.
-  return data.sort(compareDefaultOrder);
+  // Ordenamiento: avgDistance SOLO para clan Secondary (DD), NO para Main (True North)
+  return data.sort((a, b) => {
+    // 1. Prioridad: Ataques perdidos (menor es mejor)
+    if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
+    
+    // 2. Net Stars (mayor es mejor)
+    if (b.netStars !== a.netStars) return b.netStars - a.netStars;
+    
+    // 3. Average Distance - SOLO si NO es "Main" (True North)
+    if (a.clan !== "Main" && a.avgDistance !== b.avgDistance) {
+      return a.avgDistance - b.avgDistance;
+    }
+    
+    // 4. Three star rate (mayor es mejor)
+    if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
+    
+    // 5. Net destruction (mayor es mejor)
+    return b.netDest - a.netDest;
+  });
 };
