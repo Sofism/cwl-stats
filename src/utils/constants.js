@@ -1,9 +1,4 @@
-// Legend y Titan: Santi las dio como un solo nivel, sin I/II/III (a
-// diferencia de Bronze-Champion, que si se subdividen). Sin confirmar si
-// el juego realmente las subdivide tambien - ajustar si no es asi.
 export const LEAGUES = [
-  "Legend",
-  "Titan",
   "Champion I",
   "Champion II",
   "Champion III",
@@ -24,10 +19,8 @@ export const LEAGUES = [
   "Bronze III",
 ];
 
-// Bonos base por liga en 15v15 (tabla oficial dada por Santi, 2026-09).
+// Bonos base por liga (según tabla oficial)
 export const BASE_BONUSES = {
-  Legend: 6,
-  Titan: 5,
   "Champion I": 4,
   "Champion II": 4,
   "Champion III": 4,
@@ -48,56 +41,34 @@ export const BASE_BONUSES = {
   "Bronze III": 1,
 };
 
-// 30v30 dobla el bono base, pero SOLO existe hasta Master - Champion,
-// Titan y Legend son exclusivamente 15v15 (tabla oficial dada por Santi).
-// Por eso este mapa no tiene esas ligas: si alguien selecciona 30v30 en
-// una de ellas, calculateBonusSlots cae al valor de 15v15 porque no hay
-// una cifra de 30v30 real para ese caso (no existe en el juego).
-export const BASE_BONUSES_30V30 = {
-  "Master I": 6,
-  "Master II": 6,
-  "Master III": 6,
-  "Crystal I": 4,
-  "Crystal II": 4,
-  "Crystal III": 4,
-  "Gold I": 4,
-  "Gold II": 4,
-  "Gold III": 4,
-  "Silver I": 2,
-  "Silver II": 2,
-  "Silver III": 2,
-  "Bronze I": 2,
-  "Bronze II": 2,
-  "Bronze III": 2,
+// Medallas por bono según liga
+export const MEDAL_VALUES = {
+  "Champion I": 105,
+  "Champion II": 100,
+  "Champion III": 95,
+  "Master I": 90,
+  "Master II": 85,
+  "Master III": 80,
+  "Crystal I": 75,
+  "Crystal II": 70,
+  "Crystal III": 65,
+  "Gold I": 60,
+  "Gold II": 55,
+  "Gold III": 50,
+  "Silver I": 45,
+  "Silver II": 40,
+  "Silver III": 40,
+  "Bronze I": 35,
+  "Bronze II": 35,
+  "Bronze III": 35,
 };
 
-// Columnas por defecto de las temporadas que se ordenan con el sistema
-// ANTERIOR (sin sameTh): exactamente las de antes. Se guardan en la clave
-// original `cwl-visible-cols`, asi que lo que tenias elegido se conserva.
-export const LEGACY_VISIBLE_COLS = {
-  th: false,
-  wars: true,
-  missAtk: true,
-  missDef: false,
-  netStars: true,
-  netPercent: false,
-  threeRate: true,
-  starGain: true,
-  percentGain: false,
-  starGive: true,
-  percentGive: false,
-  sameOrHigherTh: false,
-};
-
-// Columnas por defecto del sistema NUEVO: las que entran en el calculo del
-// orden (wars, missed, net stars, hits >= TH y 3★%) siempre se ven.
 export const DEFAULT_VISIBLE_COLS = {
   th: false,
   wars: true,
   missAtk: true,
   missDef: false,
   netStars: true,
-  sameOrHigherTh: true,
   netPercent: false,
   threeRate: true,
   starGain: true,

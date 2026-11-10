@@ -4,16 +4,13 @@ import StatsTable from "./StatsTable";
 import ColumnSelector from "./ColumnSelector";
 import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
-import SyncReduceConfirmModal from "./SyncReduceConfirmModal";
-import { DEFAULT_VISIBLE_COLS, LEGACY_VISIBLE_COLS } from "../utils/constants";
-import { sortForDisplay, hasNewRanking } from "../utils/sortPlayers";
+import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
-import { runCwlSync, applyCwlSyncResult } from "../utils/cwlSync";
+import { compareDefaultOrder } from "../utils/playerOrder";
 import HistoricalView from "./HistoricalView";
-import BrandLogo from "./BrandLogo";
 import CurrentWarView from "./CurrentWarView";
 import { Trash2, ArrowLeft, Trophy,
-  Swords, RefreshCw,
+  Swords,
 } from "lucide-react";
 
 const Dashboard = ({
@@ -27,38 +24,30 @@ const Dashboard = ({
   onDeleteAll,
   onPlayerSelect,
   clanNames,
-  updateClanNames,
 }) => {
   const [activePage, setActivePage] = useState("main");
   const [sortBy, setSortBy] = useState("default");
-  // Las columnas elegidas se recuerdan entre sesiones, por separado para
-  // cada sistema de orden (ver sortPlayers.js): las temporadas anteriores
-  // conservan la clave y los valores de siempre; el sistema nuevo usa una
-  // clave propia (versionada). Se fusiona con los valores por defecto para
-  // que las columnas nuevas aparezcan aunque haya una preferencia guardada.
-  const loadCols = (key, defaults) => {
+  // Las columnas elegidas se recuerdan entre sesiones. Se fusiona con los
+  // valores por defecto para que las columnas nuevas aparezcan aunque haya
+  // una preferencia guardada de antes.
+  const [visibleCols, setVisibleCols] = useState(() => {
     try {
-      const saved = localStorage.getItem(key);
-      return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+      const saved = localStorage.getItem("cwl-visible-cols");
+      return saved
+        ? { ...DEFAULT_VISIBLE_COLS, ...JSON.parse(saved) }
+        : DEFAULT_VISIBLE_COLS;
     } catch {
-      return defaults;
+      return DEFAULT_VISIBLE_COLS;
     }
-  };
-  const [colsLegacy, setColsLegacy] = useState(() =>
-    loadCols("cwl-visible-cols", LEGACY_VISIBLE_COLS)
-  );
-  const [colsNew, setColsNew] = useState(() =>
-    loadCols("cwl-visible-cols-v2", DEFAULT_VISIBLE_COLS)
-  );
+  });
 
   useEffect(() => {
     try {
-      localStorage.setItem("cwl-visible-cols", JSON.stringify(colsLegacy));
-      localStorage.setItem("cwl-visible-cols-v2", JSON.stringify(colsNew));
+      localStorage.setItem("cwl-visible-cols", JSON.stringify(visibleCols));
     } catch {
       // sin localStorage: simplemente no se recuerda
     }
-  }, [colsLegacy, colsNew]);
+  }, [visibleCols]);
   const [showColSelector, setShowColSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showHistorical, setShowHistorical] = useState(false);
@@ -75,82 +64,6 @@ const Dashboard = ({
     main: currentSeason.bonuses?.main || [],
     secondary: currentSeason.bonuses?.secondary || []
   });
-
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState(null);
-  const [pendingSync, setPendingSync] = useState(null);
-  const hasTags = Boolean(clanNames?.mainTag && clanNames?.secondaryTag);
-
-  const finishSync = (mainResult, secondaryResult, errors = {}) => {
-    const { updatedSeason, newLeagueInfo, apiNames } = applyCwlSyncResult(
-      currentSeason,
-      leagueInfo,
-      mainResult,
-      secondaryResult
-    );
-    setLeagueInfo(newLeagueInfo);
-    updateSeasonData(updatedSeason);
-    if (Object.keys(apiNames).length && updateClanNames) {
-      updateClanNames({ ...clanNames, ...apiNames });
-    }
-    const describe = (result, error, fallbackName) => {
-      if (result) return `${result.clanName || fallbackName}: ${result.players.length} players`;
-      if (error) return `${fallbackName}: could not reach the Clash API (${error}) — kept the saved data`;
-      return `${fallbackName}: not currently in CWL — kept the saved data`;
-    };
-    setSyncMessage(
-      [
-        describe(mainResult, errors.main, clanNames.main),
-        describe(secondaryResult, errors.secondary, clanNames.secondary),
-      ].join(" · ")
-    );
-  };
-
-  const handleQuickSync = async () => {
-    if (!hasTags) {
-      setSyncMessage("Add both clan tags in Settings to enable syncing.");
-      return;
-    }
-    setSyncing(true);
-    setSyncMessage(null);
-    const {
-      mainResult,
-      secondaryResult,
-      mainError,
-      secondaryError,
-      seasonMismatch,
-      mainWouldReduce,
-      secondaryWouldReduce,
-    } = await runCwlSync(clanNames, currentSeason);
-
-    if (seasonMismatch) {
-      // Guardar aqui mezclaria dos meses. La temporada del mes correcto se
-      // crea sola con el sync automatico; si aun no existe, se crea a mano.
-      setSyncMessage(
-        `This CWL is ${seasonMismatch.month} ${seasonMismatch.year}, but "${currentSeason.name}" is open. ` +
-          `Open the ${seasonMismatch.month} season (the automatic sync creates it) or create it, then sync there. Nothing was saved.`
-      );
-      setSyncing(false);
-      return;
-    }
-
-    const errors = { main: mainError, secondary: secondaryError };
-    if (mainWouldReduce || secondaryWouldReduce) {
-      setPendingSync({ mainResult, secondaryResult, mainWouldReduce, secondaryWouldReduce, errors });
-      setSyncing(false);
-      return;
-    }
-    finishSync(mainResult, secondaryResult, errors);
-    setSyncing(false);
-  };
-
-  const confirmPendingSync = () => {
-    if (!pendingSync) return;
-    finishSync(pendingSync.mainResult, pendingSync.secondaryResult, pendingSync.errors);
-    setPendingSync(null);
-  };
-
-  const cancelPendingSync = () => setPendingSync(null);
 
 
 
@@ -191,8 +104,8 @@ const Dashboard = ({
     } else if (sortBy === "missAtk") {
       data.sort((a, b) => a.missAtk - b.missAtk);
     } else {
-      // Orden por defecto: nuevo o anterior segun los datos del clan.
-      data = sortForDisplay(data, activePage);
+      // Orden por defecto: ver utils/playerOrder.js
+      data.sort(compareDefaultOrder);
     }
 
     return data;
@@ -210,14 +123,6 @@ const Dashboard = ({
   const data = getData();
   const bonusCount = getBonusCount();
 
-  // Que sistema (y que columnas) se usan depende de los datos del clan que se
-  // esta viendo en esta temporada.
-  const newRanking = hasNewRanking(
-    activePage === "main" ? currentSeason.mainClan : currentSeason.secondaryClan
-  );
-  const visibleCols = newRanking ? colsNew : colsLegacy;
-  const setVisibleCols = newRanking ? setColsNew : setColsLegacy;
-
   return (
     <div className="min-h-screen bg-surface-950 text-txt-mid p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
@@ -232,12 +137,9 @@ const Dashboard = ({
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <div className="flex items-center gap-3">
-              <BrandLogo className="w-12 h-12" />
-              <h1 className="text-4xl font-semibold tracking-wide text-txt-hi">
+            <h1 className="text-4xl font-semibold tracking-wide text-txt-hi">
               CWL Performance
-              </h1>
-            </div>
+            </h1>
             <select
               value={currentSeason.id}
               onChange={(e) => {
@@ -255,15 +157,7 @@ const Dashboard = ({
               ))}
             </select>
           </div>
-          <div className="flex flex-wrap gap-2">
-  <button
-    onClick={handleQuickSync}
-    disabled={syncing}
- className="px-4 py-2 border border-line-strong rounded-md hover:border-accent-400 disabled:opacity-50 transition-colors flex items-center gap-2"
-  >
-    <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-    {syncing ? "Syncing..." : "Sync now"}
-  </button>
+          <div className="flex gap-2">
   <button
     onClick={() => setShowCurrentWar(true)}
  className="px-4 py-2 bg-surface-700 border border-accent-400/40 rounded-md hover:bg-surface-700 transition-colors flex items-center gap-2"
@@ -295,27 +189,8 @@ const Dashboard = ({
         </div>
 
         {saveStatus && (
-          <div className="mb-4 p-3 rounded-md bg-ok-900 border border-ok-400/40 text-ok-400">
+          <div className="mb-4 p-3 rounded-md bg-ok-900/50 border border-ok-400/40 text-ok-400">
             {saveStatus}
-          </div>
-        )}
-
-        {syncMessage && (
-          <div className="mb-4 p-3 rounded-md bg-surface-800 border border-line-strong text-txt-mid text-sm">
-            {syncMessage}
-          </div>
-        )}
-
-        {(currentSeason.manual?.main || currentSeason.manual?.secondary) && (
-          <div className="mb-4 p-3 rounded-md border border-line text-txt-low text-xs">
-            {[
-              currentSeason.manual?.main && clanNames.main,
-              currentSeason.manual?.secondary && clanNames.secondary,
-            ]
-              .filter(Boolean)
-              .join(" and ")}
-            : data was pasted by hand, so the automatic sync will not overwrite it. "Sync now"
-            replaces it with what the Clash API reports.
           </div>
         )}
 
@@ -327,32 +202,15 @@ const Dashboard = ({
           <option value="default">Default Sort</option>
           <option value="netStars">Net Stars</option>
           <option value="netPercent">Net %</option>
-          <option value="threeRate">3★ Hitrate</option>
+          <option value="threeRate">3★ per war</option>
           <option value="missAtk">Missed Attacks</option>
         </select>
-        {sortBy === "default" && newRanking && (
-          <p className="text-xs text-txt-dim mb-4">
-            Default order: fewest missed attacks first (nobody with a missed attack
-            ranks above someone with none), then highest net stars. Ties in net
-            stars are broken by wars in, then attacks on the same or a higher TH,
-            then 3★ rate. Anything still tied goes by net destruction; names never
-            break a tie.
-          </p>
-        )}
-        {sortBy === "default" && !newRanking && (
-          <p className="text-xs text-txt-dim mb-4">
-            Default order: fewest missed attacks first, then highest net stars
-            {activePage !== "main" ? ", then lowest avg. distance," : ","} then
-            highest 3★ rate, then highest net destruction.
-          </p>
-        )}
 
         <ColumnSelector
           visibleCols={visibleCols}
           setVisibleCols={setVisibleCols}
           showColSelector={showColSelector}
           setShowColSelector={setShowColSelector}
-          showHitsColumn={newRanking}
         />
 
         <ClanTabs
@@ -389,25 +247,11 @@ const Dashboard = ({
             onCancel={() => setDeleteConfirm(null)}
           />
         )}
-
-        {pendingSync && (
-          <SyncReduceConfirmModal
-            clanNames={clanNames}
-            mainWouldReduce={pendingSync.mainWouldReduce}
-            secondaryWouldReduce={pendingSync.secondaryWouldReduce}
-            mainOld={currentSeason.mainClan?.length || 0}
-            mainNew={pendingSync.mainResult?.players.length || 0}
-            secondaryOld={currentSeason.secondaryClan?.length || 0}
-            secondaryNew={pendingSync.secondaryResult?.players.length || 0}
-            onConfirm={confirmPendingSync}
-            onCancel={cancelPendingSync}
-          />
-        )}
       </div>
       {showCurrentWar && (
         <CurrentWarView
-          clanNames={clanNames}
-          initialClan={activePage}
+          clanTag={activePage === "main" ? clanNames.mainTag : clanNames.secondaryTag}
+          clanName={activePage === "main" ? clanNames.main : clanNames.secondary}
           onClose={() => setShowCurrentWar(false)}
         />
       )}

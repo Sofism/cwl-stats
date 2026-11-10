@@ -108,7 +108,6 @@ const CWLStatsTracker = () => {
         onDeleteAll={deleteAllSeasons}
         onPlayerSelect={setSelectedPlayer}
         clanNames={clanNames}
-        updateClanNames={updateClanNames}
       />
 
       {selectedPlayer && (

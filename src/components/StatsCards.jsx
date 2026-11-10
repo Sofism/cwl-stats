@@ -23,7 +23,7 @@ const StatsCards = ({ data, leagueInfo, activePage, bonusCount }) => {
           : 0
       }%`,
       label: "Avg 3★ Rate",
-      colorClass: "text-data-400",
+      colorClass: "text-accent-400",
     },
     {
       icon: Award,

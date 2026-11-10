@@ -7,7 +7,6 @@ const ACCENT_OPTIONS = [
   { id: "amber", label: "Amber", swatch: "#d9a441" },
   { id: "rust", label: "Rust", swatch: "#e0754a" },
   { id: "violet", label: "Violet", swatch: "#927dd6" },
-  { id: "slate", label: "Neutral", swatch: "#d4d4d8" },
 ];
 
 const SettingsModal = ({ clanNames, onSave, onClose }) => {
@@ -20,13 +19,11 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
       return fallback;
     }
   };
-  const [accent, setAccentState] = useState(() => readRole("accent", "slate"));
-  const [alertColor, setAlertState] = useState(() => readRole("alert", "amber"));
-  const [dataColor, setDataState] = useState(() => readRole("data", "azure"));
+  const [accent, setAccentState] = useState(() => readRole("accent", "lime"));
+  const [alertColor, setAlertState] = useState(() => readRole("alert", "rust"));
 
   const pickRole = (role, id) => {
     if (role === "accent") setAccentState(id);
-    else if (role === "data") setDataState(id);
     else setAlertState(id);
     if (typeof window.setPaletteRole === "function") {
       window.setPaletteRole(role, id);
@@ -53,9 +50,8 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto">
-      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-      <div className="border border-line rounded-md p-6 max-w-md w-full my-8">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="border border-line rounded-md p-6 max-w-md w-full">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold flex items-center gap-2">
             <Settings className="w-6 h-6 text-accent-400" />
@@ -126,8 +122,6 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
           {[
             { role: "accent", label: "Primary colour", value: accent,
               hint: "Buttons, links and interactive elements." },
-            { role: "data", label: "Data colour", value: dataColor,
-              hint: "Our clan's numbers, charts and highlights (never red or orange, those mean trouble)." },
             { role: "alert", label: "Alert colour", value: alertColor,
               hint: "Missing attacks and pending threats." },
           ].map((row) => (
@@ -155,23 +149,6 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
               </div>
             </div>
           ))}
-          {(accent !== "slate" || alertColor !== "amber" || dataColor !== "azure") && (
-            <button
-              onClick={() => {
-                pickRole("accent", "slate");
-                pickRole("alert", "amber");
-                pickRole("data", "azure");
-              }}
-              className="text-xs text-txt-low hover:text-txt-hi border border-line-strong rounded-md px-3 py-1.5"
-            >
-              Reset colours to default
-            </button>
-          )}
-          {dataColor === accent && (
-            <p className="text-xs text-amber-400">
-              Data and primary colours match — data will not stand out from the buttons.
-            </p>
-          )}
           {accent === alertColor && (
             <p className="text-xs text-amber-400">
               Both roles use the same colour — alerts will not stand out.
@@ -193,7 +170,6 @@ const SettingsModal = ({ clanNames, onSave, onClose }) => {
             Cancel
           </button>
         </div>
-      </div>
       </div>
     </div>
   );
