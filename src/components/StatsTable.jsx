@@ -68,7 +68,7 @@ const StatsTable = memo(({
                 )}
                 {visibleCols.netStars && <th className="p-3">Net ★</th>}
                 {visibleCols.netPercent && <th className="p-3">Net %</th>}
-                {visibleCols.threeRate && <th className="p-3">3★%</th>}
+                {visibleCols.threeRate && <th className="p-3">3★/Wars</th>}
                 {visibleCols.starGain && <th className="p-3">★ Gain</th>}
                 {visibleCols.percentGain && <th className="p-3">% Gain</th>}
                 {visibleCols.starGive && <th className="p-3">★ Give</th>}
@@ -186,8 +186,11 @@ const StatsTable = memo(({
                         </td>
                       )}
                       {visibleCols.threeRate && (
-                        <td className="p-3 text-accent-400 font-semibold">
-                          {p.threeRate.toFixed(1)}%
+                        <td
+                          className="p-3 text-accent-400 font-semibold font-mono"
+                          title={`${p.threeRate.toFixed(1)}%`}
+                        >
+                          {p.stars3 ?? 0}/{p.wars ?? 0}
                         </td>
                       )}
                       {visibleCols.starGain && (

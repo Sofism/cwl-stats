@@ -112,6 +112,17 @@ Estos límites condicionan el diseño. No son suposiciones.
 - `threeRate` = triples / guerras alineadas. **No** es estrellas obtenidas
   sobre posibles. Se planteó cambiarlo y se descartó para no romper la
   comparabilidad con las 11 temporadas históricas del bot.
+- **Orden por defecto** (`utils/playerOrder.js`, `compareDefaultOrder`; lo
+  usan `Dashboard`, `cwlSync` y `dataParser`): 1) menos ataques fallados;
+  2) más estrellas netas; desempate de netas: 3) más ataques contra un TH
+  igual o superior al propio, 4) más guerras jugadas, 5) mejor 3★ rate;
+  6) mayor destrucción neta. **El nombre nunca desempata.** Sustituye al
+  criterio anterior, que usaba `avgDistance` solo en el clan secundario.
+- En la tabla de estadísticas la columna se muestra como **`3★/Wars`**
+  (p. ej. `4/6`, con el % en el tooltip) porque el porcentaje es difícil de
+  comparar entre jugadores con distinto número de guerras. Internamente
+  `threeRate` sigue guardándose como porcentaje. El histórico, las gráficas
+  y `PlayerModal` aún muestran el %.
 
 ### Bonos de CWL — PENDIENTE DE CALIBRAR
 
@@ -181,7 +192,19 @@ Durante meses no lo estaba y ninguna regla se aplicaba.
 - Home como panel de estado (`SeasonSelector.jsx`, mal nombrado ya):
   CWL en curso, guerra normal, ataques pendientes plegables, altas/bajas,
   opted-out por guerra.
-- `CurrentWarView` — vista en vivo de la ronda de CWL.
+- `CurrentWarView` — vista en vivo de la ronda de CWL, con dos pestañas:
+  **Live** (por defecto: marcador con ataques que faltan por equipo, roster
+  ordenable por posición o "pending first") y **Players** (tabla completa de
+  nuestro clan: guerras, 3★/2★/1★/0★, fallos, defensas con detalle al
+  expandir y estado en la ronda actual; cabeceras ordenables). Pulsar el
+  nombre de cualquiera de los dos clanes en el marcador abre un popup
+  (`ClanRosterModal`) con la misma tabla (`ClanPerformanceTable`) para ese
+  clan. Las stats del rival salen de las demás guerras del grupo, que la API
+  devuelve completas. Solo cuentan rondas terminadas; la ronda en curso va en
+  la última columna.
+- `aggregatePlayers()` en `cwlSync.js` es la **única** fórmula de stats por
+  jugador (temporada guardada y vista en vivo). Con `withDetails` añade el
+  detalle de defensas, que no se guarda en Redis.
 - Métricas de guerra en el home (`homeStatus.js`): ataques usados/totales,
   **ataques que le quedan al rival**, aldeas nuestras sin atacar, aldeas
   que aguantaron a 0★, y estrellas que quedan en juego.
@@ -190,24 +213,6 @@ Durante meses no lo estaba y ninguna regla se aplicaba.
 - Config de clanes en Redis (`api/clan-config.js`) + caché en localStorage.
 - Columnas visibles persistidas en localStorage.
 
-### Mapa de vistas (App.js enruta por `view`)
-
-- `view === "selector"` → **`SeasonSelector.jsx`** = el HOME (panel de
-  estado). Mal nombrado: ya no es un selector. Las temporadas son un
-  desplegable al pie.
-- `view === "import"` → **`ImportView.jsx`** = sincronizar / importar.
-  Contiene `LeagueSettings` y **`SeasonList`** (la lista de temporadas con
-  botones Open/Delete), más el textarea de pegado manual plegado.
-- resto → **`Dashboard.jsx`** = tabla de la temporada activa
-  (`StatsTable`, `StatsCards`, `ClanTabs`, `ColumnSelector`).
-- Modales/overlays: `HistoricalView`, `CurrentWarView`, `SettingsModal`,
-  `NewSeasonModal`, `DeleteConfirmModal`, `PlayerModal` (lazy).
-
-**No hay componentes huérfanos**: los 17 están en uso. `SeasonList` lo usa
-`ImportView`, **no** `SeasonSelector` — no confundir las dos pantallas.
-`PlayerModal` entra por `lazy(() => import(...))`, así que un grep de
-`from "./PlayerModal"` da falso negativo.
-
 ### Modelo de datos de una temporada
 
 `{ id, name, year, mainClan: [...], secondaryClan: [...], leagueInfo }`.
@@ -215,7 +220,10 @@ Durante meses no lo estaba y ninguna regla se aplicaba.
 `warSize` (5/15/30) se añadió para el cálculo de bonos y lo rellena el sync
 desde `teamSize`. Cada jugador: `name, tag, clan, th, wars, missAtk,
 missDef, offStars, offDest, defStars, defDest, netStars, netDest,
-threeRate, stars3/2/1/0, avgDistance`.
+threeRate, stars3/2/1/0, avgDistance, atkSameOrHigherTh`.
+`atkSameOrHigherTh` (ataques contra un TH >= al propio) solo existe en las
+temporadas sincronizadas desde nov 2026; en las anteriores falta y el orden
+lo trata como 0 (no se puede recalcular: la API no da temporadas pasadas).
 
 Las temporadas antiguas (pegadas a mano) **no tienen `tag`**: el histórico
 cae a agrupar por nombre en esos casos. `dataParser.js` sigue existiendo
@@ -239,7 +247,10 @@ o el clan no está en CWL.
 4. Mover a Redis lo que aún está en localStorage: histórico de opted-out,
    snapshot de roster para altas/bajas.
 5. `StatsTable` aún no usa `font-mono` en las cifras.
-6. Posibles secciones nuevas: Clan Capital
+6. ~~`SeasonList.jsx` huérfano~~ **Falso, verificado:** lo importa y
+   renderiza `ImportView.jsx` (cadena `App.js` → `ImportView` →
+   `SeasonList`). No borrar salvo que se rediseñe `ImportView`.
+7. Posibles secciones nuevas: Clan Capital
    (`clans/{tag}/capitalraidseasons`, sí guarda histórico), donaciones
    (gratis, ya viene en el listado de miembros), preparación de guerra
    (héroes vía `players/{tag}`).
@@ -259,9 +270,16 @@ es de ~48 h y se perderían guerras.
 
 **Solución acordada:** `/api/sync` es una ruta HTTP normal que acepta
 llamadas de cualquiera, así que un programador externo gratuito
-(**cron-job.org** o **GitHub Actions**) la llama **cada hora**. GitHub
-Actions evita depender de otro servicio pero sus workflows programados se
-retrasan cuando GitHub va cargado.
+la llama **cada hora**. **Decidido (nov 2026): cron-job.org.** GitHub
+Actions se descartó: evita depender de otro servicio, pero sus workflows
+programados se retrasan cuando GitHub va cargado.
+
+**Estado real:** en el repo no existe `api/sync.js` ni se menciona
+`CRON_SECRET`. Si ya hay un trabajo creado en cron-job.org, no consta
+aquí (vive fuera del repo): anotarlo.
+Cuando se ponga en marcha, anotar aquí: fecha, URL exacta, frecuencia y
+cabecera (`Authorization: Bearer <CRON_SECRET>`, el valor vive en las
+variables de entorno de Vercel, nunca en el repo).
 
 **Qué construir:**
 1. `api/sync.js` — valida `Authorization: Bearer ${CRON_SECRET}`, lee los
@@ -294,11 +312,7 @@ para no reescribir `ImportView` dos veces.
 - `.eslintrc.json` debe extender `react-app`. Apuntaba a un parser de
   TypeScript inexistente y **bloqueaba todos los builds**.
 - Al eliminar funcionalidad, buscar código huérfano: ya quedaron varias
-  funciones sin usar que rompieron el build. Pero **comprobar con grep
-  antes de declarar algo huérfano**: en este archivo llegó a afirmarse que
-  `SeasonList.jsx` lo estaba (deducido, no verificado) y borrarlo habría
-  roto el build. Cuidado también con los `lazy(() => import(...))`, que no
-  aparecen en una búsqueda de `from "./X"`.
+  funciones sin usar que rompieron el build.
 - No inventar datos ni fórmulas: si un cálculo depende de reglas del juego
   que no están verificadas, decirlo explícitamente y marcarlo en el código.
 - Los datos de las 11 temporadas históricas **no son recuperables** desde

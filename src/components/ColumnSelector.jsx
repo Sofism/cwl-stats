@@ -8,7 +8,7 @@ const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowC
     { key: "missDef", label: "Miss Def" },
     { key: "netStars", label: "Net ★" },
     { key: "netPercent", label: "Net %" },
-    { key: "threeRate", label: "3★%" },
+    { key: "threeRate", label: "3★/Wars" },
     { key: "starGain", label: "★ Gain" },
     { key: "percentGain", label: "% Gain" },
     { key: "starGive", label: "★ Give" },

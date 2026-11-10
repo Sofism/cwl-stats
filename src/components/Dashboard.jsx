@@ -6,6 +6,7 @@ import ClanTabs from "./ClanTabs";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { DEFAULT_VISIBLE_COLS } from "../utils/constants";
 import { calculateBonusSlots } from "../utils/bonusCalculator";
+import { compareDefaultOrder } from "../utils/playerOrder";
 import HistoricalView from "./HistoricalView";
 import CurrentWarView from "./CurrentWarView";
 import { Trash2, ArrowLeft, Trophy,
@@ -103,16 +104,8 @@ const Dashboard = ({
     } else if (sortBy === "missAtk") {
       data.sort((a, b) => a.missAtk - b.missAtk);
     } else {
-      // Default sorting - Different for Main and Secondary
-      data.sort((a, b) => {
-        if (a.missAtk !== b.missAtk) return a.missAtk - b.missAtk;
-        if (b.netStars !== a.netStars) return b.netStars - a.netStars;
-        if (activePage !== "main" && a.avgDistance !== b.avgDistance) {
-          return a.avgDistance - b.avgDistance;
-        }
-        if (b.threeRate !== a.threeRate) return b.threeRate - a.threeRate;
-        return b.netDest - a.netDest;
-      });
+      // Orden por defecto: ver utils/playerOrder.js
+      data.sort(compareDefaultOrder);
     }
 
     return data;
@@ -209,7 +202,7 @@ const Dashboard = ({
           <option value="default">Default Sort</option>
           <option value="netStars">Net Stars</option>
           <option value="netPercent">Net %</option>
-          <option value="threeRate">3★ Hitrate</option>
+          <option value="threeRate">3★ per war</option>
           <option value="missAtk">Missed Attacks</option>
         </select>
 
