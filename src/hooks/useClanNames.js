@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { writeHeaders } from "../utils/api";
 
 const LOCAL_KEY = "cwl-clan-names";
 
@@ -63,7 +64,7 @@ export const useClanNames = () => {
     // Persistencia compartida; si falla, queda al menos la copia local.
     fetch("/api/clan-config", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: writeHeaders(),
       body: JSON.stringify({ config: merged }),
     }).catch((err) => console.error("Error saving clan config:", err));
     return true;

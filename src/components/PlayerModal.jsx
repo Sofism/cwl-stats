@@ -7,7 +7,7 @@ import React from "react";
 const PlayerModal = ({ player, onClose }) => {
   return (
     <div
- className="fixed inset-0 bg-black/70 z-50 overflow-y-auto"
+ className="fixed inset-0 bg-surface-950 z-50 overflow-y-auto"
       style={{ WebkitOverflowScrolling: "touch" }}
     >
       <div className="min-h-screen px-4 py-8 flex items-center justify-center">
@@ -52,7 +52,7 @@ const PlayerModal = ({ player, onClose }) => {
               <p className="text-sm text-txt-low mt-1">Net Stars</p>
             </div>
             <div className="bg-surface-950 p-4 rounded-md text-center">
-              <p className="text-3xl font-semibold text-accent-400">
+              <p className="text-3xl font-semibold text-data-400">
                 {player.threeRate.toFixed(1)}%
               </p>
               <p className="text-sm text-txt-low mt-1">3-Star Rate</p>
@@ -222,7 +222,7 @@ const PlayerModal = ({ player, onClose }) => {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-txt-low">3-Star Rate</span>
-                  <span className="text-accent-400">
+                  <span className="text-data-400">
                     {player.threeRate.toFixed(1)}%
                   </span>
                 </div>

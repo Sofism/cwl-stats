@@ -12,10 +12,6 @@ dos clanes: **True North** (principal) y **DD** (secundario). Sustituye un
 flujo manual anterior en el que se pegaban datos de un bot desde una hoja
 de cálculo.
 
-Tags: True North `#PQQGGJYQ`, DD `#2LL8C8Y2Q`. Se guardan en Redis vía
-`api/clan-config.js`, editables desde Ajustes. (Hubo un bug por un punto
-final pegado al tag; `normalizeTag()` ya limpia puntuación.)
-
 El propietario (Santi) lidera ambos clanes. Habla español; **la interfaz va
 íntegramente en inglés** (ya se coló español dos veces, verificar siempre).
 
@@ -29,11 +25,6 @@ El propietario (Santi) lidera ambos clanes. Habla español; **la interfaz va
    `api.clashofclans.com/v1/` añadiendo el token. Es imprescindible: la API
    de Supercell exige IP whitelisteada y no permite CORS desde navegador.
    Expone `GET /ip` para consultar la IP a whitelistear.
-   **Valida la cabecera `x-proxy-secret`** contra `PROXY_SECRET`; si esa
-   variable no está puesta, el proxy queda abierto (modo compatible).
-   **Render en plan gratuito duerme el servicio** tras ~15 min sin tráfico:
-   la primera petición tarda 30-60 s en despertar. Esto es crítico para el
-   cron (ver más abajo) y explica fallos intermitentes del primer sync.
 
 ```
 Navegador → coc-proxy (Render, IP fija) → api.clashofclans.com
@@ -50,6 +41,14 @@ Render: `COC_API_TOKEN`, `PROXY_SECRET`.
 del cliente, así que es visible para cualquiera que mire la pestaña de red.
 Frena abuso casual, no es seguridad real. La solución definitiva es mover
 las llamadas a una función serverless propia (ver "Cron" más abajo).
+
+**Clave de escritura (opt-in):** si se define `WRITE_SECRET` en Vercel **y**
+`REACT_APP_WRITE_SECRET` con el mismo valor, los endpoints que escriben
+(`save-season`, `delete-season`, `clan-config`, `seasons-backups`) la exigen
+(cabecera `x-write-secret`). Si solo se define una de las dos, la app deja
+de poder guardar. Igual que el secreto del proxy, la del cliente va en el
+bundle: frena curls a ciegas, no es seguridad real. Sin `WRITE_SECRET` no se
+exige nada (estado actual por defecto).
 
 **Aviso 2:** las variables `REACT_APP_*` se hornean **en tiempo de build**.
 Cambiarlas no surte efecto hasta redesplegar, y hay que marcarlas para el
@@ -101,37 +100,249 @@ Estos límites condicionan el diseño. No son suposiciones.
 - **La lista de opted-out es una regla interna** y aplica solo a guerras
   normales: si estás OUT no se espera tu ataque. Se captura **al empezar
   cada guerra** (clave: `preparationStartTime`) y se congela.
-- **Defensa no castigada:** si a un jugador no le atacó nadie en una
-  guerra terminada, NO se le premia: se le imputa una defensa de
-  **2 estrellas y 85% de destrucción** (`UNPUNISHED_DEFENSE_STARS` /
-  `UNPUNISHED_DEFENSE_DEST` en `cwlSync.js`). Mismo criterio que usaba la
-  hoja de cálculo manual; mantenerlo para que el histórico sea comparable.
+- **Orden por defecto de los resultados de CWL** (`src/utils/sortPlayers.js`,
+  copia en `api/_lib/cwlAggregate.js`): 1º menos ataques fallados (nadie con
+  un fallo puede estar por encima de quien no ha fallado); 2º más net stars,
+  y los empates dentro de net stars se rompen por ataques contra un TH
+  **igual o superior** al propio (`sameTh + higherTh`, los "dips" a TH
+  menores no cuentan), luego guerras jugadas, luego 3★%; al final net
+  destruction. (Orden TH-antes-que-guerras confirmado por Santi el
+  2026-11-10; antes iba al revés. Hay que cambiarlo en las DOS copias.)
+  **El nombre nunca desempata** (decisión de Santi). `avgDistance` ya no
+  ordena (solo se muestra).
+- `sameTh` / `higherTh` = ataques contra el mismo TH / uno superior. La API
+  los calcula (con sus `...Triples`); del pegado del bot salen de `Number of
+  Attacks − Lower TH Hits − Upper TH Hits` y `Upper TH Hits`. Las temporadas
+  guardadas antes no los tienen: se muestra "—" y cuentan como 0 al ordenar
+  hasta que se resincronicen/repeguen. Ojo: el bot y la API pueden clasificar
+  algún ataque distinto (p. ej. Wiki_Ziki: bot 4 reaches + 1 dip, API 5 superiores).
+- **Dos sistemas de orden coexisten** (`sortForDisplay` en `sortPlayers.js`):
+  el nuevo se usa cuando los jugadores del clan traen `sameTh` (datos de la
+  API, o pegado del bot con las columnas Dips/Reaches); si no, se usa el
+  anterior tal cual (missed, net stars, solo en el secundario menor distancia
+  media, 3★%, net destruction), con sus columnas de siempre. Así las
+  temporadas anteriores no cambian. Cada sistema recuerda sus columnas en su
+  propia clave: `cwl-visible-cols` (anterior) y `cwl-visible-cols-v2` (nuevo).
+- `avgDistance` (posición propia − posición del objetivo): **+ es bueno**
+  (atacó bases más fuertes), **− es malo** (atacó bases más débiles). OJO: el
+  orden ANTERIOR del clan secundario desempata por la distancia más baja
+  primero, es decir, premia la negativa; se dejó tal cual para no cambiar las
+  temporadas antiguas, pero va al revés que este criterio.
+- Las columnas visibles se guardan en `cwl-visible-cols-v2` (se versiona para
+  poder reiniciar las preferencias cuando cambian las columnas del orden).
 - `avgDistance` = **posición propia − posición del objetivo**. Confirmado
   contra la definición del bot original: jugador en la posición 5 atacando
   en 20/25/30 da media −20.
 - `threeRate` = triples / guerras alineadas. **No** es estrellas obtenidas
   sobre posibles. Se planteó cambiarlo y se descartó para no romper la
   comparabilidad con las 11 temporadas históricas del bot.
-- **Orden por defecto** (`utils/playerOrder.js`, `compareDefaultOrder`; lo
-  usan `Dashboard`, `cwlSync` y `dataParser`): 1) menos ataques fallados;
-  2) más estrellas netas; desempate de netas: 3) más ataques contra un TH
-  igual o superior al propio, 4) más guerras jugadas, 5) mejor 3★ rate;
-  6) mayor destrucción neta. **El nombre nunca desempata.** Sustituye al
-  criterio anterior, que usaba `avgDistance` solo en el clan secundario.
-- En la tabla de estadísticas la columna se muestra como **`3★/Wars`**
-  (p. ej. `4/6`, con el % en el tooltip) porque el porcentaje es difícil de
-  comparar entre jugadores con distinto número de guerras. Internamente
-  `threeRate` sigue guardándose como porcentaje. El histórico, las gráficas
-  y `PlayerModal` aún muestran el %.
+
+### Persistencia de temporadas (importante, hubo una pérdida de datos)
+
+`cwl-seasons` es UN array en Redis. Reglas actuales (`api/_lib/seasonStore.js`):
+
+- **`save-season` fusiona por id, nunca borra por omisión.** Un cliente con la
+  lista sin cargar ya no puede vaciar nada. Cada clan de una temporada lleva
+  su sello (`mainAt` / `secondaryAt`) y gana el más reciente: el cliente lo
+  pone al editar (`stampSeason` en `useSeasons.js`), el sync automático al
+  escribir.
+- **Borrar** va por `DELETE /api/delete-season?id=` (o `?all=1`), con
+  tombstones (`cwl-seasons-deleted`) para que un cliente viejo no resucite
+  lo borrado ni el sync recree el mes borrado.
+- **Copias de seguridad** rotativas (5) antes de cada escritura que cambia
+  algo y siempre antes de borrar: `GET /api/seasons-backups` (lista) y
+  `?n=1` (contenido). Restaurar = `POST /api/save-season` con
+  `{ seasons, replace: true }`.
+- Escrituras serializadas con un lock en Redis (`cwl-seasons-lock`).
+- Cada temporada lleva `cwlSeason: "2026-10"` (de `group.season`), que es lo
+  que la vincula con su CWL. Las anteriores a esto no lo tienen: se adoptan
+  por mes de creación o nombre, y los clanes que ya tenían jugadores se
+  marcan `manual`.
+- `manual: {main, secondary}`: lo pegado a mano. El sync **automático** no lo
+  pisa; "Sync now" sí (y quita la marca). `cwlComplete: {main, secondary}`:
+  la liga ya terminó y se guardó la versión final; no se vuelve a tocar.
+- "Sync now" en el cliente **se niega a guardar** si la CWL descargada es de
+  un mes distinto a la temporada abierta (así acabaron los datos de octubre
+  dentro de "September").
+- Límite a vigilar: Upstash free admite ~1 MB por petición y las temporadas
+  ocupan ~250 KB (+25 KB/mes).
+
+### Clasificación del grupo de CWL
+
+Puntos = **estrellas + 10 por cada guerra ganada**; desempate por destrucción
+total (`rankGroupClans` en `src/utils/cwlSync.js`, copia en
+`api/_lib/cwlAggregate.js`). Antes se ordenaba por victorias primero, que no
+es lo que hace el juego. **Sin verificar:** el bonus de un empate (se asume 0)
+y el desempate exacto; contrastar con la pantalla del juego si llega a
+importar. La pestaña "Live" cuenta además las guerras en curso con su
+marcador actual (provisional: quien va por delante cuenta como ganador). En
+"Rounds" cada lado muestra bases aguantadas (no caídas en 3★, o sea 2★ o
+menos) y hit rate (ataques 3★ sobre ataques usados).
+
+### Hora de los ataques y comprobaciones de fin de ronda
+
+- **La API no da la hora de ningún ataque**, solo su número de orden. El cron
+  anota CUÁNDO LO VIO POR PRIMERA VEZ (`trackAttackTimes` en
+  `api/_lib/normalWarStats.js`; `attackSeen` en el progreso) y el registro guarda
+  `seenAt` en ataques y defensas. Precisión: la del cron (~1 h). Si el cron vio
+  la guerra por primera vez ya en batalla, esos ataques quedan sin hora (null),
+  no se inventa. Las guerras guardadas antes no tienen hora. La UI
+  (`warClock` en `normalWarLog.js`) la muestra como tiempo que quedaba en el reloj
+  de guerra ("~20h 40m left").
+- **CWL: una comprobación puntual 3 minutos después del final de cada ronda**
+  (`cwlSyncServer.js`, `state.anchors` en `cwl-state:{tag}`), vía cron-job.org
+  como las de las guerras normales; se borran cuando la ronda queda guardada o al
+  cambiar de liga. Es para no perder la última ronda: el grupo desaparece cuando el
+  clan empieza una guerra normal. `/api/status` las muestra.
+
+### Marca del clan e insignias
+
+- **Marca (logo del clan "TN Clan")**: `public/logo.png` (cuadrado redondeado
+  al 28% de la imagen que dio Santi: las esquinas naranjas asoman a propósito, como
+  un eco de luz; el redondeo va en el PNG, no en CSS), usada en la cabecera de inicio y del Dashboard
+  (`BrandLogo.jsx`). Favicons en `public/` (`favicon.ico`, `favicon-32.png`,
+  `favicon-192.png`) y `apple-touch-icon.png` (cuadrado, iOS aplica su máscara);
+  enlazados en `public/index.html`. A 16–32 px el logo se lee bien.
+- **Insignias del juego** (`ClanCrest.jsx`): para distinguir los dos clanes en
+  las pestañas. Las pide el **cron** (`api/_lib/clanBadges.js`, llamado desde
+  `api/sync.js`) **solo cuando hace falta**, sin refresco diario: (a) al EMPEZAR
+  una guerra (guerra normal nueva para el clan principal, o liga de CWL nueva
+  para el clan que la juega; solo se pide la insignia de ese clan, 1 petición), y
+  (b) si falta alguna (primera vez o tras cambiar un tag). Se guardan en la config
+  (`mainBadge`, `secondaryBadge`, `badgesAt`) y viajan con `clanNames`. **Nunca en
+  la lectura de `/api/clan-config`**: pedirlas ahí dejaba la carga de la app
+  esperando (con el proxy dormido, hasta un minuto). Si Clash falla se reintenta
+  pasados 10 min. El nivel va DENTRO de la imagen (sube con la XP de guerra), así
+  que puede ir un par de días por detrás: se actualiza al empezar la siguiente
+  guerra. Si un tag cambia en Ajustes, se descarta su insignia.
+
+### Cómo se obtienen los datos (todo es sondeo, no hay avisos)
+
+La API de Clash **no tiene webhooks ni avisos de cambios**: todo se obtiene
+preguntando. Las peticiones salen de (1) el cron de cron-job.org, cada hora
+por clan (+ 2 ejecuciones puntuales por guerra, antes y después del final), y
+(2) el navegador, solo cuando alguien abre una pantalla o pulsa Refresh/Sync
+now. No hay temporizadores que consulten a Clash. Un clan normal gasta ~3
+peticiones por ejecución (miembros, guerra actual, grupo de CWL), pero **el
+clan secundario no juega guerras normales y se salta esa parte** (solo
+sincroniza CWL).
+
+- **Frecuencia del cron:** un clan normal gasta ~3 peticiones por ejecución. Con
+  Upstash gratuito (500 mil comandos/mes; uso real ~5 mil/mes con el cron
+  horario) cabe sin problema un cron de **15 minutos para el clan principal**
+  (~30 mil/mes), que da la hora de los ataques con ±15 min en vez de ±1 h; el
+  secundario puede seguir cada hora. El indicador "Last sync" se pone rojo a los
+  90 minutos.
+- **Opt-outs:** se capturan UNA vez por guerra, la primera vez que el cron la
+  ve (~51 peticiones), y se congelan en el progreso (`optOutTags`,
+  `optOutPlayers`, `optOutTotal`, `optOutCapturedAt`). No se vuelven a
+  consultar aunque alguien cambie su estado a mitad de guerra (lo que importa
+  es quién estaba en rojo al empezar). La app los lee de `/api/war-optouts`
+  (solo Redis) y **no los calcula por su cuenta**: si el cron aún no la ha
+  visto, la tarjeta dice que está pendiente.
+- **Vista en vivo de CWL:** el grupo y sus ~28 guerras se descargan UNA vez y
+  se comparten 30 s entre la vista de rondas, el panel de clasificación y el
+  inicio (`loadCwlGroup` en `cwlSync.js`); Refresh se salta la caché.
+- El grupo de CWL de un clan **desaparece de la API** unos días después de
+  acabar la liga (comprobado: el de daddy's dolls ya daba 404 el 17 de octubre).
+
+### Captura de guerras normales (fiabilidad)
+
+La API solo expone la guerra ACTUAL, y con guerras seguidas la anterior
+desaparece en cuanto empieza la siguiente. Una auditoría contra el `warlog`
+oficial (octubre 2026) mostró que solo 4 de 13 guerras estaban completas. Reglas
+actuales de `api/sync.js` / `normalWarStore.js`:
+
+- `getCurrentWar` **lanza error** ante cualquier respuesta que no sea 200
+  (proxy dormido, 429, 5xx, registro privado = 403); solo devuelve `null`
+  cuando la API dice `notInWar`. Un fallo puntual ya no se toma por "no hay
+  guerra"; el error sale en el indicador "Last sync" y se reintenta.
+- Si aparece una guerra NUEVA y la anterior no se llegó a ver terminada, la
+  anterior se guarda con su última foto (`recoveredFromFallback`), no se
+  descarta (salvo que nunca tuviera ataques).
+- Si la guerra desaparece ANTES de su `endTime`, se espera una ejecución más
+  (`missingSince`) antes de rescatarla.
+- Un registro completo **sustituye** a uno parcial de la misma guerra
+  (`finalizeIfNew` devuelve `saved` / `upgraded` / `false`).
+- Los datos por jugador de las guerras ya perdidas no se pueden recuperar
+  (el `warlog` solo da resúmenes). Muchas guerras terminan 135★–135★ (empate
+  real entre clanes que se 3-estrellan entre sí); no es un fallo.
+
+### Log de ataques de guerras normales
+
+El log por defecto es una **línea de tiempo cronológica** de todos los ataques
+(los dos bandos), en `NormalWarTimeline.jsx`. El `order` de la API es el número
+global del ataque; los ataques propios (`attacks`) no lo guardaban al
+principio, pero cada ataque aparece también como DEFENSA del otro bando con su
+`order` y `attackerTag`, y de ahí se reconstruye (`buildTimeline` en
+`src/utils/normalWarLog.js`). Las guerras guardadas antes de guardar `order`
+en las defensas (2 de las primeras) no se pueden ordenar: se avisa. Desde ahora
+`attacks` también guarda `order`. Pulsar el nombre de un jugador (en el log, en
+las tarjetas o en Clan stats) abre su ficha (`NormalWarPlayerCard.jsx`): sus
+números acumulados y, guerra a guerra, sus ataques y sus defensas en orden de
+llegada (rojo = el golpe que tumbó la base, gris = golpes posteriores).
+**Clan stats nunca se ordena por nombre** (decisión de Santi): se ordena por la
+métrica elegida y, a igualdad, por las demás de ataque y defensa
+(`compareClanStats`); un empate total conserva el orden de entrada. El
+selector de jugador del log sí es alfabético (es una lista para buscar).
+
+### Guerras sin datos por jugador (historial oficial)
+
+`/api/get-normal-wars` devuelve también `warlog`: el historial OFICIAL de Clash
+(`clans/{tag}/warlog`, ~120 entradas; solo resúmenes: resultado, estrellas,
+destrucción, ataques usados; se descartan las líneas de CWL). La UI
+(`src/utils/normalWarOfficial.js`) lo empareja por hora de fin (±3 h) con las
+guerras guardadas, **desde la primera guerra capturada** (las anteriores no
+se listan): las que no tienen registro, o lo tienen vacío, salen en el
+desplegable como "(no player data)" con una tarjeta de resumen
+(`NormalWarOfficialSummary`). Si los ataques capturados de una guerra
+rescatada igualan los que el historial oficial dice que usó el clan, esa guerra
+se trata como COMPLETA (cuenta para missed wars). Clan stats muestra la línea de
+cobertura ("X of Y wars have player data").
+
+### Qué es cada trabajo de cron-job.org
+
+`/api/status?secret=...` incluye `cronJobs`: cada trabajo que apunta a la app, con
+clan, tipo (regular / puntual), horario en lenguaje llano, para qué sirve (los
+puntuales se casan con la guerra o ronda que los creó) y si tiene título. Con
+`&label=1` se ponen títulos descriptivos SOLO a los que no tienen o llevan uno
+genérico (`job1`, `job2`...); nunca pisa uno puesto a mano que diga algo. Los trabajos que crea la app ya llevan título
+(`cwl-stats · main · war check 10 min BEFORE end (auto, deletes itself)`...).
+
+### Diagnóstico: `/api/status`
+
+`/api/status?secret=<CRON_SECRET>` dice en lenguaje llano si la configuración
+está bien: variables (requeridas / opcionales), Redis, proxy de Clash,
+registro de guerras legible, cron-job.org (clave válida, trabajos activos,
+últimas ejecuciones), última sincronización y si la guerra en curso tiene sus
+comprobaciones puntuales. Con `&test=1` prueba el anclaje creando y borrando un
+trabajo desactivado. Nunca devuelve claves. La respuesta de `/api/sync` incluye
+`anchoring` y, si falla crear un trabajo, el motivo (`scheduleError`).
+
+### Sync automático de CWL
+
+`api/sync.js` (el mismo cron de guerras normales) llama a
+`api/_lib/cwlSyncServer.js` por clan: crea la temporada del mes cuando
+aparece el grupo y añade cada ronda al terminar. Es incremental (guarda las
+guerras terminadas en `cwl-state:{tag}`). La API de Clash solo expone la CWL
+en curso y el grupo desaparece cuando el clan empieza otra guerra, así que lo
+no capturado a tiempo se pierde: el cron debe correr durante toda la liga.
+`api/_lib/cwlAggregate.js` es copia de la lógica de `src/utils/cwlSync.js`
+(el cliente no puede importar de `api/`): cambios de criterio, en ambos.
 
 ### Bonos de CWL — PENDIENTE DE CALIBRAR
 
 `bonusCalculator.js` calcula: bonos base según liga + 1 por guerra ganada.
-Eso es correcto. Pero hay **dos aproximaciones sin verificar**:
+Eso es correcto. Queda **una aproximación sin verificar**:
 
 - La tabla base para **5v5** (estimada dividiendo la de 15v15 entre 3).
-- La **caída de valor de medalla por posición final** (lineal, ~8% por
-  puesto).
+  **CWL solo se juega en 15v15 o 30v30 actualmente** — el 5v5 existió una
+  única temporada y Supercell lo retiró después (confirmado por Santi). La
+  opción se mantiene en el selector solo por si hace falta editar esa
+  temporada histórica concreta; no debería aparecer como elección real
+  para temporadas nuevas.
+- (Se eliminó `calculateMedalValue` y su tabla de medallas: ninguna pantalla
+  las usaba y eran valores sin verificar.)
 
 15v15 y 30v30 reparten el mismo número de bonos. Si Santi aporta un caso
 real (liga + tamaño + guerras ganadas + número que da el juego), calibrar
@@ -152,16 +363,33 @@ sci-fi (se probó Orbitron y se descartó).
   viene de escalones de gris, **no** de bordes por todas partes.
 - `line` / `line-strong` — bordes hairline.
 - `txt-hi/mid/low/dim` — cuatro niveles de texto.
-- `accent-*` — color principal, **ajustable por el usuario** en Ajustes.
+- `accent-*` — color de la interfaz (neutro por defecto), **ajustable por el usuario** en Ajustes.
 - `alert-*` (alias `rust-*`) — color de aviso, **también ajustable**.
+- `data-*` — color de **datos** (azul por defecto, **ajustable** en Ajustes): lo
+  "nuestro" y los números neutros (3★ rate, puntos, gráficas, chip "us", resaltado
+  de nuestro clan). **Regla:** `accent` solo para la interfaz (botones,
+  pestañas, iconos, hover); `data` para datos neutros; `ok`/`bad` (verde/rojo)
+  solo para bien/mal. El naranja/rosa/rojo en datos se lee como fallo.
 - `ok-*` / `bad-*` — semánticos, fijos.
 - `amber` / `azure` / `lime` — realces puntuales.
 - `void/ink/signal/steel` — **alias legacy** remapeados a los nuevos
   valores. Existen para no romper componentes sin migrar. No usar en
   código nuevo.
 
-Por defecto: acento **lime**, alerta **rust** (naranja). Opciones
-disponibles: lime, azure, amber, rust, violet.
+**Colores por defecto:** interfaz **neutra** (`slate`, sin matiz), datos en
+**azul**, aviso en **amber**. Los colores del logo (naranja/rosa) viven solo en el
+logo: en la interfaz se leían como alarma (se probó rust y se descartó). Nunca el
+mismo color para acento y aviso, ni para acento y datos (`public/index.html` lo
+fuerza). Hay una migración única (`cwl-palette-v3`): los defectos antiguos
+(lime, luego rust) se guardaban en localStorage solo por abrir la página, y sin
+ella el nuevo por defecto no se vería en un dispositivo ya usado. Una elección
+hecha a mano (azure, violet...) no se toca. Ajustes tiene "Reset colours to
+default".
+
+**Inicio sin "tristeza" (tema neutro):** CTA principal sólido claro (`bg-accent-300`),
+pestaña de clan seleccionada en azul de datos, iconos de acceso en baldosa azul tenue,
+y un resumen de la última temporada (liga, posición, guerras ganadas, bonos, jugadores)
+con los números en `text-data-400` (`LatestSeasonSummary` en `SeasonSelector.jsx`).
 
 **Acento ajustable:** `accent` y `alert` se definen como
 `rgb(var(--accent-400) / <alpha-value>)`. `window.setPaletteRole(role,
@@ -192,43 +420,28 @@ Durante meses no lo estaba y ninguna regla se aplicaba.
 - Home como panel de estado (`SeasonSelector.jsx`, mal nombrado ya):
   CWL en curso, guerra normal, ataques pendientes plegables, altas/bajas,
   opted-out por guerra.
-- `CurrentWarView` — vista en vivo de la ronda de CWL, con dos pestañas:
-  **Live** (por defecto: marcador con ataques que faltan por equipo, roster
-  ordenable por posición o "pending first") y **Players** (tabla completa de
-  nuestro clan: guerras, 3★/2★/1★/0★, fallos, defensas con detalle al
-  expandir y estado en la ronda actual; cabeceras ordenables). Pulsar el
-  nombre de cualquiera de los dos clanes en el marcador abre un popup
-  (`ClanRosterModal`) con la misma tabla (`ClanPerformanceTable`) para ese
-  clan. Las stats del rival salen de las demás guerras del grupo, que la API
-  devuelve completas. Solo cuentan rondas terminadas; la ronda en curso va en
-  la última columna.
-- `aggregatePlayers()` en `cwlSync.js` es la **única** fórmula de stats por
-  jugador (temporada guardada y vista en vivo). Con `withDetails` añade el
-  detalle de defensas, que no se guarda en Redis.
-- Métricas de guerra en el home (`homeStatus.js`): ataques usados/totales,
-  **ataques que le quedan al rival**, aldeas nuestras sin atacar, aldeas
-  que aguantaron a 0★, y estrellas que quedan en juego.
+- `CurrentWarView` — vista en vivo de la ronda de CWL. Pestañas Attacks /
+  Defenses / **Players**. *Players* (`ClanPerformanceTable`) lista a todos
+  los jugadores del clan con guerras, 3★/2★/1★/0★, fallos, ataques ≥ TH,
+  defensas (detalle al expandir la fila) y su estado en la ronda abierta;
+  las cabeceras ordenan (p. ej. por *Missed*) y hay vuelta al orden por
+  defecto. Pulsar el nombre de cualquiera de los dos clanes del marcador
+  abre un popup (`ClanRosterModal`) con la misma tabla; las stats del rival
+  salen de las demás guerras del grupo (`getCwlClanView`, que comparte la
+  caché de `getCwlRounds`: no hace peticiones nuevas). Solo cuentan rondas
+  terminadas. El marcador muestra además los ataques que faltan por equipo.
+  La fórmula por jugador vive en **un solo sitio del cliente**,
+  `aggregatePlayers()` en `cwlSync.js` (la copia del servidor sigue en
+  `api/_lib/cwlAggregate.js`; si cambia un criterio, cambiarlo en ambas).
+- En la tabla de estadísticas de cada mes la columna se muestra como
+  **`3★/Wars`** (p. ej. `4/6`, con el % en el tooltip): el porcentaje es
+  difícil de comparar entre jugadores con distinto número de guerras.
+  `threeRate` sigue guardándose como porcentaje (el orden lo usa tal cual).
+  El histórico y `PlayerModal` aún muestran el %.
 - `HistoricalView` — histórico entre temporadas, agrupa por **tag** (con
   respaldo por nombre para temporadas antiguas sin tag).
 - Config de clanes en Redis (`api/clan-config.js`) + caché en localStorage.
 - Columnas visibles persistidas en localStorage.
-
-### Modelo de datos de una temporada
-
-`{ id, name, year, mainClan: [...], secondaryClan: [...], leagueInfo }`.
-`leagueInfo` tiene por clan: `{ league, position, warsWon, warSize }`.
-`warSize` (5/15/30) se añadió para el cálculo de bonos y lo rellena el sync
-desde `teamSize`. Cada jugador: `name, tag, clan, th, wars, missAtk,
-missDef, offStars, offDest, defStars, defDest, netStars, netDest,
-threeRate, stars3/2/1/0, avgDistance, atkSameOrHigherTh`.
-`atkSameOrHigherTh` (ataques contra un TH >= al propio) solo existe en las
-temporadas sincronizadas desde nov 2026; en las anteriores falta y el orden
-lo trata como 0 (no se puede recalcular: la API no da temporadas pasadas).
-
-Las temporadas antiguas (pegadas a mano) **no tienen `tag`**: el histórico
-cae a agrupar por nombre en esos casos. `dataParser.js` sigue existiendo
-como respaldo manual (textarea plegado en `ImportView`) por si la API falla
-o el clan no está en CWL.
 
 ### Eliminado a propósito
 - Compartir por enlace (obsoleto: todo se guarda). Se borraron
@@ -242,63 +455,23 @@ o el clan no está en CWL.
 1. **Guerras normales con stats por jugador** (lo siguiente a abordar).
    Requiere el cron: sin sondeo periódico se pierden la mayoría, porque el
    ciclo es de ~48h.
-2. **Cron** — ver sección dedicada más abajo.
-3. Creación automática de temporada desde `group.season` (`"2026-08"`).
+2. ~~Cron~~ (hecho para guerras normales y CWL; el texto siguiente es el plan original). Plan acordado: endpoint `/api/sync` que hace el trabajo en
+   servidor (elimina la duplicación de lógica y saca el secreto del
+   navegador), sync **incremental** (guardar warTags ya procesados; las
+   guerras terminadas no cambian), y un programador **externo**
+   (cron-job.org o GitHub Actions) llamándolo cada hora.
+   Motivo: Vercel Hobby limita cron a **1×día** y las funciones a **10s**;
+   Pro son 20 $/mes. El endpoint HTTP acepta llamadas de cualquiera, así
+   que un programador externo evita el límite. Validar `CRON_SECRET`.
+   Los tags ya están en Redis, que era requisito previo.
+3. ~~Creación automática de temporada~~ (hecho en `cwlSyncServer.js`).
 4. Mover a Redis lo que aún está en localStorage: histórico de opted-out,
    snapshot de roster para altas/bajas.
 5. `StatsTable` aún no usa `font-mono` en las cifras.
-6. ~~`SeasonList.jsx` huérfano~~ **Falso, verificado:** lo importa y
-   renderiza `ImportView.jsx` (cadena `App.js` → `ImportView` →
-   `SeasonList`). No borrar salvo que se rediseñe `ImportView`.
-7. Posibles secciones nuevas: Clan Capital
+6. Posibles secciones nuevas: Clan Capital
    (`clans/{tag}/capitalraidseasons`, sí guarda histórico), donaciones
    (gratis, ya viene en el listado de miembros), preparación de guerra
    (héroes vía `players/{tag}`).
-
----
-
-## Plan del cron (acordado, sin implementar)
-
-Es la pieza que desbloquea las guerras normales y evita perder temporadas.
-
-**Por qué un programador externo y no el de Vercel:** en plan Hobby los
-cron de Vercel solo admiten **1 ejecución al día** (cualquier expresión más
-frecuente falla en el despliegue) y el disparo no es puntual (margen de una
-hora). Las funciones tienen **10 s de timeout** (Pro: 60 s, ampliable a
-300 s, por 20 $/mes). Para guerras normales 1×día es insuficiente: el ciclo
-es de ~48 h y se perderían guerras.
-
-**Solución acordada:** `/api/sync` es una ruta HTTP normal que acepta
-llamadas de cualquiera, así que un programador externo gratuito
-la llama **cada hora**. **Decidido (nov 2026): cron-job.org.** GitHub
-Actions se descartó: evita depender de otro servicio, pero sus workflows
-programados se retrasan cuando GitHub va cargado.
-
-**Estado real:** en el repo no existe `api/sync.js` ni se menciona
-`CRON_SECRET`. Si ya hay un trabajo creado en cron-job.org, no consta
-aquí (vive fuera del repo): anotarlo.
-Cuando se ponga en marcha, anotar aquí: fecha, URL exacta, frecuencia y
-cabecera (`Authorization: Bearer <CRON_SECRET>`, el valor vive en las
-variables de entorno de Vercel, nunca en el repo).
-
-**Qué construir:**
-1. `api/sync.js` — valida `Authorization: Bearer ${CRON_SECRET}`, lee los
-   tags de Redis, llama al proxy, agrega y escribe. Mover aquí la lógica
-   de `cwlSync.js` **elimina la duplicación** (hoy el navegador hace las
-   ~60 llamadas) y **saca el secreto del proxy del bundle del cliente**,
-   que es el problema de seguridad real pendiente.
-2. **Sync incremental**: guardar en Redis los `warTag` ya procesados y no
-   volver a pedirlos. Las guerras terminadas no cambian nunca. Es
-   imprescindible para caber en 10 s, sobre todo con Render dormido.
-3. `ImportView` pasa a llamar al endpoint en vez de hacer el trabajo.
-4. Variables de servidor nuevas (sin prefijo `REACT_APP_`):
-   `COC_PROXY_URL`, `COC_PROXY_SECRET`, `CRON_SECRET`.
-
-**Efecto colateral bueno:** un cron horario mantiene despierto el servicio
-de Render.
-
-**Orden:** se decidió hacer primero el rediseño visual y después el cron,
-para no reescribir `ImportView` dos veces.
 
 ---
 

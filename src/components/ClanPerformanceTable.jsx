@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
-import { compareDefaultOrder } from "../utils/playerOrder";
+import { comparePlayers, sameOrHigherTh } from "../utils/sortPlayers";
 
 // Valor por el que se ordena cada columna al pulsar su cabecera.
 const SORT_VALUE = {
@@ -12,6 +12,7 @@ const SORT_VALUE = {
   stars1: (p) => p.stars1 || 0,
   stars0: (p) => p.stars0 || 0,
   missAtk: (p) => p.missAtk || 0,
+  hits: (p) => sameOrHigherTh(p),
   defCount: (p) => p.defCount || 0,
   round: (p) => (p.thisRound ? p.thisRound.position : 999),
 };
@@ -46,7 +47,7 @@ const ClanPerformanceTable = ({ players, state }) => {
       const vb = get(b);
       if (va < vb) return -1 * sign;
       if (va > vb) return 1 * sign;
-      return compareDefaultOrder(a, b);
+      return comparePlayers(a, b);
     });
   }, [players, sort]);
 
@@ -128,6 +129,7 @@ const ClanPerformanceTable = ({ players, state }) => {
               <Th k="stars1">1★</Th>
               <Th k="stars0">0★</Th>
               <Th k="missAtk" title="Finished rounds with no attack">Missed</Th>
+              <Th k="hits" title="Attacks on the same or a higher TH than their own">Hits ≥ TH</Th>
               <Th k="defCount" title="Defences faced in finished rounds">Def</Th>
               <Th k="round" className="text-left" title="Status in the current round">
                 This round
@@ -137,7 +139,7 @@ const ClanPerformanceTable = ({ players, state }) => {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="p-6 text-center text-txt-low">
+                <td colSpan={12} className="p-6 text-center text-txt-low">
                   No players yet
                 </td>
               </tr>
@@ -175,6 +177,9 @@ const ClanPerformanceTable = ({ players, state }) => {
                           <span className="text-txt-dim">0</span>
                         )}
                       </td>
+                      <td className="p-3 text-center font-mono text-txt-mid">
+                        {sameOrHigherTh(p)}
+                      </td>
                       <td className="p-3 text-center font-mono text-txt-low">
                         {p.defCount || 0}
                       </td>
@@ -183,7 +188,7 @@ const ClanPerformanceTable = ({ players, state }) => {
                     {isOpen && (
                       <tr className="bg-surface-900">
                         <td></td>
-                        <td colSpan={10} className="px-3 pb-3 pt-1">
+                        <td colSpan={11} className="px-3 pb-3 pt-1">
                           <p className="text-xs text-txt-low mb-2">Defences faced</p>
                           <div className="space-y-1">
                             {(p.defenseLog || []).map((d, i) => (

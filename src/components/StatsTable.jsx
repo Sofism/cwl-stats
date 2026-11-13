@@ -33,11 +33,11 @@ const StatsTable = memo(({
       {/* Bonus Counter */}
       {bonusCount > 0 && (
         <div className={`mb-4 p-4 rounded-md border ${
-          bonusesUsed === bonusCount 
-            ? "bg-ok-900/40 border-ok-400/40" 
+          bonusesUsed === bonusCount
+            ? "bg-ok-900 border-ok-400/40"
             : bonusesUsed > bonusCount
-            ? "bg-bad-900/40 border-bad-400/40"
-            : "bg-amber-900/40 border-amber-400/40"
+            ? "bg-bad-900 border-bad-400/40"
+            : "bg-amber-900 border-amber-400/40"
         }`}>
           <div className="flex items-center justify-between">
             <span className="font-semibold">
@@ -59,7 +59,10 @@ const StatsTable = memo(({
               <tr className="text-left text-xs text-txt-low">
                 <th className="p-3">Rank</th>
                 {bonusCount > 0 && <th className="p-3">Bonus</th>}
-                <th className="p-3">Player</th>
+                {/* Fija: al deslizar la tabla en horizontal, el jugador
+                    sigue a la vista. z-20 = por encima de las otras
+                    celdas Y del propio thead sticky (z-10). */}
+                <th className="p-3 sticky left-0 z-20 bg-surface-950">Player</th>
                 {visibleCols.th && <th className="p-3">TH</th>}
                 {visibleCols.wars && <th className="p-3">Wars</th>}
                 {visibleCols.missAtk && <th className="p-3">Miss Atk</th>}
@@ -67,6 +70,14 @@ const StatsTable = memo(({
                   <th className="p-3">Miss Def</th>
                 )}
                 {visibleCols.netStars && <th className="p-3">Net ★</th>}
+                {visibleCols.sameOrHigherTh && (
+                  <th
+                    className="p-3"
+                    title="Attacks against a village of the same or a higher Town Hall level"
+                  >
+                    Hits ≥ TH
+                  </th>
+                )}
                 {visibleCols.netPercent && <th className="p-3">Net %</th>}
                 {visibleCols.threeRate && <th className="p-3">3★/Wars</th>}
                 {visibleCols.starGain && <th className="p-3">★ Gain</th>}
@@ -117,7 +128,13 @@ const StatsTable = memo(({
                         </td>
                       )}
                       
-                      <td className="p-3 font-semibold">{p.name}</td>
+                      <td
+ className={`p-3 font-semibold sticky left-0 z-10 ${
+                          hasBonus ? "bg-amber-900" : "bg-surface-950"
+                        }`}
+                      >
+                        {p.name}
+                      </td>
                       {visibleCols.th && <td className="p-3">{p.th}</td>}
                       {visibleCols.wars && (
                         <td className="p-3 tabular">{p.wars ?? "—"}</td>
@@ -160,17 +177,27 @@ const StatsTable = memo(({
                             {p.avgDistance !== 0 && (
                               <span
  className={`text-xs ${
-                                  p.avgDistance < 0
-                                    ? "text-azure-400"
-                                    : "text-orange-400"
+                                  p.avgDistance < 0 ? "text-bad-400" : "text-ok-400"
                                 }`}
-                                title={`Avg Distance: ${p.avgDistance.toFixed(1)}`}
+                                title={`Avg. target distance ${p.avgDistance.toFixed(1)}: own position minus target position. + = attacked stronger (higher-ranked) bases, − = weaker ones.`}
                               >
                                 ({p.avgDistance > 0 ? "+" : ""}
                                 {p.avgDistance.toFixed(1)})
                               </span>
                             )}
                           </div>
+                        </td>
+                      )}
+                      {visibleCols.sameOrHigherTh && (
+                        <td
+                          className="p-3 tabular"
+                          title={
+                            p.sameTh === undefined
+                              ? undefined
+                              : `${p.sameTh} same TH · ${p.higherTh || 0} higher TH`
+                          }
+                        >
+                          {p.sameTh === undefined ? "—" : p.sameTh + (p.higherTh || 0)}
                         </td>
                       )}
                       {visibleCols.netPercent && (
@@ -187,7 +214,7 @@ const StatsTable = memo(({
                       )}
                       {visibleCols.threeRate && (
                         <td
-                          className="p-3 text-accent-400 font-semibold font-mono"
+                          className="p-3 text-data-400 font-semibold font-mono"
                           title={`${p.threeRate.toFixed(1)}%`}
                         >
                           {p.stars3 ?? 0}/{p.wars ?? 0}

@@ -7,3 +7,23 @@ td,
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Los <select> nativos varian mucho entre navegadores - Safari en
+   particular aplica su propio "chrome" del sistema y practicamente
+   ignora el resto del estilo, incluida la flecha. Se quita la apariencia
+   nativa y se pone una flecha propia consistente con el resto de iconos
+   de la app (mismo gris que txt-low), asi se ve igual en todos lados. */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9ca1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  /* !important a proposito: cada <select> de la app ya trae su propio
+     px-* de Tailwind (clase, mas especifica que este selector de
+     elemento), que si no se fuerza aqui pisaria el hueco reservado para
+     la flecha y el texto quedaria pegado a ella. */
+  padding-right: 2.25rem !important;
+}

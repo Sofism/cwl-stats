@@ -1,19 +1,27 @@
 import React from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
-const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowColSelector }) => {
+const ColumnSelector = ({
+  visibleCols,
+  setVisibleCols,
+  showColSelector,
+  setShowColSelector,
+  showHitsColumn = true,
+}) => {
   const columns = [
     { key: "th", label: "TH" },
     { key: "wars", label: "Wars" },
     { key: "missAtk", label: "Miss Atk" },
     { key: "missDef", label: "Miss Def" },
     { key: "netStars", label: "Net ★" },
+    { key: "sameOrHigherTh", label: "Hits ≥ TH" },
     { key: "netPercent", label: "Net %" },
     { key: "threeRate", label: "3★/Wars" },
     { key: "starGain", label: "★ Gain" },
     { key: "percentGain", label: "% Gain" },
     { key: "starGive", label: "★ Give" },
     { key: "percentGive", label: "% Give" },
-  ];
+  ].filter((c) => showHitsColumn || c.key !== "sameOrHigherTh");
 
   return (
     <div className="mb-4 border border-line rounded-md p-4">
@@ -22,7 +30,11 @@ const ColumnSelector = ({ visibleCols, setVisibleCols, showColSelector, setShowC
  className="flex items-center justify-between w-full text-sm font-semibold"
       >
         <span>Column Visibility</span>
-        <span className="text-txt-low">{showColSelector ? "▼" : "▶"}</span>
+        {showColSelector ? (
+          <ChevronDown className="w-4 h-4 text-txt-low" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-txt-low" />
+        )}
       </button>
       {showColSelector && (
         <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2">
